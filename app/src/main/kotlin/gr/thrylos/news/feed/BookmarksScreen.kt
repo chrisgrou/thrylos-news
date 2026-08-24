@@ -28,7 +28,7 @@ fun BookmarksScreen(
     onBack: () -> Unit,
     viewModel: BookmarksViewModel = hiltViewModel(),
 ) {
-    val items by viewModel.items.collectAsStateWithLifecycle()
+    val bookmarks by viewModel.items.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -40,7 +40,7 @@ fun BookmarksScreen(
             )
         },
     ) { padding ->
-        if (items.isEmpty()) {
+        if (bookmarks.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 Text("Δεν έχεις αποθηκεύσει άρθρα ακόμα.")
             }
@@ -50,7 +50,7 @@ fun BookmarksScreen(
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                items(items, key = { it.article.id }) { item ->
+                items(bookmarks, key = { it.article.id }) { item ->
                     ArticleCard(item = item, onClick = {
                         viewModel.openArticle(item.article.id)
                         onOpenArticle(item.article.id)

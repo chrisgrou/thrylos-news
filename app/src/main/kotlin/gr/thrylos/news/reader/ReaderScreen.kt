@@ -104,8 +104,9 @@ fun ReaderScreen(
                                     lineHeight = (READER_BASE_HEADING_SP * 1.15f * 1.2f * prefs.fontScale).sp,
                                 ),
                             )
-                            if (a.author != null) {
-                                Text(a.author, color = colors.secondaryText, modifier = Modifier.padding(top = 10.dp, bottom = 16.dp))
+                            val author = a.author
+                            if (author != null) {
+                                Text(author, color = colors.secondaryText, modifier = Modifier.padding(top = 10.dp, bottom = 16.dp))
                             } else {
                                 Spacer(Modifier.padding(top = 8.dp))
                             }

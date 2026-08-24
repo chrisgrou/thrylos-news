@@ -82,9 +82,10 @@ fun ContentBlockView(block: ContentBlock, prefs: ReaderPrefs, colors: ReaderColo
                 contentDescription = block.caption,
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)),
             )
-            if (block.caption != null) {
+            val caption = block.caption
+            if (caption != null) {
                 Text(
-                    text = block.caption,
+                    text = caption,
                     style = TextStyle(fontFamily = fontFamily, fontSize = 12.sp, color = colors.secondaryText),
                     modifier = Modifier.padding(top = 4.dp),
                 )

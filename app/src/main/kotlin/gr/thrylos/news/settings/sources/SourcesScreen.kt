@@ -56,7 +56,7 @@ fun SourcesScreen(
                 val index = sources.indexOf(source)
                 ListItem(
                     headlineContent = { Text(source.name) },
-                    supportingContent = { Text(source.homepage) },
+                    supportingContent = { Text(source.plugin?.homepage.orEmpty()) },
                     leadingContent = {
                         Column {
                             IconButton(onClick = { viewModel.moveUp(index) }, modifier = Modifier) {
