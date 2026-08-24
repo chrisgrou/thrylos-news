@@ -2,28 +2,45 @@
   "schemaVersion": 1,
   "id": "sport24-olympiacos",
   "name": "Sport24 — Ολυμπιακός",
-  "homepage": "https://www.sport24.gr/tag/olympiacos",
+  "homepage": "https://www.sport24.gr/tag/olympiacos/",
   "enabled": true,
   "discovery": {
-    "type": "rss",
-    "url": "https://www.sport24.gr/tag/olympiacos/feed",
+    "type": "html-list",
+    "url": "https://www.sport24.gr/tag/olympiacos/",
     "maxItems": 30
   },
+  "listSelectors": {
+    "item": "article.article_card",
+    "link": "h2.article_card__title a@href",
+    "title": "h2.article_card__title span.desktop_title",
+    "image": "figure img@data-src"
+  },
   "article": {
-    "title": "h1.entry-title, h1.post-title, article h1, h1",
-    "author": ".author-name, .post-author, .entry-author, [rel=author], .byline",
-    "date": "time@datetime, time.published@datetime",
-    "leadImage": "figure.post-thumbnail img@src, .featured-image img@src, article img@src",
-    "content": "div.entry-content, div.post-content, div.article-content, article .content, article",
+    "title": "h1.single_article__title",
+    "author": ".single_article__byline__author",
+    "date": "meta[property=article:published_time]@content",
+    "leadImage": "meta[property=og:image]@content",
+    "content": "article.single_article",
     "remove": [
-      ".ad", ".ads", ".adsbygoogle", ".related", ".related-posts", ".read-also",
-      ".newsletter", ".social-share", ".share-buttons", ".author-box", ".tags",
-      ".comments", "#comments", "aside", "nav", "iframe", "script", "style"
+      "header.single_article__header",
+      "footer",
+      ".single_article_social",
+      ".article__tags_container",
+      ".seo_promo",
+      ".ads_element",
+      ".dfp-wrap",
+      "[id^=phaistos]",
+      "svg",
+      "button"
     ]
   },
   "urlRules": {
+    "deny": ["/matchcenter/", "/tvprogram/"],
     "stripQueryParams": ["utm_source", "utm_medium", "utm_campaign", "fbclid"]
   },
-  "http": { "userAgent": "default", "delayMs": 400 },
+  "http": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+    "delayMs": 600
+  },
   "fallback": "readability"
 }

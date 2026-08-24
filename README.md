@@ -42,18 +42,20 @@ Android εφαρμογή ανάγνωσης άρθρων για τον Ολυμ�
 | Πηγή | Κατάσταση |
 |---|---|
 | **to10** | ✅ Επαληθευμένο σε πραγματικό HTML (`html-list` — το site δεν έχει RSS), με tests |
-| athlosnews, gazzetta, athletiko, sport-fm | ⚠️ Το `/feed/` επιστρέφει HTML, όχι RSS — χρειάζονται σωστά selectors |
+| **sport-fm** | ✅ Εξαγωγή άρθρου επαληθευμένη· discovery μη επιβεβαιωμένο (βρέθηκε πραγματικό Atom feed στο `/tag/olympiakos.feed`, αλλά δεν είχαμε snapshot του ίδιου του feed για test) |
+| **sport24** | ✅ Selectors επαληθευμένοι σε πραγματικό HTML (list + article)· το 403 στη συσκευή χρειάζεται δοκιμή με το νέο desktop User-Agent που μπήκε στο plugin — άγνωστο αν αρκεί |
+| athlosnews, gazzetta, athletiko | ⚠️ Το `/feed/` επιστρέφει HTML, όχι RSS — χρειάζονται σωστά selectors |
 | sportal (ποδόσφαιρο/μπάσκετ) | ⚠️ 404 στο υποτιθέμενο feed URL |
-| sport24 | ⚠️ 403 — το site μπλοκάρει αυτοματοποιημένα requests |
 
-Μόνο το **to10** έχει επαληθευτεί μέχρι στιγμής, πάνω σε πραγματικό snapshot της
-σελίδας (βλ. `core/sources/src/test/resources/fixtures/to10-*.html` και το
-`To10PluginTest`, που τρέχει τα **shipped** selectors ώστε plugin και tests να
-μη μπορούν να αποκλίνουν).
+Οι επαληθευμένες πηγές τρέχουν πάνω σε πραγματικά snapshots από
+`core/sources/src/test/resources/fixtures/` μέσω `To10PluginTest`,
+`SportFmPluginTest`, `Sport24PluginTest` — τα tests φορτώνουν τα **shipped**
+plugin JSON από το `app/src/main/assets/plugins/`, ώστε plugin και tests να
+μη μπορούν να αποκλίνουν.
 
-Τα υπόλοιπα γράφτηκαν best-effort χωρίς πρόσβαση στα sites και **δεν δουλεύουν**.
-Για να διορθωθεί μια πηγή χρειάζονται δύο page snapshots (Ctrl+S → «Web Page,
-single file» ή View-Source): μία σελίδα λίστας άρθρων και ένα άρθρο. Μετά τη
+Οι υπόλοιπες πηγές είναι ακόμα best-effort και **δεν δουλεύουν**. Για να
+διορθωθεί μια πηγή χρειάζονται δύο page snapshots (Ctrl+S → «Web Page, single
+file» ή View-Source): μία σελίδα λίστας άρθρων και ένα άρθρο. Μετά τη
 διόρθωση, μπορείς να επεξεργαστείς οποιοδήποτε plugin και από τις **Ρυθμίσεις →
 Πηγές → Επεξεργασία → «Δοκιμή»** χωρίς νέο build.
 

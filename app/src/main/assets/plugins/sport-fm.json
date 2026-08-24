@@ -6,19 +6,21 @@
   "enabled": true,
   "discovery": {
     "type": "rss",
-    "url": "https://www.sport-fm.gr/tag/olympiakos/feed/",
+    "url": "https://www.sport-fm.gr/tag/olympiakos.feed",
     "maxItems": 30
   },
   "article": {
-    "title": "h1.entry-title, h1.post-title, article h1, h1",
-    "author": ".author-name, .post-author, .entry-author, [rel=author], .byline",
-    "date": "time@datetime, time.published@datetime",
-    "leadImage": "figure.post-thumbnail img@src, .featured-image img@src, article img@src",
-    "content": "div.entry-content, div.post-content, div.article-content, article .content, article",
+    "title": "h1.post-title",
+    "leadImage": "meta[property=og:image]@content",
+    "content": "#article-content",
     "remove": [
-      ".ad", ".ads", ".adsbygoogle", ".related", ".related-posts", ".read-also",
-      ".newsletter", ".social-share", ".share-buttons", ".author-box", ".tags",
-      ".comments", "#comments", "aside", "nav", "iframe", "script", "style"
+      ".content-box",
+      ".inarticleDFPbanner",
+      ".wrap-video-container",
+      "[id^=sas_]",
+      "[id^=div-gpt-ad]",
+      "svg",
+      "button"
     ]
   },
   "urlRules": {

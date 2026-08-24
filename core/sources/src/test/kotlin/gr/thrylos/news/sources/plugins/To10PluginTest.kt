@@ -5,9 +5,6 @@ import gr.thrylos.news.model.ContentBlock
 import gr.thrylos.news.sources.discovery.HtmlListDiscovery
 import gr.thrylos.news.sources.extract.ArticleExtractor
 import gr.thrylos.news.sources.http.HttpFetcher
-import gr.thrylos.news.sources.plugin.PluginParseResult
-import gr.thrylos.news.sources.plugin.PluginParser
-import gr.thrylos.news.sources.plugin.SourcePlugin
 import gr.thrylos.news.sources.testutil.Fixtures
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -17,7 +14,6 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import java.io.File
 import java.time.Instant
 
 /**
@@ -41,15 +37,7 @@ class To10PluginTest {
         server.shutdown()
     }
 
-    /** Loads the plugin the app actually ships, not a copy, so the two can't drift apart. */
-    private fun shippedPlugin(): SourcePlugin {
-        val file = File("../../app/src/main/assets/plugins/to10.json")
-        assertTrue(file.exists(), "Δεν βρέθηκε το bundled plugin: ${file.absolutePath}")
-        return when (val result = PluginParser.parse(file.readText())) {
-            is PluginParseResult.Success -> result.plugin
-            is PluginParseResult.Failure -> throw AssertionError("Άκυρο plugin: ${result.errors}")
-        }
-    }
+    private fun shippedPlugin() = PluginTestSupport.shippedPlugin("to10.json")
 
     @Test
     fun `discovers article stubs from the real listing page`() {
