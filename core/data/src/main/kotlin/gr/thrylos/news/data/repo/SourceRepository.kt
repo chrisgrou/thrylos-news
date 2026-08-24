@@ -69,10 +69,18 @@ class SourceRepository @Inject constructor(
         dao.getById(source.id)?.let { dao.delete(it) }
     }
 
+    /** Seeds a bundled source on first run, or — if it's still exactly the shipped
+     *  bundled plugin the user hasn't customized (isBundled stays true only until an
+     *  edit through the source editor replaces it) — keeps its definition in sync
+     *  with the current app version's assets/plugins JSON. Without this, a selector
+     *  fix shipped in an update would silently never reach anyone who already had
+     *  that source in their database, no matter how many times the asset changed. */
     suspend fun bundleIfAbsent(assetId: String, rawJson: String) {
         val result = PluginParser.parse(rawJson)
-        if (result is PluginParseResult.Success) {
-            val plugin = result.plugin
+        if (result !is PluginParseResult.Success) return
+        val plugin = result.plugin
+        val existing = dao.getById(plugin.id)
+        if (existing == null) {
             dao.insertIfAbsent(
                 SourceEntity(
                     id = plugin.id,
@@ -84,6 +92,8 @@ class SourceRepository @Inject constructor(
                     isBundled = true,
                 ),
             )
+        } else if (existing.isBundled && existing.pluginJson != rawJson) {
+            dao.update(existing.copy(name = plugin.name, homepage = plugin.homepage, pluginJson = rawJson))
         }
     }
 
