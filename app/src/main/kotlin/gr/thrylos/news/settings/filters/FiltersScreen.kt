@@ -26,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -79,18 +80,20 @@ fun FiltersScreen(
                 items(rows, key = { it.rule.id }) { row ->
                     Card(
                         onClick = { editingRule = row.rule; showEditor = true },
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                     ) {
                         Row(
-                            Modifier.padding(14.dp).fillMaxWidth(),
+                            Modifier.padding(18.dp).fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Column {
-                                Text(describe(row.rule), style = MaterialTheme.typography.titleSmall)
+                            Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                                Text(describe(row.rule), style = MaterialTheme.typography.titleMedium)
                                 Text(
                                     "→ ${actionVerb(row.rule.action)} ${row.hiddenCount} άρθρα αυτή τη στιγμή" + (row.rule.scopeSourceId?.let { " · μόνο στην πηγή $it" } ?: ""),
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 4.dp),
                                 )
                             }
                             Switch(
