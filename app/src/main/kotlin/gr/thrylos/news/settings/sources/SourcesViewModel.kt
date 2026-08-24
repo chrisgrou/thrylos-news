@@ -7,34 +7,65 @@ import gr.thrylos.news.data.repo.SourceRepository
 import gr.thrylos.news.data.repo.SourceWithPlugin
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+/** Two plugins can share a display name (e.g. Sportal's football/basketball
+ *  scrapers), in which case they render — and toggle — as a single row. */
+data class SourceGroupRow(
+    val displayName: String,
+    val members: List<SourceWithPlugin>,
+    val enabled: Boolean,
+    val isBundled: Boolean,
+)
 
 @HiltViewModel
 class SourcesViewModel @Inject constructor(
     private val repository: SourceRepository,
 ) : ViewModel() {
 
-    val sources: StateFlow<List<SourceWithPlugin>> = repository.observeAll()
+    private val sources: StateFlow<List<SourceWithPlugin>> = repository.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun setEnabled(id: String, enabled: Boolean) {
-        viewModelScope.launch { repository.setEnabled(id, enabled) }
+    val groups: StateFlow<List<SourceGroupRow>> = sources.map { list ->
+        list.groupBy { it.name }.map { (name, members) ->
+            SourceGroupRow(
+                displayName = name.substringBefore(" — ").trim(),
+                members = members,
+                enabled = members.all { it.enabled },
+                isBundled = members.any { it.isBundled },
+            )
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun setGroupEnabled(group: SourceGroupRow, enabled: Boolean) {
+        viewModelScope.launch { group.members.forEach { repository.setEnabled(it.id, enabled) } }
     }
 
-    fun remove(source: SourceWithPlugin) {
-        viewModelScope.launch { repository.remove(source) }
+    fun removeGroup(group: SourceGroupRow) {
+        viewModelScope.launch { group.members.forEach { repository.remove(it) } }
     }
 
-    fun moveUp(index: Int) = reorder(index, index - 1)
-    fun moveDown(index: Int) = reorder(index, index + 1)
+    fun moveUp(displayName: String) = reorderGroup(displayName, -1)
+    fun moveDown(displayName: String) = reorderGroup(displayName, +1)
 
-    private fun reorder(from: Int, to: Int) {
-        val current = sources.value.map { it.id }.toMutableList()
-        if (to < 0 || to >= current.size) return
-        val item = current.removeAt(from)
-        current.add(to, item)
-        viewModelScope.launch { repository.reorder(current) }
+    private fun reorderGroup(displayName: String, direction: Int) {
+        val current = sources.value
+        val rawNames = current.map { it.name }.distinct()
+        // The group key is the raw (unstripped) name, so resolve back to it.
+        val rawName = rawNames.firstOrNull { it.substringBefore(" — ").trim() == displayName } ?: return
+        val index = rawNames.indexOf(rawName)
+        val targetIndex = index + direction
+        if (targetIndex < 0 || targetIndex >= rawNames.size) return
+
+        val reorderedNames = rawNames.toMutableList().apply {
+            val a = this[index]
+            this[index] = this[targetIndex]
+            this[targetIndex] = a
+        }
+        val newIds = reorderedNames.flatMap { name -> current.filter { it.name == name }.map { it.id } }
+        viewModelScope.launch { repository.reorder(newIds) }
     }
 }

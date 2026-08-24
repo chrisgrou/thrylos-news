@@ -3,17 +3,17 @@ package gr.thrylos.news.feed
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
@@ -21,6 +21,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -48,6 +50,7 @@ fun FeedScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var refreshing by remember { mutableStateOf(false) }
+    var showSourcePicker by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -93,7 +96,11 @@ fun FeedScreen(
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
             Column(Modifier.fillMaxSize()) {
-                SourceChipsRow(state, onSelect = viewModel::selectSource, onToggleUnread = viewModel::toggleUnreadOnly)
+                FeedFilterBar(
+                    state = state,
+                    onOpenSourcePicker = { showSourcePicker = true },
+                    onToggleUnread = viewModel::toggleUnreadOnly,
+                )
 
                 if (state.isEmpty) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -115,26 +122,49 @@ fun FeedScreen(
             }
         }
     }
+
+    if (showSourcePicker) {
+        ModalBottomSheet(onDismissRequest = { showSourcePicker = false }) {
+            SourcePickerSheet(
+                state = state,
+                onSelect = { name ->
+                    viewModel.selectSource(name)
+                    showSourcePicker = false
+                },
+            )
+        }
+    }
 }
 
 @Composable
-private fun SourceChipsRow(state: FeedUiState, onSelect: (String?) -> Unit, onToggleUnread: () -> Unit) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+private fun FeedFilterBar(state: FeedUiState, onOpenSourcePicker: () -> Unit, onToggleUnread: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        item {
+        FilterChip(
+            selected = state.selectedSourceName != null,
+            onClick = onOpenSourcePicker,
+            label = { Text(state.selectedSourceName ?: "Όλες οι πηγές") },
+            trailingIcon = { Icon(Icons.Filled.ExpandMore, contentDescription = null) },
+        )
+        FilterChip(selected = state.unreadOnly, onClick = onToggleUnread, label = { Text("Αδιάβαστα") })
+    }
+}
+
+@Composable
+private fun SourcePickerSheet(state: FeedUiState, onSelect: (String?) -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(20.dp)) {
+        Text("Πηγή", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 12.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(selected = state.selectedSourceName == null, onClick = { onSelect(null) }, label = { Text("Όλα") })
-        }
-        item {
-            FilterChip(selected = state.unreadOnly, onClick = onToggleUnread, label = { Text("Αδιάβαστα") })
-        }
-        items(state.sources, key = { it.name }) { source ->
-            FilterChip(
-                selected = state.selectedSourceName == source.name,
-                onClick = { onSelect(if (state.selectedSourceName == source.name) null else source.name) },
-                label = { Text(source.name) },
-            )
+            state.sources.forEach { source ->
+                FilterChip(
+                    selected = state.selectedSourceName == source.name,
+                    onClick = { onSelect(source.name) },
+                    label = { Text(source.name) },
+                )
+            }
         }
     }
 }

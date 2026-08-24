@@ -1,7 +1,6 @@
 package gr.thrylos.news.settings.sources
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,6 +14,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -26,6 +27,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -38,7 +42,7 @@ fun SourcesScreen(
     onEditSource: (String) -> Unit,
     viewModel: SourcesViewModel = hiltViewModel(),
 ) {
-    val sources by viewModel.sources.collectAsStateWithLifecycle()
+    val groups by viewModel.groups.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -52,28 +56,40 @@ fun SourcesScreen(
         },
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding)) {
-            items(sources, key = { it.id }) { source ->
-                val index = sources.indexOf(source)
+            items(groups, key = { it.displayName }) { group ->
+                var showEditMenu by remember { mutableStateOf(false) }
+
                 ListItem(
-                    headlineContent = { Text(source.name) },
-                    supportingContent = { Text(source.plugin?.homepage.orEmpty()) },
+                    headlineContent = { Text(group.displayName) },
                     leadingContent = {
-                        Column {
-                            IconButton(onClick = { viewModel.moveUp(index) }, modifier = Modifier) {
+                        Row {
+                            IconButton(onClick = { viewModel.moveUp(group.displayName) }) {
                                 Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "Πάνω")
                             }
-                            IconButton(onClick = { viewModel.moveDown(index) }) {
+                            IconButton(onClick = { viewModel.moveDown(group.displayName) }) {
                                 Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Κάτω")
                             }
                         }
                     },
                     trailingContent = {
                         Row {
-                            Switch(checked = source.enabled, onCheckedChange = { viewModel.setEnabled(source.id, it) })
-                            IconButton(onClick = { onEditSource(source.id) }) {
-                                Icon(Icons.Filled.Edit, contentDescription = "Επεξεργασία")
+                            Switch(checked = group.enabled, onCheckedChange = { viewModel.setGroupEnabled(group, it) })
+                            Box {
+                                IconButton(onClick = {
+                                    if (group.members.size == 1) onEditSource(group.members.first().id) else showEditMenu = true
+                                }) {
+                                    Icon(Icons.Filled.Edit, contentDescription = "Επεξεργασία")
+                                }
+                                DropdownMenu(expanded = showEditMenu, onDismissRequest = { showEditMenu = false }) {
+                                    group.members.forEach { member ->
+                                        DropdownMenuItem(
+                                            text = { Text(memberLabel(member.id)) },
+                                            onClick = { showEditMenu = false; onEditSource(member.id) },
+                                        )
+                                    }
+                                }
                             }
-                            IconButton(onClick = { viewModel.remove(source) }) {
+                            IconButton(onClick = { viewModel.removeGroup(group) }) {
                                 Icon(Icons.Filled.Delete, contentDescription = "Διαγραφή")
                             }
                         }
@@ -82,4 +98,10 @@ fun SourcesScreen(
             }
         }
     }
+}
+
+private fun memberLabel(sourceId: String) = when {
+    "football" in sourceId -> "Ποδόσφαιρο"
+    "basket" in sourceId -> "Μπάσκετ"
+    else -> sourceId
 }
