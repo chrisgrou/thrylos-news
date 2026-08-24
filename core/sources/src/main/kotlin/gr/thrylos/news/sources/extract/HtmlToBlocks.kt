@@ -99,10 +99,28 @@ object HtmlToBlocks {
 
     private fun imageFrom(el: Element, baseUrl: String): ContentBlock.Image? {
         val img = if (el.tagName().equals("img", ignoreCase = true)) el else el.selectFirst("img")
-        val src = img?.let { it.attr("src").ifBlank { it.attr("data-src") } } ?: return null
+        val src = img?.let { pickImageSrc(it) } ?: return null
         if (src.isBlank()) return null
         val caption = el.selectFirst("figcaption")?.text()?.trim()?.ifBlank { null }
             ?: img.attr("alt").trim().ifBlank { null }
         return ContentBlock.Image(UrlNormalizer.resolve(baseUrl, src), caption)
+    }
+
+    /** Lazy-loading galleries commonly leave [src] pointing at a placeholder/logo
+     *  and stash the real image URL in a data-* attribute or srcset, so those must
+     *  be tried first — falling back to [src] only when nothing else is present. */
+    private fun pickImageSrc(img: Element): String {
+        val dataAttr = listOf("data-src", "data-lazy-src", "data-original", "data-lazy")
+            .map { img.attr(it) }
+            .firstOrNull { it.isNotBlank() }
+        if (dataAttr != null) return dataAttr
+
+        val srcset = img.attr("srcset").ifBlank { img.attr("data-srcset") }
+        if (srcset.isNotBlank()) {
+            val candidate = srcset.split(",").lastOrNull()?.trim()?.split(" ")?.firstOrNull()
+            if (!candidate.isNullOrBlank()) return candidate
+        }
+
+        return img.attr("src")
     }
 }
