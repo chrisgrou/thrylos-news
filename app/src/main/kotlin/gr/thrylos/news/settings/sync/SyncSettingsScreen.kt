@@ -80,6 +80,9 @@ fun SyncSettingsScreen(
                 androidx.compose.foundation.layout.Spacer(Modifier.padding(bottom = 8.dp))
             }
 
+            SettingSwitchRow("Επισήμανση νέων άρθρων", sync.highlightNewSinceRefresh) {
+                viewModel.updateSyncPrefs { p -> p.copy(highlightNewSinceRefresh = it) }
+            }
             SettingSwitchRow("Ανανέωση μόνο σε Wi-Fi", sync.syncOnlyOnWifi) {
                 viewModel.updateSyncPrefs { p -> p.copy(syncOnlyOnWifi = it) }
             }

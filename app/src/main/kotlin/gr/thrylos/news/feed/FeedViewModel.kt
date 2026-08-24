@@ -3,12 +3,15 @@ package gr.thrylos.news.feed
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import gr.thrylos.news.data.prefs.AppPreferences
+import gr.thrylos.news.data.prefs.NewArticlesBoundary
 import gr.thrylos.news.data.repo.ArticleRepository
 import gr.thrylos.news.data.repo.FilterRepository
 import gr.thrylos.news.data.repo.SourceRepository
 import gr.thrylos.news.data.sync.SyncScheduler
 import gr.thrylos.news.model.Article
 import gr.thrylos.news.sources.filter.FilterEngine
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +29,13 @@ fun stripSourceSuffix(name: String): String = name.substringBefore(" — ").trim
  *  one unified source even though they're distinct plugins under the hood. */
 data class SourceChip(val name: String, val memberSourceIds: Set<String>)
 
-data class FeedItem(val article: Article, val extraSourceCount: Int, val isImportant: Boolean = false)
+data class FeedItem(
+    val article: Article,
+    val extraSourceCount: Int,
+    val isImportant: Boolean = false,
+    /** Fetched after the app was last opened — see [NewArticlesBoundary]. */
+    val isNew: Boolean = false,
+)
 
 private const val PAGE_SIZE = 20
 
@@ -54,6 +63,8 @@ class FeedViewModel @Inject constructor(
     sourceRepository: SourceRepository,
     private val syncScheduler: SyncScheduler,
     private val cursor: ArticleListCursor,
+    appPreferences: AppPreferences,
+    newArticlesBoundary: NewArticlesBoundary,
 ) : ViewModel() {
 
     private val selectedSourceName = MutableStateFlow<String?>(null)
@@ -62,6 +73,12 @@ class FeedViewModel @Inject constructor(
 
     private val sourcesFlow = sourceRepository.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** (highlight enabled, boundary timestamp — null until [NewArticlesBoundary] initializes). */
+    private val highlightConfig: Flow<Pair<Boolean, Long?>> = combine(
+        appPreferences.syncPrefs,
+        newArticlesBoundary.threshold,
+    ) { prefs, threshold -> prefs.highlightNewSinceRefresh to threshold }
 
     private val computedFeed: StateFlow<ComputedFeed> = combine(
         articleRepository.observeAll(),
@@ -99,15 +116,20 @@ class FeedViewModel @Inject constructor(
 
     /** Caps how many cards render at once — a long feed makes scrolling sluggish, so
      *  results are paged (PAGE_SIZE per page) instead of dumping everything into one list. */
-    val uiState: StateFlow<FeedUiState> = combine(computedFeed, page) { computed, requestedPage ->
-        val pageCount = maxOf(1, (computed.items.size + PAGE_SIZE - 1) / PAGE_SIZE)
+    val uiState: StateFlow<FeedUiState> = combine(computedFeed, page, highlightConfig) { computed, requestedPage, (highlightEnabled, threshold) ->
+        val items = if (highlightEnabled && threshold != null) {
+            computed.items.map { it.copy(isNew = it.article.fetchedAt > threshold) }
+        } else {
+            computed.items
+        }
+        val pageCount = maxOf(1, (items.size + PAGE_SIZE - 1) / PAGE_SIZE)
         val clampedPage = requestedPage.coerceIn(0, pageCount - 1)
         FeedUiState(
-            items = computed.items.drop(clampedPage * PAGE_SIZE).take(PAGE_SIZE),
+            items = items.drop(clampedPage * PAGE_SIZE).take(PAGE_SIZE),
             sources = computed.sources,
             selectedSourceName = computed.selectedSourceName,
             unreadOnly = computed.unreadOnly,
-            isEmpty = computed.items.isEmpty(),
+            isEmpty = items.isEmpty(),
             page = clampedPage,
             pageCount = pageCount,
         )

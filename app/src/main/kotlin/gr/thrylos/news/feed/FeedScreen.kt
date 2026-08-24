@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -27,6 +27,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -118,17 +119,32 @@ fun FeedScreen(
                     val listState = rememberLazyListState()
                     LaunchedEffect(state.page) { listState.scrollToItem(0) }
 
+                    val newCount = state.items.takeWhile { it.isNew }.size
+                    val showNewSection = newCount in 1 until state.items.size
+
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.weight(1f),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        items(state.items, key = { it.article.id }) { item ->
+                        if (showNewSection) {
+                            item(key = "new-articles-label") {
+                                Text(
+                                    "Νέα άρθρα από το τελευταίο άνοιγμα",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        }
+                        itemsIndexed(state.items, key = { _, item -> item.article.id }) { index, item ->
                             ArticleCard(item = item, onClick = {
                                 viewModel.openArticle(item.article.id)
                                 onOpenArticle(item.article.id)
                             })
+                            if (showNewSection && index == newCount - 1) {
+                                HorizontalDivider(modifier = Modifier.padding(top = 4.dp))
+                            }
                         }
                     }
                 }

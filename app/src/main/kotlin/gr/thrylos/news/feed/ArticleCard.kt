@@ -67,7 +67,7 @@ fun ArticleCard(item: FeedItem, onClick: () -> Unit) {
                             Spacer(Modifier.width(6.dp))
                         }
                         Text(
-                            text = article.sourceName.uppercase() + " · " + formatRelative(article.publishedAt ?: article.fetchedAt),
+                            text = stripSourceSuffix(article.sourceName).uppercase() + " · " + formatRelative(article.publishedAt ?: article.fetchedAt),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,

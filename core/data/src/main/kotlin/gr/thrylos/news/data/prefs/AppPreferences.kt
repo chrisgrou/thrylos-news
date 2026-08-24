@@ -3,6 +3,7 @@ package gr.thrylos.news.data.prefs
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import gr.thrylos.news.model.AppThemeMode
@@ -45,6 +46,7 @@ private data class SyncPrefsDto(
     val quietHoursEnabled: Boolean = false,
     val quietHoursStartMinute: Int = 23 * 60,
     val quietHoursEndMinute: Int = 7 * 60,
+    val highlightNewSinceRefresh: Boolean = true,
 )
 
 @Serializable
@@ -65,6 +67,7 @@ class AppPreferences @Inject constructor(
     private val syncKey = stringPreferencesKey("sync_prefs")
     private val notificationKey = stringPreferencesKey("notification_prefs")
     private val appThemeKey = stringPreferencesKey("app_theme_mode")
+    private val lastOpenedAtKey = longPreferencesKey("last_opened_at")
 
     val readerPrefs: Flow<ReaderPrefs> = context.dataStore.data.map { prefs ->
         val dto = prefs[readerKey]?.let { runCatching { json.decodeFromString<ReaderPrefsDto>(it) }.getOrNull() } ?: ReaderPrefsDto()
@@ -87,6 +90,19 @@ class AppPreferences @Inject constructor(
 
     suspend fun setAppThemeMode(mode: AppThemeMode) {
         context.dataStore.edit { prefs -> prefs[appThemeKey] = mode.name }
+    }
+
+    /** Returns the timestamp of the previous app open (0 the very first time), then
+     *  immediately stamps "now" for the next call — so each process lifetime gets a
+     *  fixed boundary for "new since I last opened the app" without it drifting
+     *  while the app stays open. */
+    suspend fun consumeAndAdvanceLastOpenedAt(): Long {
+        var previous = 0L
+        context.dataStore.edit { prefs ->
+            previous = prefs[lastOpenedAtKey] ?: 0L
+            prefs[lastOpenedAtKey] = System.currentTimeMillis()
+        }
+        return previous
     }
 
     suspend fun currentSyncPrefs(): SyncPrefs = syncPrefs.first()
@@ -121,11 +137,11 @@ class AppPreferences @Inject constructor(
 
     private fun SyncPrefsDto.toDomain() = SyncPrefs(
         refreshInterval, syncOnlyOnWifi, downloadImagesOnlyOnWifi, offlineRetentionDays, offlineMaxArticles,
-        prefetchImagesForOffline, quietHoursEnabled, quietHoursStartMinute, quietHoursEndMinute,
+        prefetchImagesForOffline, quietHoursEnabled, quietHoursStartMinute, quietHoursEndMinute, highlightNewSinceRefresh,
     )
     private fun SyncPrefs.toDto() = SyncPrefsDto(
         refreshInterval, syncOnlyOnWifi, downloadImagesOnlyOnWifi, offlineRetentionDays, offlineMaxArticles,
-        prefetchImagesForOffline, quietHoursEnabled, quietHoursStartMinute, quietHoursEndMinute,
+        prefetchImagesForOffline, quietHoursEnabled, quietHoursStartMinute, quietHoursEndMinute, highlightNewSinceRefresh,
     )
 
     private fun NotificationPrefsDto.toDomain() = NotificationPrefs(enabled, onlySourceIds, onlyKeywords, groupIntoSummary)

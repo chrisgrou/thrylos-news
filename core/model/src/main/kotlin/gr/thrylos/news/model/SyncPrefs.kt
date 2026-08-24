@@ -14,6 +14,9 @@ data class SyncPrefs(
     /** Minute-of-day (0..1439), local time. */
     val quietHoursStartMinute: Int = 23 * 60,
     val quietHoursEndMinute: Int = 7 * 60,
+    /** Shows a "Νέα άρθρα" divider in the feed above articles fetched since the
+     *  app was last opened. */
+    val highlightNewSinceRefresh: Boolean = true,
 ) {
     /** Handles overnight windows where start > end (e.g. 23:00 → 07:00). */
     fun isQuietAt(minuteOfDay: Int): Boolean {

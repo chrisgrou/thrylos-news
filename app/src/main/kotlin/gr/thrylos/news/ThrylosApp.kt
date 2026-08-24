@@ -5,6 +5,7 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
 import gr.thrylos.news.data.prefs.AppPreferences
+import gr.thrylos.news.data.prefs.NewArticlesBoundary
 import gr.thrylos.news.data.repo.SourceRepository
 import gr.thrylos.news.data.sync.SyncScheduler
 import kotlinx.coroutines.CoroutineScope
@@ -29,6 +30,9 @@ class ThrylosApp : Application(), Configuration.Provider {
     @Inject
     lateinit var appPreferences: AppPreferences
 
+    @Inject
+    lateinit var newArticlesBoundary: NewArticlesBoundary
+
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override val workManagerConfiguration: Configuration
@@ -38,6 +42,7 @@ class ThrylosApp : Application(), Configuration.Provider {
         super.onCreate()
         appScope.launch {
             loadBundledPluginsIfNeeded()
+            newArticlesBoundary.initializeOnce()
             val syncPrefs = appPreferences.syncPrefs.first()
             syncScheduler.applySchedule(syncPrefs.refreshInterval, syncPrefs.syncOnlyOnWifi)
         }

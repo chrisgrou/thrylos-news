@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -87,13 +88,18 @@ fun SettingsScreen(
             SettingsRow("Φίλτρα", "Απόκρυψη ή προβολή άρθρων βάσει λέξεων-κλειδιών ή συντάκτη", onOpenFilters)
             SettingsRow("Ανανέωση & Ειδοποιήσεις", "Διάστημα, Wi-Fi, αποθηκευτικός χώρος", onOpenSync)
             SettingsRow("Αντίγραφο ασφαλείας", "Εξαγωγή/εισαγωγή πηγών, φίλτρων και bookmarks", onOpenBackup)
-            SettingsRow(
-                "Έλεγχος για ενημερώσεις",
-                if (updateState is UpdateState.Checking) "Έλεγχος..." else "Νέα έκδοση της εφαρμογής από το GitHub",
-                onClick = updateViewModel::checkForUpdate,
-                showChevron = false,
+            ListItem(
+                headlineContent = { Text("Έλεγχος για ενημερώσεις") },
+                supportingContent = {
+                    Text(if (updateState is UpdateState.Checking) "Έλεγχος..." else "Νέα έκδοση της εφαρμογής από το GitHub")
+                },
+                trailingContent = {
+                    IconButton(onClick = onOpenUpdateHistory) {
+                        Icon(Icons.Filled.History, contentDescription = "Ιστορικό ενημερώσεων")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().clickable(onClick = updateViewModel::checkForUpdate),
             )
-            SettingsRow("Ιστορικό ενημερώσεων", "Τι άλλαξε σε κάθε προηγούμενη έκδοση", onOpenUpdateHistory)
         }
     }
 
