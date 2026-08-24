@@ -25,7 +25,15 @@ Android εφαρμογή ανάγνωσης άρθρων για τον Ολυμ�
 ```
 
 Το APK βγαίνει επίσης αυτόματα σε κάθε push μέσω GitHub Actions
-(`.github/workflows/build.yml`) ως artifact.
+(`.github/workflows/build.yml`) ως artifact, **και** αντικαθιστά ένα σταθερό
+GitHub Release με tag `latest` — αυτό διαβάζει η εφαρμογή για το in-app
+"Έλεγχος για ενημερώσεις" (Ρυθμίσεις). Το debug APK υπογράφεται πάντα με το
+committed `keystore/debug.keystore` (όχι το εφήμερο `~/.android/debug.keystore`
+του CI runner), ώστε κάθε build να έχει την ίδια υπογραφή και οι ενημερώσεις να
+εγκαθίστανται η μία πάνω στην άλλη χωρίς απεγκατάσταση. Το `versionCode` παίρνει
+αυτόματα την τιμή του `GITHUB_RUN_NUMBER` σε κάθε CI build (1 σε τοπικά builds),
+και το APK asset στο release ονομάζεται `thrylos-news-<versionCode>.apk` ώστε η
+εφαρμογή να συγκρίνει εκδόσεις χωρίς επιπλέον API call.
 
 ### Μόνο τη "μηχανή" (χωρίς Android SDK)
 

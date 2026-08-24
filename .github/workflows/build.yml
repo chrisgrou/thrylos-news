@@ -7,6 +7,9 @@ on:
     branches: ["**"]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -40,3 +43,22 @@ jobs:
           name: thrylos-news-debug
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      # Powers in-app update checks (Settings → Έλεγχος για ενημερώσεις): the app
+      # polls this fixed "latest" release's tag/assets, so every push to a branch
+      # replaces it rather than accumulating a release per commit.
+      - name: Publish "latest" release for in-app updates
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          apk_src=$(ls app/build/outputs/apk/debug/*.apk | head -n1)
+          apk_name="thrylos-news-${GITHUB_RUN_NUMBER}.apk"
+          cp "$apk_src" "$apk_name"
+          gh release delete latest --yes --cleanup-tag -R "${{ github.repository }}" || true
+          gh release create latest "$apk_name" \
+            -R "${{ github.repository }}" \
+            --title "Latest build (#${GITHUB_RUN_NUMBER})" \
+            --notes "Αυτόματο build από commit ${{ github.sha }} στο branch ${{ github.ref_name }}." \
+            --prerelease \
+            --target "${{ github.sha }}"

@@ -14,8 +14,11 @@ android {
         applicationId = "gr.thrylos.news"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
+        // CI sets GITHUB_RUN_NUMBER, giving every build a unique, increasing code the
+        // in-app update checker can compare against; local builds fall back to 1.
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
         versionName = "0.1.0"
+        buildConfigField("String", "GITHUB_REPO", "\"chrisgrou/thrylos-news\"")
     }
 
     signingConfigs {
@@ -52,6 +55,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {
