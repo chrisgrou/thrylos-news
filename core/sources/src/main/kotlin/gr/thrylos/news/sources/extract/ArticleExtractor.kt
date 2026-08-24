@@ -111,6 +111,10 @@ class ArticleExtractor(private val http: HttpFetcher = HttpFetcher()) {
         val formatters = buildList {
             if (pattern != null) runCatching { DateTimeFormatter.ofPattern(pattern) }.getOrNull()?.let { add(it) }
             add(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+            // Some sites emit the offset without a colon ("+0300" instead of
+            // "+03:00", e.g. gazzetta.gr's <time datetime> attribute), which
+            // ISO_OFFSET_DATE_TIME rejects outright.
+            add(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ"))
             add(DateTimeFormatter.RFC_1123_DATE_TIME)
             add(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
             add(DateTimeFormatter.ISO_LOCAL_DATE)

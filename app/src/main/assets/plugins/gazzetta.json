@@ -5,21 +5,23 @@
   "homepage": "https://www.gazzetta.gr/teams/olympiakos",
   "enabled": true,
   "discovery": {
-    "type": "rss",
-    "url": "https://www.gazzetta.gr/teams/olympiakos/feed",
-    "maxItems": 30
+    "type": "html-list",
+    "url": "https://www.gazzetta.gr/teams/olympiakos",
+    "maxItems": 25
+  },
+  "listSelectors": {
+    "item": "article.is-flex.mb-32",
+    "link": "h3 a@href",
+    "title": "h3 a",
+    "image": "img@src"
   },
   "article": {
-    "title": "h1.entry-title, h1.post-title, article h1, h1",
-    "author": ".author-name, .post-author, .entry-author, [rel=author], .byline",
-    "date": "time@datetime, time.published@datetime",
-    "leadImage": "figure.post-thumbnail img@src, .featured-image img@src, article img@src",
-    "content": "div.entry-content, div.post-content, div.article-content, article .content, article",
-    "remove": [
-      ".ad", ".ads", ".adsbygoogle", ".related", ".related-posts", ".read-also",
-      ".newsletter", ".social-share", ".share-buttons", ".author-box", ".tags",
-      ".comments", "#comments", "aside", "nav", "iframe", "script", "style"
-    ]
+    "title": "h1.h1",
+    "author": "span.authoring__author",
+    "date": "time.authoring__time@datetime",
+    "leadImage": "meta[property=og:image]@content",
+    "content": "div.content.is-relative",
+    "remove": [".summary-list", ".content__lead", ".in_read_dfp", ".sharing"]
   },
   "urlRules": {
     "stripQueryParams": ["utm_source", "utm_medium", "utm_campaign", "fbclid"]

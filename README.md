@@ -44,14 +44,17 @@ Android εφαρμογή ανάγνωσης άρθρων για τον Ολυμ�
 | **to10** | ✅ Επαληθευμένο σε πραγματικό HTML (`html-list` — το site δεν έχει RSS), με tests |
 | **sport-fm** | ✅ Εξαγωγή άρθρου επαληθευμένη· discovery μη επιβεβαιωμένο (βρέθηκε πραγματικό Atom feed στο `/tag/olympiakos.feed`, αλλά δεν είχαμε snapshot του ίδιου του feed για test) |
 | **sport24** | ✅ Selectors επαληθευμένοι σε πραγματικό HTML (list + article)· το 403 στη συσκευή χρειάζεται δοκιμή με το νέο desktop User-Agent που μπήκε στο plugin — άγνωστο αν αρκεί |
-| athlosnews, gazzetta, athletiko | ⚠️ Το `/feed/` επιστρέφει HTML, όχι RSS — χρειάζονται σωστά selectors |
+| **athlosnews** | ✅ Πραγματικό RSS feed βρέθηκε (`/category/omada/olympiakos/feed/` — το αρχικό slug `big-5` ήταν λάθος), εξαγωγή άρθρου επαληθευμένη |
+| **gazzetta** | ✅ Επαληθευμένο σε πραγματικό HTML (`html-list` — το site δεν έχει RSS καθόλου) |
+| athletiko | ⚠️ Το `/feed/` επιστρέφει HTML, όχι RSS — χρειάζεται διόρθωση |
 | sportal (ποδόσφαιρο/μπάσκετ) | ⚠️ 404 στο υποτιθέμενο feed URL |
 
 Οι επαληθευμένες πηγές τρέχουν πάνω σε πραγματικά snapshots από
 `core/sources/src/test/resources/fixtures/` μέσω `To10PluginTest`,
-`SportFmPluginTest`, `Sport24PluginTest` — τα tests φορτώνουν τα **shipped**
-plugin JSON από το `app/src/main/assets/plugins/`, ώστε plugin και tests να
-μη μπορούν να αποκλίνουν.
+`SportFmPluginTest`, `Sport24PluginTest`, `AthlosnewsPluginTest`,
+`GazzettaPluginTest` — τα tests φορτώνουν τα **shipped** plugin JSON από το
+`app/src/main/assets/plugins/`, ώστε plugin και tests να μη μπορούν να
+αποκλίνουν.
 
 Οι υπόλοιπες πηγές είναι ακόμα best-effort και **δεν δουλεύουν**. Για να
 διορθωθεί μια πηγή χρειάζονται δύο page snapshots (Ctrl+S → «Web Page, single

@@ -2,24 +2,20 @@
   "schemaVersion": 1,
   "id": "athlosnews-olympiacos",
   "name": "Athlosnews — Ολυμπιακός",
-  "homepage": "https://www.athlosnews.gr/category/omada/big-5/olympiakos",
+  "homepage": "https://athlosnews.gr/category/omada/olympiakos/",
   "enabled": true,
   "discovery": {
     "type": "rss",
-    "url": "https://www.athlosnews.gr/category/omada/big-5/olympiakos/feed/",
+    "url": "https://athlosnews.gr/category/omada/olympiakos/feed/",
     "maxItems": 30
   },
   "article": {
-    "title": "h1.entry-title, h1.post-title, article h1, h1",
-    "author": ".author-name, .post-author, .entry-author, [rel=author], .byline",
-    "date": "time@datetime, time.published@datetime",
-    "leadImage": "figure.post-thumbnail img@src, .featured-image img@src, article img@src",
-    "content": "div.entry-content, div.post-content, div.article-content, article .content, article",
-    "remove": [
-      ".ad", ".ads", ".adsbygoogle", ".related", ".related-posts", ".read-also",
-      ".newsletter", ".social-share", ".share-buttons", ".author-box", ".tags",
-      ".comments", "#comments", "aside", "nav", "iframe", "script", "style"
-    ]
+    "title": "h1.tdb-title-text",
+    "author": "a.tdb-author-name",
+    "date": "meta[property=article:published_time]@content",
+    "leadImage": "img.entry-thumb@src",
+    "content": "div.td-post-content",
+    "remove": [".td-a-ad", ".adsbygoogle"]
   },
   "urlRules": {
     "stripQueryParams": ["utm_source", "utm_medium", "utm_campaign", "fbclid"]
