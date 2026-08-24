@@ -1,5 +1,8 @@
 package gr.thrylos.news.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class SyncPrefs(
     val refreshInterval: RefreshInterval = RefreshInterval.HOUR_1,
     val syncOnlyOnWifi: Boolean = false,

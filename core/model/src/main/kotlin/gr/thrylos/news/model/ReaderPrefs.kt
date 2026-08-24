@@ -11,6 +11,7 @@ enum class ReaderFontFamily { SERIF, SANS, DYSLEXIC }
 @Serializable
 enum class TextAlign { START, JUSTIFY }
 
+@Serializable
 data class ReaderPrefs(
     val theme: ReaderTheme = ReaderTheme.LIGHT,
     val fontFamily: ReaderFontFamily = ReaderFontFamily.SERIF,

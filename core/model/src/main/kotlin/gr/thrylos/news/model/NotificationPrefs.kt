@@ -1,5 +1,8 @@
 package gr.thrylos.news.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class NotificationPrefs(
     val enabled: Boolean = true,
     /** Empty = all enabled sources notify; otherwise only these sourceIds do. */
