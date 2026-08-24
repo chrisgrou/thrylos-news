@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- www.sport-fm.gr's feed/article links occasionally redirect an HTTPS request
+     to a plain HTTP URL; Android blocks cleartext traffic by default (targetSdk
+     28+), so this narrowly allows it for that one domain instead of weakening
+     the app-wide default for every source. -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">sport-fm.gr</domain>
+    </domain-config>
+</network-security-config>
