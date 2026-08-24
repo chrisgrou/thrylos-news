@@ -33,6 +33,8 @@ class ArticleRepository @Inject constructor(
 
     suspend fun setRead(id: String, isRead: Boolean) = dao.setRead(id, isRead)
 
+    suspend fun markAllRead() = dao.markAllRead()
+
     suspend fun setBookmarked(id: String, isBookmarked: Boolean) = dao.setBookmarked(id, isBookmarked)
 
     suspend fun setDedupGroup(id: String, groupId: String?) = dao.setDedupGroup(id, groupId)

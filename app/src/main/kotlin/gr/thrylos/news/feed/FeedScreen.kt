@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.OpenInNew
@@ -52,7 +53,7 @@ fun FeedScreen(
     viewModel: FeedViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var refreshing by remember { mutableStateOf(false) }
+    val syncing by viewModel.isSyncing.collectAsStateWithLifecycle()
     var showSourcePicker by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
 
@@ -65,6 +66,11 @@ fun FeedScreen(
                         Icon(Icons.Filled.MoreVert, contentDescription = "Μενού")
                     }
                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Μαρκάρισμα όλων ως διαβασμένα") },
+                            leadingIcon = { Icon(Icons.Filled.DoneAll, contentDescription = null) },
+                            onClick = { showMenu = false; viewModel.markAllRead() },
+                        )
                         DropdownMenuItem(
                             text = { Text("Bookmarks") },
                             leadingIcon = { Icon(Icons.Filled.Bookmarks, contentDescription = null) },
@@ -86,12 +92,8 @@ fun FeedScreen(
         },
     ) { padding ->
         PullToRefreshBox(
-            isRefreshing = refreshing,
-            onRefresh = {
-                refreshing = true
-                viewModel.refresh()
-                refreshing = false
-            },
+            isRefreshing = syncing,
+            onRefresh = viewModel::refresh,
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
             Column(Modifier.fillMaxSize()) {
@@ -148,7 +150,7 @@ private fun FeedFilterBar(state: FeedUiState, onOpenSourcePicker: () -> Unit, on
         FilterChip(
             selected = state.selectedSourceName != null,
             onClick = onOpenSourcePicker,
-            label = { Text(state.selectedSourceName ?: "Όλες οι πηγές") },
+            label = { Text(state.selectedSourceName?.let(::stripSourceSuffix) ?: "Όλες οι πηγές") },
             trailingIcon = { Icon(Icons.Filled.ExpandMore, contentDescription = null) },
         )
         FilterChip(selected = state.unreadOnly, onClick = onToggleUnread, label = { Text("Αδιάβαστα") })
@@ -164,7 +166,7 @@ private fun SourcePickerSheet(state: FeedUiState, onSelect: (String?) -> Unit, o
         )
         state.sources.forEach { source ->
             ListItem(
-                headlineContent = { Text(source.name) },
+                headlineContent = { Text(stripSourceSuffix(source.name)) },
                 trailingContent = {
                     IconButton(onClick = { onOpenProfile(source.name) }) {
                         Icon(Icons.Filled.OpenInNew, contentDescription = "Αρχική ${source.name}")

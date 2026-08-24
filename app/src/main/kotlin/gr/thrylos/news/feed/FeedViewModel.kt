@@ -17,6 +17,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** Strips the " — Ολυμπιακός"-style suffix bundled plugins add to their display name. */
+fun stripSourceSuffix(name: String): String = name.substringBefore(" — ").trim()
+
 /** Displayed source "chip". Two plugins sharing the same [name] (e.g. Sportal's
  *  separate football/basketball scrapers) collapse into a single chip whose
  *  selection filters by any of [memberSourceIds] — so the feed shows them as
@@ -86,7 +89,14 @@ class FeedViewModel @Inject constructor(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), FeedUiState())
 
+    val isSyncing: StateFlow<Boolean> = syncScheduler.observeSyncing()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     fun refresh() = syncScheduler.syncNow()
+
+    fun markAllRead() {
+        viewModelScope.launch { articleRepository.markAllRead() }
+    }
 
     fun selectSource(name: String?) {
         selectedSourceName.value = name

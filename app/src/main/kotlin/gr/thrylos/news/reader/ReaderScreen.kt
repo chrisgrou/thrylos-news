@@ -18,17 +18,21 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.PermMedia
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.TextFields
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -45,7 +49,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -70,10 +73,12 @@ fun ReaderScreen(
     val colors = colorsFor(prefs.theme)
     val pagerState = rememberPagerState(initialPage = viewModel.startIndex) { viewModel.idList.size }
     var showSettings by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     val currentId = viewModel.idList.getOrElse(pagerState.currentPage) { viewModel.idList.first() }
     val currentArticle by viewModel.articleFlow(currentId).collectAsStateWithLifecycle()
+    val mediaCount = currentArticle?.mediaItems()?.size ?: 0
 
     LaunchedEffect(currentId) {
         delay(3000)
@@ -97,7 +102,62 @@ fun ReaderScreen(
                     Text(currentArticle?.sourceName.orEmpty(), color = colors.secondaryText)
                     Icon(Icons.Filled.ExpandMore, contentDescription = "Πηγή", tint = colors.secondaryText, modifier = Modifier.padding(start = 2.dp))
                 }
-                Spacer(Modifier)
+                Box {
+                    val bookmarked = currentArticle?.isBookmarked == true
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "Επιλογές", tint = colors.text)
+                    }
+                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text(if (bookmarked) "Αφαίρεση bookmark" else "Bookmark") },
+                            leadingIcon = { Icon(if (bookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                viewModel.toggleBookmark(currentId, bookmarked)
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Κοινοποίηση") },
+                            leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                val a = currentArticle ?: return@DropdownMenuItem
+                                val intent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, "${a.title}\n${a.url}")
+                                }
+                                context.startActivity(Intent.createChooser(intent, null))
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Άνοιγμα στον browser") },
+                            leadingIcon = { Icon(Icons.Filled.OpenInBrowser, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                val a = currentArticle ?: return@DropdownMenuItem
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(a.url)))
+                            },
+                        )
+                        if (mediaCount > 0) {
+                            DropdownMenuItem(
+                                text = { Text("Media ($mediaCount)") },
+                                leadingIcon = { Icon(Icons.Filled.PermMedia, contentDescription = null) },
+                                onClick = {
+                                    showMenu = false
+                                    onOpenMedia(currentId, 0)
+                                },
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text("Ρυθμίσεις ανάγνωσης") },
+                            leadingIcon = { Icon(Icons.Filled.TextFields, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                showSettings = true
+                            },
+                        )
+                    }
+                }
             }
 
             HorizontalPager(state = pagerState, modifier = Modifier.weight(1f)) { page ->
@@ -118,8 +178,6 @@ fun ReaderScreen(
                         }
                         map
                     }
-                    val mediaCount = a.mediaItems().size
-
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(horizontal = (24 + prefs.marginWidth * 12).dp, vertical = 16.dp),
@@ -140,8 +198,11 @@ fun ReaderScreen(
                                 Text(
                                     author,
                                     color = colors.secondaryText,
-                                    textDecoration = TextDecoration.Underline,
-                                    modifier = Modifier.padding(top = 10.dp, bottom = 16.dp).clickable { onOpenAuthorProfile(author) },
+                                    modifier = Modifier
+                                        .padding(top = 10.dp, bottom = 16.dp)
+                                        .border(1.dp, colors.secondaryText, RoundedCornerShape(50))
+                                        .clickable { onOpenAuthorProfile(author) }
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
                                 )
                             } else {
                                 Spacer(Modifier.padding(top = 8.dp))
@@ -155,56 +216,7 @@ fun ReaderScreen(
                                 onMediaClick = mediaIndexByContentIndex[index]?.let { mediaIndex -> { onOpenMedia(id, mediaIndex) } },
                             )
                         }
-                        if (mediaCount > 0) {
-                            item {
-                                Card(
-                                    onClick = { onOpenMedia(id, 0) },
-                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp),
-                                ) {
-                                    Row(
-                                        Modifier.fillMaxWidth().padding(14.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Icon(Icons.Filled.PermMedia, contentDescription = null)
-                                        Text("Media ($mediaCount)", modifier = Modifier.padding(start = 10.dp))
-                                    }
-                                }
-                            }
-                        }
                     }
-                }
-            }
-
-            val bookmarked = currentArticle?.isBookmarked == true
-            Row(
-                Modifier.fillMaxWidth().systemBarsPadding().padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                IconButton(onClick = { viewModel.toggleBookmark(currentId, bookmarked) }) {
-                    Icon(
-                        if (bookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-                        contentDescription = "Bookmark",
-                        tint = colors.text,
-                    )
-                }
-                IconButton(onClick = {
-                    val a = currentArticle ?: return@IconButton
-                    val intent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, "${a.title}\n${a.url}")
-                    }
-                    context.startActivity(Intent.createChooser(intent, null))
-                }) {
-                    Icon(Icons.Filled.Share, contentDescription = "Κοινοποίηση", tint = colors.text)
-                }
-                IconButton(onClick = {
-                    val a = currentArticle ?: return@IconButton
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(a.url)))
-                }) {
-                    Icon(Icons.Filled.OpenInBrowser, contentDescription = "Άνοιγμα στον browser", tint = colors.text)
-                }
-                IconButton(onClick = { showSettings = true }) {
-                    Icon(Icons.Filled.TextFields, contentDescription = "Ρυθμίσεις ανάγνωσης", tint = colors.text)
                 }
             }
         }

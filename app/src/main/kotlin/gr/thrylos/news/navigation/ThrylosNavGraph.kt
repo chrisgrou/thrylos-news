@@ -9,7 +9,6 @@ import androidx.navigation.navArgument
 import gr.thrylos.news.feed.BookmarksScreen
 import gr.thrylos.news.feed.FeedScreen
 import gr.thrylos.news.profile.AuthorProfileScreen
-import gr.thrylos.news.profile.AuthorsListScreen
 import gr.thrylos.news.profile.SourceProfileScreen
 import gr.thrylos.news.reader.ReaderScreen
 import gr.thrylos.news.reader.media.MediaViewerScreen
@@ -66,7 +65,6 @@ fun ThrylosNavGraph() {
             SourceProfileScreen(
                 onBack = { navController.popBackStack() },
                 onOpenArticle = { navController.navigate(Routes.reader(it)) },
-                onIgnored = { navController.popBackStack() },
             )
         }
         composable(
@@ -85,7 +83,6 @@ fun ThrylosNavGraph() {
                 onOpenFilters = { navController.navigate(Routes.SETTINGS_FILTERS) },
                 onOpenSync = { navController.navigate(Routes.SETTINGS_SYNC) },
                 onOpenBackup = { navController.navigate(Routes.SETTINGS_BACKUP) },
-                onOpenAuthors = { navController.navigate(Routes.SETTINGS_AUTHORS) },
             )
         }
         composable(Routes.SETTINGS_SOURCES) {
@@ -110,12 +107,6 @@ fun ThrylosNavGraph() {
         }
         composable(Routes.SETTINGS_BACKUP) {
             BackupScreen(onBack = { navController.popBackStack() })
-        }
-        composable(Routes.SETTINGS_AUTHORS) {
-            AuthorsListScreen(
-                onBack = { navController.popBackStack() },
-                onOpenAuthor = { author -> navController.navigate(Routes.authorProfile(author)) },
-            )
         }
     }
 }

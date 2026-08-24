@@ -46,6 +46,9 @@ interface ArticleDao {
     @Query("UPDATE articles SET isRead = :isRead WHERE id = :id")
     suspend fun setRead(id: String, isRead: Boolean)
 
+    @Query("UPDATE articles SET isRead = 1 WHERE isRead = 0")
+    suspend fun markAllRead()
+
     @Query("UPDATE articles SET isBookmarked = :isBookmarked WHERE id = :id")
     suspend fun setBookmarked(id: String, isBookmarked: Boolean)
 

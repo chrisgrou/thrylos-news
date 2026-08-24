@@ -15,7 +15,6 @@ object Routes {
     const val SETTINGS_FILTERS = "settings/filters"
     const val SETTINGS_SYNC = "settings/sync"
     const val SETTINGS_BACKUP = "settings/backup"
-    const val SETTINGS_AUTHORS = "settings/authors"
 
     fun reader(articleId: String) = "reader/$articleId"
     fun mediaViewer(articleId: String, index: Int) = "media/$articleId/$index"

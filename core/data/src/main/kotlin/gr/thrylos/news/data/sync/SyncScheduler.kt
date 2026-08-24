@@ -8,16 +8,21 @@ import android.os.SystemClock
 import dagger.hilt.android.qualifiers.ApplicationContext
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import gr.thrylos.news.model.RefreshInterval
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val PERIODIC_WORK_NAME = "gr.thrylos.news.periodic_sync"
+private const val MANUAL_WORK_NAME = "gr.thrylos.news.manual_sync"
 private const val ALARM_REQUEST_CODE = 4201
 
 /** WorkManager's PeriodicWorkRequest enforces a 15-minute minimum interval. */
@@ -53,10 +58,21 @@ class SyncScheduler @Inject constructor(
         workManager.enqueueUniquePeriodicWork(PERIODIC_WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
     }
 
-    /** Manual pull-to-refresh: runs once, ignoring the wifi-only setting (the user asked explicitly). */
+    /** Manual pull-to-refresh: runs once, ignoring the wifi-only setting (the user asked explicitly).
+     *  Uses a unique work name so [observeSyncing] can report real completion instead of the
+     *  fire-and-forget instant true/false toggle a naive enqueue would give the UI. */
     fun syncNow() {
-        WorkManager.getInstance(context).enqueue(OneTimeWorkRequestBuilder<SyncWorker>().build())
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            MANUAL_WORK_NAME,
+            ExistingWorkPolicy.KEEP,
+            OneTimeWorkRequestBuilder<SyncWorker>().build(),
+        )
     }
+
+    /** True while the manual sync triggered by [syncNow] is enqueued or running. */
+    fun observeSyncing(): Flow<Boolean> =
+        WorkManager.getInstance(context).getWorkInfosForUniqueWorkFlow(MANUAL_WORK_NAME)
+            .map { infos -> infos.any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.RUNNING } }
 
     private fun alarmPendingIntent(): PendingIntent {
         val intent = Intent(context, SyncAlarmReceiver::class.java)
