@@ -81,9 +81,10 @@ fun ArticleCard(item: FeedItem, onClick: () -> Unit) {
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = 5.dp),
                     )
-                    if (!article.author.isNullOrBlank()) {
+                    val author = article.author
+                    if (!author.isNullOrBlank()) {
                         Text(
-                            text = article.author,
+                            text = author,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
