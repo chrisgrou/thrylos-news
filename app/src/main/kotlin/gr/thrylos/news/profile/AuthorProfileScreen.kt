@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import gr.thrylos.news.feed.stripSourceSuffix
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,7 +88,7 @@ fun AuthorProfileScreen(
                         }
                     },
                     headlineContent = { Text(article.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-                    supportingContent = { Text(article.sourceName) },
+                    supportingContent = { Text(stripSourceSuffix(article.sourceName)) },
                     modifier = Modifier.fillMaxWidth().clickable {
                         viewModel.setCursorContext(articles.map { it.id })
                         onOpenArticle(article.id)

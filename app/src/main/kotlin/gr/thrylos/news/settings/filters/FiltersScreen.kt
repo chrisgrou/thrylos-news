@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import gr.thrylos.news.feed.stripSourceSuffix
 import gr.thrylos.news.model.FilterAction
 import gr.thrylos.news.model.FilterCombinator
 import gr.thrylos.news.model.FilterCondition
@@ -113,8 +114,14 @@ private fun describe(rule: FilterRule): String {
     return rule.conditions.joinToString(joiner) { describe(it) }
 }
 
-private fun describe(condition: FilterCondition) =
-    "${labelFor(condition.field)} ${labelFor(condition.match)} \"${condition.value}\""
+private fun describe(condition: FilterCondition): String {
+    val displayValue = if (condition.field == FilterField.SOURCE && condition.match == FilterMatch.EXACT) {
+        stripSourceSuffix(condition.value)
+    } else {
+        condition.value
+    }
+    return "${labelFor(condition.field)} ${labelFor(condition.match)} \"$displayValue\""
+}
 
 private fun actionVerb(action: FilterAction) = when (action) {
     FilterAction.HIDE -> "κρύβει"

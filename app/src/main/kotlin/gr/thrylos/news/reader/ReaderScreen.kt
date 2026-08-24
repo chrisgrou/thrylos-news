@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
@@ -53,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import gr.thrylos.news.feed.stripSourceSuffix
 import gr.thrylos.news.model.ContentBlock
 import gr.thrylos.news.reader.media.mediaItems
 import gr.thrylos.news.theme.READER_BASE_HEADING_SP
@@ -102,7 +104,7 @@ fun ReaderScreen(
                         .clickable(enabled = currentArticle != null) { currentArticle?.let { onOpenSourceProfile(it.sourceName) } }
                         .padding(horizontal = 4.dp),
                 ) {
-                    Text(currentArticle?.sourceName.orEmpty(), color = colors.secondaryText)
+                    Text(currentArticle?.sourceName?.let(::stripSourceSuffix).orEmpty(), color = colors.secondaryText)
                     Icon(Icons.Filled.ExpandMore, contentDescription = "Πηγή", tint = colors.secondaryText, modifier = Modifier.padding(start = 2.dp))
                 }
                 Box {

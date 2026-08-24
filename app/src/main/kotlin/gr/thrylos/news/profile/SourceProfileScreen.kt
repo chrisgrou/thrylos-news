@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import gr.thrylos.news.feed.stripSourceSuffix
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,7 +57,7 @@ fun SourceProfileScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(viewModel.sourceName) },
+                title = { Text(stripSourceSuffix(viewModel.sourceName)) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Πίσω") } },
             )
         },

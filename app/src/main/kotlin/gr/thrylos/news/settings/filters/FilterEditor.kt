@@ -40,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import gr.thrylos.news.feed.stripSourceSuffix
 import gr.thrylos.news.model.FilterAction
 import gr.thrylos.news.model.FilterCombinator
 import gr.thrylos.news.model.FilterCondition
@@ -153,7 +154,7 @@ fun FilterEditorScreen(
                                                 val next = if (checked) draft.selectedSources - name else draft.selectedSources + name
                                                 conditions[index] = draft.copy(selectedSources = next)
                                             },
-                                            label = { Text(name) },
+                                            label = { Text(stripSourceSuffix(name)) },
                                         )
                                     }
                                 }
