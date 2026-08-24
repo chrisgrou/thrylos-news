@@ -12,10 +12,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Star as StarFilled
-import androidx.compose.material.icons.filled.VisibilityOff as VisibilityOffFilled
-import androidx.compose.material.icons.outlined.Star as StarOutlined
-import androidx.compose.material.icons.outlined.VisibilityOff as VisibilityOffOutlined
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,13 +54,13 @@ fun AuthorProfileScreen(
                 actions = {
                     IconButton(onClick = viewModel::toggleImportant) {
                         Icon(
-                            if (important) StarFilled else StarOutlined,
+                            if (important) Icons.Filled.Star else Icons.Outlined.Star,
                             contentDescription = "Σημαντικός συντάκτης",
                         )
                     }
                     IconButton(onClick = viewModel::toggleIgnored) {
                         Icon(
-                            if (ignored) VisibilityOffFilled else VisibilityOffOutlined,
+                            if (ignored) Icons.Filled.VisibilityOff else Icons.Outlined.VisibilityOff,
                             contentDescription = "Αγνόησε",
                         )
                     }
