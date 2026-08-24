@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
@@ -63,6 +64,7 @@ fun FilterEditorScreen(
     sources: List<String>,
     initial: FilterRule?,
     onSave: (FilterRule) -> Unit,
+    onDelete: (FilterRule) -> Unit = {},
 ) {
     val conditions = remember {
         mutableStateListOf(
@@ -77,6 +79,13 @@ fun FilterEditorScreen(
             TopAppBar(
                 title = { Text(if (initial != null) "Επεξεργασία κανόνα" else "Νέος κανόνας") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Πίσω") } },
+                actions = {
+                    if (initial != null) {
+                        IconButton(onClick = { onDelete(initial) }) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Διαγραφή κανόνα")
+                        }
+                    }
+                },
             )
         },
     ) { padding ->

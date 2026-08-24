@@ -40,6 +40,10 @@ class FiltersViewModel @Inject constructor(
         viewModelScope.launch { filterRepository.upsert(rule) }
     }
 
+    fun setEnabled(rule: FilterRule, enabled: Boolean) {
+        viewModelScope.launch { filterRepository.upsert(rule.copy(enabled = enabled)) }
+    }
+
     fun delete(rule: FilterRule) {
         viewModelScope.launch { filterRepository.delete(rule) }
     }
