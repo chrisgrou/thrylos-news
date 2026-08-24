@@ -1,10 +1,9 @@
 package gr.thrylos.news.feed
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,13 +15,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -47,6 +47,7 @@ fun FeedScreen(
     onOpenArticle: (String) -> Unit,
     onOpenBookmarks: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenSourceProfile: (sourceName: String) -> Unit,
     viewModel: FeedViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -132,6 +133,10 @@ fun FeedScreen(
                     viewModel.selectSource(name)
                     showSourcePicker = false
                 },
+                onOpenProfile = { name ->
+                    showSourcePicker = false
+                    onOpenSourceProfile(name)
+                },
             )
         }
     }
@@ -153,20 +158,23 @@ private fun FeedFilterBar(state: FeedUiState, onOpenSourcePicker: () -> Unit, on
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SourcePickerSheet(state: FeedUiState, onSelect: (String?) -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(20.dp)) {
-        Text("Πηγή", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 12.dp))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = state.selectedSourceName == null, onClick = { onSelect(null) }, label = { Text("Όλα") })
-            state.sources.forEach { source ->
-                FilterChip(
-                    selected = state.selectedSourceName == source.name,
-                    onClick = { onSelect(source.name) },
-                    label = { Text(source.name) },
-                )
-            }
+private fun SourcePickerSheet(state: FeedUiState, onSelect: (String?) -> Unit, onOpenProfile: (String) -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        ListItem(
+            headlineContent = { Text("Όλα") },
+            modifier = Modifier.fillMaxWidth().clickable { onSelect(null) },
+        )
+        state.sources.forEach { source ->
+            ListItem(
+                headlineContent = { Text(source.name) },
+                trailingContent = {
+                    IconButton(onClick = { onOpenProfile(source.name) }) {
+                        Icon(Icons.Filled.OpenInNew, contentDescription = "Αρχική ${source.name}")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().clickable { onSelect(source.name) },
+            )
         }
     }
 }

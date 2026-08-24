@@ -20,6 +20,11 @@ interface ArticleDao {
     @Query("SELECT * FROM articles WHERE sourceId = :sourceId ORDER BY COALESCE(publishedAt, fetchedAt) DESC")
     fun observeBySource(sourceId: String): Flow<List<ArticleEntity>>
 
+    /** Sportal-style grouped sources share a sourceName across several sourceIds, so
+     *  a "source home" view queries by name to include every member's articles. */
+    @Query("SELECT * FROM articles WHERE sourceName = :sourceName ORDER BY COALESCE(publishedAt, fetchedAt) DESC")
+    fun observeBySourceName(sourceName: String): Flow<List<ArticleEntity>>
+
     @Query("SELECT * FROM articles WHERE author = :author ORDER BY COALESCE(publishedAt, fetchedAt) DESC")
     fun observeByAuthor(author: String): Flow<List<ArticleEntity>>
 

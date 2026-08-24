@@ -61,8 +61,9 @@ fun FilterEditor(sources: List<String>, initial: FilterRule? = null, onSave: (Fi
         Text(if (initial != null) "Επεξεργασία κανόνα" else "Νέος κανόνας", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 12.dp))
 
         Text("Ενέργεια", style = MaterialTheme.typography.titleSmall)
-        Row(Modifier.padding(top = 8.dp, bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        FlowRow(modifier = Modifier.padding(top = 8.dp, bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             FilterChip(selected = action == FilterAction.HIDE, onClick = { action = FilterAction.HIDE }, label = { Text("Απόκρυψη") })
+            FilterChip(selected = action == FilterAction.SHOW_ONLY, onClick = { action = FilterAction.SHOW_ONLY }, label = { Text("Εμφάνιση") })
             FilterChip(selected = action == FilterAction.IMPORTANT, onClick = { action = FilterAction.IMPORTANT }, label = { Text("Σημαντικό") })
             FilterChip(selected = action == FilterAction.HIGHLIGHT, onClick = { action = FilterAction.HIGHLIGHT }, label = { Text("Επισήμανση") })
         }

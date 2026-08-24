@@ -114,6 +114,7 @@ private fun describe(condition: FilterCondition) =
 
 private fun actionVerb(action: FilterAction) = when (action) {
     FilterAction.HIDE -> "κρύβει"
+    FilterAction.SHOW_ONLY -> "αφήνει ορατά μόνο"
     FilterAction.IMPORTANT -> "μαρκάρει ως σημαντικά"
     FilterAction.HIGHLIGHT -> "επισημαίνει"
 }

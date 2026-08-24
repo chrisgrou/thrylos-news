@@ -99,6 +99,39 @@ class FilterEngineTest {
     }
 
     @Test
+    fun `SHOW_ONLY hides everything that doesn't match any enabled show-only rule`() {
+        val showOnlyOtherAuthor = FilterRule(
+            id = "s1",
+            field = FilterField.AUTHOR,
+            match = FilterMatch.EXACT,
+            value = "Someone Else",
+            action = FilterAction.SHOW_ONLY,
+        )
+        assertFalse(FilterEngine.isVisible(article, listOf(showOnlyOtherAuthor)))
+
+        val showOnlySameAuthor = FilterRule(
+            id = "s2",
+            field = FilterField.AUTHOR,
+            match = FilterMatch.CONTAINS,
+            value = "Ιωάννου",
+            action = FilterAction.SHOW_ONLY,
+        )
+        assertTrue(FilterEngine.isVisible(article, listOf(showOnlySameAuthor)))
+    }
+
+    @Test
+    fun `HIDE always wins over SHOW_ONLY`() {
+        val showOnly = FilterRule("s3", FilterField.AUTHOR, FilterMatch.CONTAINS, "Ιωάννου", action = FilterAction.SHOW_ONLY)
+        val hide = FilterRule("h1", FilterField.TITLE, FilterMatch.CONTAINS, "στοίχημα", action = FilterAction.HIDE)
+        assertFalse(FilterEngine.isVisible(article, listOf(showOnly, hide)))
+    }
+
+    @Test
+    fun `no SHOW_ONLY rules means nothing is excluded by them`() {
+        assertTrue(FilterEngine.isVisible(article, emptyList()))
+    }
+
+    @Test
     fun `matchesStub defers to full check when a condition needs AUTHOR or BODY`() {
         val rule = FilterRule(
             id = "r9",

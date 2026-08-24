@@ -72,7 +72,7 @@ class SyncWorker @AssistedInject constructor(
                 val eligible = newArticles.filter { article ->
                     (notificationPrefs.onlySourceIds.isEmpty() || article.sourceId in notificationPrefs.onlySourceIds) &&
                         (notificationPrefs.onlyKeywords.isEmpty() || notificationPrefs.onlyKeywords.any { article.title.contains(it, ignoreCase = true) }) &&
-                        !FilterEngine.isHidden(article, filters)
+                        FilterEngine.isVisible(article, filters)
                 }
                 notificationHelper.notifyNewArticles(eligible, notificationPrefs.groupIntoSummary)
             }
@@ -94,7 +94,7 @@ class SyncWorker @AssistedInject constructor(
         if (extracted.isEmpty()) return emptyList()
 
         articleRepository.upsertAll(extracted)
-        return extracted.filterNot { FilterEngine.isHidden(it, filters) }
+        return extracted.filter { FilterEngine.isVisible(it, filters) }
     }
 
     private suspend fun recomputeDedupGroups() {

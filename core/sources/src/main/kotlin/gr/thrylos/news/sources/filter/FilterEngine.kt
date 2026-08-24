@@ -93,6 +93,18 @@ object FilterEngine {
     fun isHidden(article: Article, rules: List<FilterRule>): Boolean =
         rules.any { it.action == FilterAction.HIDE && matches(it, article) }
 
+    /**
+     * The real visibility check: an article is hidden by an explicit HIDE rule, or —
+     * when at least one SHOW_ONLY ("Εμφάνιση") rule is enabled — by not matching any
+     * of them. HIDE always wins over SHOW_ONLY if both would otherwise apply.
+     */
+    fun isVisible(article: Article, rules: List<FilterRule>): Boolean {
+        if (isHidden(article, rules)) return false
+        val showOnlyRules = rules.filter { it.action == FilterAction.SHOW_ONLY && it.enabled }
+        if (showOnlyRules.isNotEmpty() && showOnlyRules.none { matches(it, article) }) return false
+        return true
+    }
+
     fun isImportant(article: Article, rules: List<FilterRule>): Boolean =
         rules.any { it.action == FilterAction.IMPORTANT && matches(it, article) }
 

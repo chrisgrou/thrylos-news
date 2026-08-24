@@ -26,6 +26,7 @@ fun SettingsScreen(
     onOpenFilters: () -> Unit,
     onOpenSync: () -> Unit,
     onOpenBackup: () -> Unit,
+    onOpenAuthors: () -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -37,7 +38,8 @@ fun SettingsScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             SettingsRow("Πηγές", "Ενεργοποίηση, εισαγωγή και επεξεργασία plugins", onOpenSources)
-            SettingsRow("Φίλτρα", "Απόκρυψη άρθρων βάσει λέξεων-κλειδιών ή συντάκτη", onOpenFilters)
+            SettingsRow("Συντάκτες", "Περιήγηση σε άρθρα ανά συντάκτη", onOpenAuthors)
+            SettingsRow("Φίλτρα", "Απόκρυψη ή προβολή άρθρων βάσει λέξεων-κλειδιών ή συντάκτη", onOpenFilters)
             SettingsRow("Ανανέωση & Ειδοποιήσεις", "Διάστημα, Wi-Fi, αποθηκευτικός χώρος", onOpenSync)
             SettingsRow("Αντίγραφο ασφαλείας", "Εξαγωγή/εισαγωγή πηγών, φίλτρων και bookmarks", onOpenBackup)
         }

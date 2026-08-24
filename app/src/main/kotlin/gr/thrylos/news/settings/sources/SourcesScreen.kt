@@ -1,5 +1,6 @@
 package gr.thrylos.news.settings.sources
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,9 +12,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,6 +41,7 @@ fun SourcesScreen(
     onBack: () -> Unit,
     onAddSource: () -> Unit,
     onEditSource: (String) -> Unit,
+    onOpenSourceProfile: (sourceName: String) -> Unit,
     viewModel: SourcesViewModel = hiltViewModel(),
 ) {
     val groups by viewModel.groups.collectAsStateWithLifecycle()
@@ -59,6 +61,10 @@ fun SourcesScreen(
             items(groups, key = { it.displayName }) { group ->
                 var showEditMenu by remember { mutableStateOf(false) }
 
+                fun editGroup() {
+                    if (group.members.size == 1) onEditSource(group.members.first().id) else showEditMenu = true
+                }
+
                 ListItem(
                     headlineContent = { Text(group.displayName) },
                     leadingContent = {
@@ -73,13 +79,11 @@ fun SourcesScreen(
                     },
                     trailingContent = {
                         Row {
+                            IconButton(onClick = { onOpenSourceProfile(group.displayName) }) {
+                                Icon(Icons.Filled.OpenInNew, contentDescription = "Αρχική")
+                            }
                             Switch(checked = group.enabled, onCheckedChange = { viewModel.setGroupEnabled(group, it) })
                             Box {
-                                IconButton(onClick = {
-                                    if (group.members.size == 1) onEditSource(group.members.first().id) else showEditMenu = true
-                                }) {
-                                    Icon(Icons.Filled.Edit, contentDescription = "Επεξεργασία")
-                                }
                                 DropdownMenu(expanded = showEditMenu, onDismissRequest = { showEditMenu = false }) {
                                     group.members.forEach { member ->
                                         DropdownMenuItem(
@@ -94,6 +98,7 @@ fun SourcesScreen(
                             }
                         }
                     },
+                    modifier = Modifier.fillMaxWidth().clickable { editGroup() },
                 )
             }
         }

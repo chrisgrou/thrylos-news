@@ -9,7 +9,14 @@ enum class FilterField { TITLE, BODY, AUTHOR, URL, SOURCE }
 enum class FilterMatch { CONTAINS, REGEX, EXACT }
 
 @Serializable
-enum class FilterAction { HIDE, HIGHLIGHT, IMPORTANT }
+enum class FilterAction {
+    HIDE,
+    HIGHLIGHT,
+    IMPORTANT,
+    /** "Εμφάνιση": when any enabled SHOW_ONLY rule exists, only articles matching at
+     *  least one of them stay visible — everything else is hidden, like a focus mode. */
+    SHOW_ONLY,
+}
 
 @Serializable
 enum class FilterCombinator { AND, OR }

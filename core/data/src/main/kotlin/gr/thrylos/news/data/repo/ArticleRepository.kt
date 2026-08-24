@@ -17,6 +17,8 @@ class ArticleRepository @Inject constructor(
 
     fun observeBySource(sourceId: String): Flow<List<Article>> = dao.observeBySource(sourceId).map { it.map(ArticleMapper::toDomain) }
 
+    fun observeBySourceName(sourceName: String): Flow<List<Article>> = dao.observeBySourceName(sourceName).map { it.map(ArticleMapper::toDomain) }
+
     fun observeByAuthor(author: String): Flow<List<Article>> = dao.observeByAuthor(author).map { it.map(ArticleMapper::toDomain) }
 
     suspend fun getById(id: String): Article? = dao.getById(id)?.let(ArticleMapper::toDomain)

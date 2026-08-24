@@ -8,6 +8,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import gr.thrylos.news.feed.BookmarksScreen
 import gr.thrylos.news.feed.FeedScreen
+import gr.thrylos.news.profile.AuthorProfileScreen
+import gr.thrylos.news.profile.AuthorsListScreen
+import gr.thrylos.news.profile.SourceProfileScreen
 import gr.thrylos.news.reader.ReaderScreen
 import gr.thrylos.news.reader.media.MediaViewerScreen
 import gr.thrylos.news.settings.SettingsScreen
@@ -27,6 +30,7 @@ fun ThrylosNavGraph() {
                 onOpenArticle = { navController.navigate(Routes.reader(it)) },
                 onOpenBookmarks = { navController.navigate(Routes.BOOKMARKS) },
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                onOpenSourceProfile = { name -> navController.navigate(Routes.sourceProfile(name)) },
             )
         }
         composable(Routes.BOOKMARKS) {
@@ -42,7 +46,8 @@ fun ThrylosNavGraph() {
             ReaderScreen(
                 onBack = { navController.popBackStack() },
                 onOpenMedia = { articleId, index -> navController.navigate(Routes.mediaViewer(articleId, index)) },
-                onOpenArticle = { articleId -> navController.navigate(Routes.reader(articleId)) },
+                onOpenSourceProfile = { name -> navController.navigate(Routes.sourceProfile(name)) },
+                onOpenAuthorProfile = { author -> navController.navigate(Routes.authorProfile(author)) },
             )
         }
         composable(
@@ -54,6 +59,25 @@ fun ThrylosNavGraph() {
         ) {
             MediaViewerScreen(onBack = { navController.popBackStack() })
         }
+        composable(
+            Routes.SOURCE_PROFILE,
+            arguments = listOf(navArgument("sourceName") { type = NavType.StringType }),
+        ) {
+            SourceProfileScreen(
+                onBack = { navController.popBackStack() },
+                onOpenArticle = { navController.navigate(Routes.reader(it)) },
+                onIgnored = { navController.popBackStack() },
+            )
+        }
+        composable(
+            Routes.AUTHOR_PROFILE,
+            arguments = listOf(navArgument("author") { type = NavType.StringType }),
+        ) {
+            AuthorProfileScreen(
+                onBack = { navController.popBackStack() },
+                onOpenArticle = { navController.navigate(Routes.reader(it)) },
+            )
+        }
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 onBack = { navController.popBackStack() },
@@ -61,6 +85,7 @@ fun ThrylosNavGraph() {
                 onOpenFilters = { navController.navigate(Routes.SETTINGS_FILTERS) },
                 onOpenSync = { navController.navigate(Routes.SETTINGS_SYNC) },
                 onOpenBackup = { navController.navigate(Routes.SETTINGS_BACKUP) },
+                onOpenAuthors = { navController.navigate(Routes.SETTINGS_AUTHORS) },
             )
         }
         composable(Routes.SETTINGS_SOURCES) {
@@ -68,6 +93,7 @@ fun ThrylosNavGraph() {
                 onBack = { navController.popBackStack() },
                 onAddSource = { navController.navigate(Routes.sourceEditor()) },
                 onEditSource = { navController.navigate(Routes.sourceEditor(it)) },
+                onOpenSourceProfile = { name -> navController.navigate(Routes.sourceProfile(name)) },
             )
         }
         composable(
@@ -84,6 +110,12 @@ fun ThrylosNavGraph() {
         }
         composable(Routes.SETTINGS_BACKUP) {
             BackupScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.SETTINGS_AUTHORS) {
+            AuthorsListScreen(
+                onBack = { navController.popBackStack() },
+                onOpenAuthor = { author -> navController.navigate(Routes.authorProfile(author)) },
+            )
         }
     }
 }

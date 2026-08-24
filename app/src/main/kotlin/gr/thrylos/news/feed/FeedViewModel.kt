@@ -59,7 +59,7 @@ class FeedViewModel @Inject constructor(
         val selectedIds = chips.firstOrNull { it.name == sourceName }?.memberSourceIds
 
         val visible = articles
-            .filterNot { FilterEngine.isHidden(it, filters) }
+            .filter { FilterEngine.isVisible(it, filters) }
             .filter { selectedIds == null || it.sourceId in selectedIds }
             .filter { !onlyUnread || !it.isRead }
 
