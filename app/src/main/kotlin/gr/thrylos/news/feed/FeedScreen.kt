@@ -13,6 +13,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
@@ -24,15 +26,19 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -108,15 +114,25 @@ fun FeedScreen(
                         Text("Δεν υπάρχουν άρθρα ακόμα — τράβηξε για ανανέωση.")
                     }
                 } else {
-                    LazyColumn(
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        items(state.items, key = { it.article.id }) { item ->
-                            ArticleCard(item = item, onClick = {
-                                viewModel.openArticle(item.article.id)
-                                onOpenArticle(item.article.id)
-                            })
+                    val listState = rememberLazyListState()
+                    LaunchedEffect(state.page) { listState.scrollToItem(0) }
+
+                    Column(Modifier.weight(1f)) {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            items(state.items, key = { it.article.id }) { item ->
+                                ArticleCard(item = item, onClick = {
+                                    viewModel.openArticle(item.article.id)
+                                    onOpenArticle(item.article.id)
+                                })
+                            }
+                        }
+                        if (state.pageCount > 1) {
+                            PageBar(state = state, onSetPage = viewModel::setPage)
                         }
                     }
                 }
@@ -154,6 +170,29 @@ private fun FeedFilterBar(state: FeedUiState, onOpenSourcePicker: () -> Unit, on
             trailingIcon = { Icon(Icons.Filled.ExpandMore, contentDescription = null) },
         )
         FilterChip(selected = state.unreadOnly, onClick = onToggleUnread, label = { Text("Αδιάβαστα") })
+    }
+}
+
+@Composable
+private fun PageBar(state: FeedUiState, onSetPage: (Int) -> Unit) {
+    HorizontalDivider()
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = { onSetPage(state.page - 1) }, enabled = state.page > 0) {
+            Icon(Icons.Filled.ChevronLeft, contentDescription = "Προηγούμενη σελίδα")
+        }
+        Text(
+            "Σελίδα ${state.page + 1} από ${state.pageCount}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 8.dp),
+        )
+        IconButton(onClick = { onSetPage(state.page + 1) }, enabled = state.page < state.pageCount - 1) {
+            Icon(Icons.Filled.ChevronRight, contentDescription = "Επόμενη σελίδα")
+        }
     }
 }
 

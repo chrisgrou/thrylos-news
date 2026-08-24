@@ -28,12 +28,23 @@ data class SourceChip(val name: String, val memberSourceIds: Set<String>)
 
 data class FeedItem(val article: Article, val extraSourceCount: Int, val isImportant: Boolean = false)
 
+private const val PAGE_SIZE = 20
+
 data class FeedUiState(
     val items: List<FeedItem> = emptyList(),
     val sources: List<SourceChip> = emptyList(),
     val selectedSourceName: String? = null,
     val unreadOnly: Boolean = false,
     val isEmpty: Boolean = false,
+    val page: Int = 0,
+    val pageCount: Int = 1,
+)
+
+private data class ComputedFeed(
+    val items: List<FeedItem>,
+    val sources: List<SourceChip>,
+    val selectedSourceName: String?,
+    val unreadOnly: Boolean,
 )
 
 @HiltViewModel
@@ -47,11 +58,12 @@ class FeedViewModel @Inject constructor(
 
     private val selectedSourceName = MutableStateFlow<String?>(null)
     private val unreadOnly = MutableStateFlow(false)
+    private val page = MutableStateFlow(0)
 
     private val sourcesFlow = sourceRepository.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val uiState: StateFlow<FeedUiState> = combine(
+    private val computedFeed: StateFlow<ComputedFeed> = combine(
         articleRepository.observeAll(),
         filterRepository.observeAll(),
         sourcesFlow,
@@ -82,12 +94,22 @@ class FeedViewModel @Inject constructor(
             )
             .map { FeedItem(it, (groupCounts[it.id] ?: 1) - 1, FilterEngine.isImportant(it, filters)) }
 
+        ComputedFeed(items = items, sources = chips, selectedSourceName = sourceName, unreadOnly = onlyUnread)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ComputedFeed(emptyList(), emptyList(), null, false))
+
+    /** Caps how many cards render at once — a long feed makes scrolling sluggish, so
+     *  results are paged (PAGE_SIZE per page) instead of dumping everything into one list. */
+    val uiState: StateFlow<FeedUiState> = combine(computedFeed, page) { computed, requestedPage ->
+        val pageCount = maxOf(1, (computed.items.size + PAGE_SIZE - 1) / PAGE_SIZE)
+        val clampedPage = requestedPage.coerceIn(0, pageCount - 1)
         FeedUiState(
-            items = items,
-            sources = chips,
-            selectedSourceName = sourceName,
-            unreadOnly = onlyUnread,
-            isEmpty = items.isEmpty(),
+            items = computed.items.drop(clampedPage * PAGE_SIZE).take(PAGE_SIZE),
+            sources = computed.sources,
+            selectedSourceName = computed.selectedSourceName,
+            unreadOnly = computed.unreadOnly,
+            isEmpty = computed.items.isEmpty(),
+            page = clampedPage,
+            pageCount = pageCount,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), FeedUiState())
 
@@ -102,10 +124,16 @@ class FeedViewModel @Inject constructor(
 
     fun selectSource(name: String?) {
         selectedSourceName.value = name
+        page.value = 0
     }
 
     fun toggleUnreadOnly() {
         unreadOnly.value = !unreadOnly.value
+        page.value = 0
+    }
+
+    fun setPage(index: Int) {
+        page.value = index.coerceAtLeast(0)
     }
 
     fun openArticle(id: String) {
