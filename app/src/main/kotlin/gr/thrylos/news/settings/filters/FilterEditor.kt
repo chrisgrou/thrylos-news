@@ -94,7 +94,7 @@ fun FilterEditorScreen(
         ) {
             Text("Ενέργεια", style = MaterialTheme.typography.titleSmall)
             FlowRow(modifier = Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf(FilterAction.HIDE, FilterAction.SHOW_ONLY, FilterAction.IMPORTANT, FilterAction.HIGHLIGHT).forEach {
+                listOf(FilterAction.HIDE, FilterAction.SHOW_ONLY, FilterAction.IMPORTANT).forEach {
                     FilterChip(selected = action == it, onClick = { action = it }, label = { Text(labelFor(it)) })
                 }
             }

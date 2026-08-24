@@ -110,7 +110,7 @@ fun FeedScreen(
                 } else {
                     LazyColumn(
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         items(state.items, key = { it.article.id }) { item ->
                             ArticleCard(item = item, onClick = {

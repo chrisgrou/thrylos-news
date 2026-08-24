@@ -75,7 +75,9 @@ class FeedViewModel @Inject constructor(
 
         val items = primaries
             .sortedWith(
-                compareByDescending<Article> { FilterEngine.isImportant(it, filters) }
+                // Important articles are pinned to the top only while unread — once
+                // read, they drop back into normal chronological order.
+                compareByDescending<Article> { FilterEngine.isImportant(it, filters) && !it.isRead }
                     .thenByDescending { it.publishedAt ?: it.fetchedAt },
             )
             .map { FeedItem(it, (groupCounts[it.id] ?: 1) - 1, FilterEngine.isImportant(it, filters)) }
