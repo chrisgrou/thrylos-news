@@ -11,6 +11,7 @@
   },
   "article": {
     "title": "h1.post-title",
+    "author": "a[href*=\"/author/\"]",
     "leadImage": "meta[property=og:image]@content",
     "content": "#article-content",
     "remove": [

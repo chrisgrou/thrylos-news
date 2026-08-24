@@ -5,6 +5,8 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
+import androidx.room.Update
 import gr.thrylos.news.data.db.entity.FilterRuleEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -17,8 +19,21 @@ interface FilterRuleDao {
     @Query("SELECT * FROM filter_rules WHERE enabled = 1")
     suspend fun getEnabled(): List<FilterRuleEntity>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(rule: FilterRuleEntity)
+    /** A plain @Insert(REPLACE) deletes-then-reinserts an existing row on conflict,
+     *  which gives it a new rowid and silently reshuffles the (unordered-by-design)
+     *  list to the bottom on every edit or enable/disable toggle. Try a real UPDATE
+     *  first so an existing rule keeps its position; only INSERT for a genuinely new
+     *  rule. */
+    @Transaction
+    suspend fun upsert(rule: FilterRuleEntity) {
+        if (update(rule) == 0) insert(rule)
+    }
+
+    @Update
+    suspend fun update(rule: FilterRuleEntity): Int
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(rule: FilterRuleEntity)
 
     @Delete
     suspend fun delete(rule: FilterRuleEntity)

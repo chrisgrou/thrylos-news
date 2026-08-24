@@ -81,6 +81,16 @@ fun ArticleCard(item: FeedItem, onClick: () -> Unit) {
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = 5.dp),
                     )
+                    if (!article.author.isNullOrBlank()) {
+                        Text(
+                            text = article.author,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = 3.dp),
+                        )
+                    }
                     if (item.extraSourceCount > 0) {
                         Text(
                             text = "+${item.extraSourceCount} πηγές",
