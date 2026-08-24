@@ -1,5 +1,6 @@
 package gr.thrylos.news.data.notifications
 
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
@@ -32,11 +33,13 @@ class NotificationHelper @Inject constructor(
 
     /** Posts one notification per article (max a handful) plus, when [groupIntoSummary],
      * a summary notification so they collapse into a single group on the lock screen. */
+    @SuppressLint("MissingPermission")
     fun notifyNewArticles(articles: List<Article>, groupIntoSummary: Boolean) {
         if (articles.isEmpty()) return
         val manager = NotificationManagerCompat.from(context)
         // The user may not have granted POST_NOTIFICATIONS (API 33+) or may have
-        // disabled notifications for the app entirely — both are covered by this check.
+        // disabled notifications for the app entirely — both are covered by this
+        // runtime check; lint can't verify it statically, hence the suppression above.
         if (!manager.areNotificationsEnabled()) return
 
         articles.take(10).forEach { article ->
