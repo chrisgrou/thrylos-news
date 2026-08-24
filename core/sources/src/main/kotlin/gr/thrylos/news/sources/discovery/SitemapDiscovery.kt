@@ -17,7 +17,12 @@ class SitemapDiscovery : ArticleDiscovery {
         val xml = http.fetchText(plugin.discovery.url, plugin.http)
         val doc = DocumentBuilderFactory.newInstance().apply {
             isNamespaceAware = false
-            setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+            // Block external entity/DTD resolution (XXE prevention) without rejecting
+            // DOCTYPE outright — see RssDiscovery for why disallow-doctype-decl is too strict.
+            setFeature("http://xml.org/sax/features/external-general-entities", false)
+            setFeature("http://xml.org/sax/features/external-parameter-entities", false)
+            setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+            isXIncludeAware = false
         }.newDocumentBuilder().parse(ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
 
         val urlNodes = doc.getElementsByTagName("url")

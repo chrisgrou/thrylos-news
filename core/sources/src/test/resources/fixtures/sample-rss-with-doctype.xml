@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rss [
+  <!ENTITY nbsp "&#160;">
+]>
+<rss version="2.0">
+  <channel>
+    <title>Demo Sports — Ολυμπιακός</title>
+    <link>https://demo-sports.example/team/olympiacos</link>
+    <item>
+      <title>Ολυμπιακός:&nbsp;ανακοίνωση για τη νέα σεζόν</title>
+      <link>https://demo-sports.example/football/olympiacos/anakoinosi-neas-sezon</link>
+      <pubDate>Mon, 24 Aug 2026 08:15:00 +0300</pubDate>
+    </item>
+  </channel>
+</rss>

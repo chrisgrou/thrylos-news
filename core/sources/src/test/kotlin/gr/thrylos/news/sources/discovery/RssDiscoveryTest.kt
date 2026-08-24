@@ -45,4 +45,19 @@ class RssDiscoveryTest {
         assertTrue(stubs[0].publishedAt != null)
         assertEquals("https://demo-sports.example/img/plano.jpg", stubs[0].imageUrl)
     }
+
+    @Test
+    fun `parses feeds that declare a DOCTYPE for HTML entities (real WordPress RSS quirk)`() {
+        server.enqueue(MockResponse().setBody(Fixtures.read("sample-rss-with-doctype.xml")))
+        val plugin = SourcePlugin(
+            schemaVersion = 1, id = "demo", name = "Demo", homepage = server.url("/").toString(),
+            discovery = Discovery(DiscoveryType.RSS, server.url("/rss").toString()),
+            article = ArticleSelectors(title = "h1", content = "div"),
+        )
+
+        val stubs = RssDiscovery().discover(plugin, HttpFetcher())
+
+        assertEquals(1, stubs.size)
+        assertTrue(stubs[0].title.contains("ανακοίνωση"))
+    }
 }

@@ -28,7 +28,13 @@ class RssDiscovery : ArticleDiscovery {
         val doc = try {
             DocumentBuilderFactory.newInstance().apply {
                 isNamespaceAware = false
-                setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+                // Block external entity/DTD resolution (XXE prevention) without rejecting
+                // DOCTYPE outright — plenty of real WordPress RSS feeds declare one just to
+                // define HTML entities like &nbsp; in an internal DTD subset.
+                setFeature("http://xml.org/sax/features/external-general-entities", false)
+                setFeature("http://xml.org/sax/features/external-parameter-entities", false)
+                setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+                isXIncludeAware = false
             }.newDocumentBuilder().parse(ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
         } catch (e: Exception) {
             error("Το URL δεν επιστρέφει έγκυρο RSS/Atom XML (${e.message?.take(120)}).")
