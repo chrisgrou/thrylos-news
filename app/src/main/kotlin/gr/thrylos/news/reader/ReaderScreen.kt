@@ -59,6 +59,9 @@ import gr.thrylos.news.theme.READER_BASE_HEADING_SP
 import gr.thrylos.news.theme.colorsFor
 import gr.thrylos.news.theme.fontFamilyFor
 import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -148,7 +151,7 @@ fun ReaderScreen(
                     }
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = (24 + prefs.marginWidth * 12).dp, vertical = 16.dp),
+                        contentPadding = PaddingValues(horizontal = (12 + prefs.marginWidth * 12).dp, vertical = 10.dp),
                     ) {
                         item {
                             Text(
@@ -162,18 +165,26 @@ fun ReaderScreen(
                                 ),
                             )
                             val author = a.author
-                            if (author != null) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(top = 8.dp, bottom = 14.dp),
+                            ) {
+                                if (author != null) {
+                                    Text(
+                                        author,
+                                        color = colors.secondaryText,
+                                        modifier = Modifier
+                                            .border(1.dp, colors.secondaryText, RoundedCornerShape(50))
+                                            .clickable { onOpenAuthorProfile(author) }
+                                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                                    )
+                                    Spacer(Modifier.width(10.dp))
+                                }
                                 Text(
-                                    author,
+                                    formatDateTime(a.publishedAt ?: a.fetchedAt),
                                     color = colors.secondaryText,
-                                    modifier = Modifier
-                                        .padding(top = 10.dp, bottom = 16.dp)
-                                        .border(1.dp, colors.secondaryText, RoundedCornerShape(50))
-                                        .clickable { onOpenAuthorProfile(author) }
-                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                    fontSize = 13.sp,
                                 )
-                            } else {
-                                Spacer(Modifier.padding(top = 8.dp))
                             }
                         }
                         itemsIndexed(a.content) { index, block ->
@@ -223,3 +234,6 @@ fun ReaderScreen(
         }
     }
 }
+
+private fun formatDateTime(millis: Long): String =
+    SimpleDateFormat("d MMM yyyy, HH:mm", Locale("el", "GR")).format(Date(millis))

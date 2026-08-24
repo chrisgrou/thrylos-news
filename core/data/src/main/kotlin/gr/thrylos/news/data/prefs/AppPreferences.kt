@@ -5,6 +5,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import gr.thrylos.news.model.AppThemeMode
 import gr.thrylos.news.model.NotificationPrefs
 import gr.thrylos.news.model.ReaderFontFamily
 import gr.thrylos.news.model.ReaderPrefs
@@ -63,6 +64,7 @@ class AppPreferences @Inject constructor(
     private val readerKey = stringPreferencesKey("reader_prefs")
     private val syncKey = stringPreferencesKey("sync_prefs")
     private val notificationKey = stringPreferencesKey("notification_prefs")
+    private val appThemeKey = stringPreferencesKey("app_theme_mode")
 
     val readerPrefs: Flow<ReaderPrefs> = context.dataStore.data.map { prefs ->
         val dto = prefs[readerKey]?.let { runCatching { json.decodeFromString<ReaderPrefsDto>(it) }.getOrNull() } ?: ReaderPrefsDto()
@@ -77,6 +79,14 @@ class AppPreferences @Inject constructor(
     val notificationPrefs: Flow<NotificationPrefs> = context.dataStore.data.map { prefs ->
         val dto = prefs[notificationKey]?.let { runCatching { json.decodeFromString<NotificationPrefsDto>(it) }.getOrNull() } ?: NotificationPrefsDto()
         dto.toDomain()
+    }
+
+    val appThemeMode: Flow<AppThemeMode> = context.dataStore.data.map { prefs ->
+        prefs[appThemeKey]?.let { runCatching { AppThemeMode.valueOf(it) }.getOrNull() } ?: AppThemeMode.SYSTEM
+    }
+
+    suspend fun setAppThemeMode(mode: AppThemeMode) {
+        context.dataStore.edit { prefs -> prefs[appThemeKey] = mode.name }
     }
 
     suspend fun currentSyncPrefs(): SyncPrefs = syncPrefs.first()

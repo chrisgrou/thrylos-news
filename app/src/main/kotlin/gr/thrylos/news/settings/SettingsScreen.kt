@@ -13,10 +13,12 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -27,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import gr.thrylos.news.model.AppThemeMode
+import gr.thrylos.news.theme.AppThemeViewModel
 import gr.thrylos.news.update.UpdateState
 import gr.thrylos.news.update.UpdateViewModel
 
@@ -40,8 +44,10 @@ fun SettingsScreen(
     onOpenBackup: () -> Unit,
     onOpenUpdateHistory: () -> Unit,
     updateViewModel: UpdateViewModel = hiltViewModel(),
+    themeViewModel: AppThemeViewModel = hiltViewModel(),
 ) {
     val updateState by updateViewModel.state.collectAsStateWithLifecycle()
+    val themeMode by themeViewModel.mode.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -52,6 +58,31 @@ fun SettingsScreen(
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
+            Text(
+                "Εμφάνιση",
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(horizontal = 16.dp, top = 12.dp, bottom = 8.dp),
+            )
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilterChip(
+                    selected = themeMode == AppThemeMode.SYSTEM,
+                    onClick = { themeViewModel.setMode(AppThemeMode.SYSTEM) },
+                    label = { Text("Σύστημα") },
+                )
+                FilterChip(
+                    selected = themeMode == AppThemeMode.LIGHT,
+                    onClick = { themeViewModel.setMode(AppThemeMode.LIGHT) },
+                    label = { Text("Φωτεινό") },
+                )
+                FilterChip(
+                    selected = themeMode == AppThemeMode.DARK,
+                    onClick = { themeViewModel.setMode(AppThemeMode.DARK) },
+                    label = { Text("Σκοτεινό") },
+                )
+            }
             SettingsRow("Πηγές", "Ενεργοποίηση, εισαγωγή και επεξεργασία plugins", onOpenSources)
             SettingsRow("Φίλτρα", "Απόκρυψη ή προβολή άρθρων βάσει λέξεων-κλειδιών ή συντάκτη", onOpenFilters)
             SettingsRow("Ανανέωση & Ειδοποιήσεις", "Διάστημα, Wi-Fi, αποθηκευτικός χώρος", onOpenSync)
@@ -76,7 +107,7 @@ fun SettingsScreen(
                     if (!s.info.releaseNotes.isNullOrBlank()) {
                         Text(
                             "Τι άλλαξε:",
-                            style = androidx.compose.material3.MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.labelMedium,
                             modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
                         )
                         Text(s.info.releaseNotes)

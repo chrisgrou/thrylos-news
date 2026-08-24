@@ -94,7 +94,7 @@ fun ArticleCard(item: FeedItem, onClick: () -> Unit) {
         }
 
         if (item.isImportant) {
-            ImportantBadge(modifier = Modifier.align(Alignment.TopEnd).padding(top = 10.dp, end = 10.dp))
+            ImportantBadge(modifier = Modifier.align(Alignment.TopEnd).padding(top = 6.dp, end = 6.dp))
         }
     }
 }
