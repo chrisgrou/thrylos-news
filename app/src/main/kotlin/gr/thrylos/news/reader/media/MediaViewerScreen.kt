@@ -109,8 +109,12 @@ fun MediaViewerScreen(
         Row(
             Modifier.fillMaxWidth().systemBarsPadding().padding(horizontal = 8.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Πίσω", tint = Color.White) }
+            if (media.size > 1) {
+                Text("${pagerState.currentPage + 1} / ${media.size}", color = Color.White)
+            }
             val current = media.getOrNull(pagerState.currentPage)
             if (current is MediaItem.Photo) {
                 IconButton(onClick = { requestSave(current.url) }) {

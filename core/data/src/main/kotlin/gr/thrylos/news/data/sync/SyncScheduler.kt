@@ -60,11 +60,13 @@ class SyncScheduler @Inject constructor(
 
     /** Manual pull-to-refresh: runs once, ignoring the wifi-only setting (the user asked explicitly).
      *  Uses a unique work name so [observeSyncing] can report real completion instead of the
-     *  fire-and-forget instant true/false toggle a naive enqueue would give the UI. */
+     *  fire-and-forget instant true/false toggle a naive enqueue would give the UI. Uses REPLACE
+     *  (not KEEP) so every explicit tap actually starts a fresh run — KEEP would silently no-op
+     *  once a previous run under this name exists, which is wrong for an explicit user action. */
     fun syncNow() {
         WorkManager.getInstance(context).enqueueUniqueWork(
             MANUAL_WORK_NAME,
-            ExistingWorkPolicy.KEEP,
+            ExistingWorkPolicy.REPLACE,
             OneTimeWorkRequestBuilder<SyncWorker>().build(),
         )
     }
