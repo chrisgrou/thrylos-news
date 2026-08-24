@@ -1,0 +1,10 @@
+package gr.thrylos.news.model
+
+data class NotificationPrefs(
+    val enabled: Boolean = true,
+    /** Empty = all enabled sources notify; otherwise only these sourceIds do. */
+    val onlySourceIds: Set<String> = emptySet(),
+    /** Only notify when the article title/body matches one of these keywords. Empty = no keyword restriction. */
+    val onlyKeywords: Set<String> = emptySet(),
+    val groupIntoSummary: Boolean = true,
+)

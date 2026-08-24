@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Demo Sports — Ολυμπιακός</title>
+    <link>https://demo-sports.example/team/olympiacos</link>
+    <item>
+      <title>Ολυμπιακός: το πλάνο του προπονητή για τη νέα σεζόν</title>
+      <link>https://demo-sports.example/football/olympiacos/plano-neas-sezon</link>
+      <pubDate>Mon, 24 Aug 2026 08:15:00 +0300</pubDate>
+      <enclosure url="https://demo-sports.example/img/plano.jpg" type="image/jpeg"/>
+    </item>
+    <item>
+      <title>Μπάσκετ: ανανέωση συμβολαίου για βασικό παίκτη</title>
+      <link>https://demo-sports.example/basket/olympiacos/ananeosi-symvoleou?utm_source=rss&amp;utm_medium=feed</link>
+      <pubDate>Sun, 23 Aug 2026 19:40:00 +0300</pubDate>
+    </item>
+    <item>
+      <title>Ζωντανά: highlights από την προπόνηση</title>
+      <link>https://demo-sports.example/live/olympiacos-proponisi</link>
+      <pubDate>Sun, 23 Aug 2026 12:00:00 +0300</pubDate>
+    </item>
+  </channel>
+</rss>

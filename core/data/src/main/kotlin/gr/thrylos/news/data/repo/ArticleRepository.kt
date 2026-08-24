@@ -1,0 +1,41 @@
+package gr.thrylos.news.data.repo
+
+import gr.thrylos.news.data.db.dao.ArticleDao
+import gr.thrylos.news.model.Article
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class ArticleRepository @Inject constructor(
+    private val dao: ArticleDao,
+) {
+    fun observeAll(): Flow<List<Article>> = dao.observeAll().map { it.map(ArticleMapper::toDomain) }
+
+    fun observeBookmarked(): Flow<List<Article>> = dao.observeBookmarked().map { it.map(ArticleMapper::toDomain) }
+
+    suspend fun getById(id: String): Article? = dao.getById(id)?.let(ArticleMapper::toDomain)
+
+    suspend fun existingCanonicalUrls(sourceId: String): Set<String> = dao.existingUrls(sourceId).toSet()
+
+    suspend fun upsertAll(articles: List<Article>) = dao.upsertAll(articles.map(ArticleMapper::toEntity))
+
+    suspend fun upsert(article: Article) = dao.upsert(ArticleMapper.toEntity(article))
+
+    suspend fun setRead(id: String, isRead: Boolean) = dao.setRead(id, isRead)
+
+    suspend fun setBookmarked(id: String, isBookmarked: Boolean) = dao.setBookmarked(id, isBookmarked)
+
+    suspend fun setDedupGroup(id: String, groupId: String?) = dao.setDedupGroup(id, groupId)
+
+    suspend fun getAllOnce(): List<Article> = dao.getAllOnce().map(ArticleMapper::toDomain)
+
+    suspend fun runOfflineCleanup(retentionDays: Int, maxArticles: Int) {
+        val cutoff = System.currentTimeMillis() - retentionDays * 24 * 60 * 60 * 1000L
+        dao.deleteOlderThan(cutoff)
+        dao.trimToMostRecent(maxArticles)
+    }
+
+    suspend fun deleteBySource(sourceId: String) = dao.deleteBySource(sourceId)
+}

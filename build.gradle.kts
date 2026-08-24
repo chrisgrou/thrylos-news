@@ -1,11 +1,12 @@
+// NOTE: Android/Hilt/KSP plugins are declared with explicit versions directly in
+// :app and :core:data (which are the only modules that need the Android Gradle
+// Plugin, resolved from google()). Keeping them out of the root plugins{} block
+// means `./gradlew :core:model:test :core:sources:test --configure-on-demand`
+// can run in environments without access to Google's Maven repo, since the root
+// build script no longer needs to resolve AGP just to evaluate.
 plugins {
-    id("com.android.application") version "8.6.1" apply false
-    id("com.android.library") version "8.6.1" apply false
-    id("org.jetbrains.kotlin.android") version "2.0.21" apply false
     id("org.jetbrains.kotlin.jvm") version "2.0.21" apply false
     id("org.jetbrains.kotlin.plugin.serialization") version "2.0.21" apply false
-    id("com.google.dagger.hilt.android") version "2.52" apply false
-    id("com.google.devtools.ksp") version "2.0.21-1.0.28" apply false
 }
 
 tasks.register("clean", Delete::class) {
