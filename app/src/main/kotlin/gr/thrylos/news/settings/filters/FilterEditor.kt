@@ -2,6 +2,7 @@ package gr.thrylos.news.settings.filters
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -45,6 +46,7 @@ private data class ConditionDraft(
     var selectedSources: Set<String> = emptySet(),
 )
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FilterEditor(sources: List<String>, initial: FilterRule? = null, onSave: (FilterRule) -> Unit) {
     val conditions = remember {

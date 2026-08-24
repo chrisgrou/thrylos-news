@@ -3,6 +3,7 @@ package gr.thrylos.news.feed
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -152,6 +153,7 @@ private fun FeedFilterBar(state: FeedUiState, onOpenSourcePicker: () -> Unit, on
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SourcePickerSheet(state: FeedUiState, onSelect: (String?) -> Unit) {
     Column(Modifier.fillMaxWidth().padding(20.dp)) {
