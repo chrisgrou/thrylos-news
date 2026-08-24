@@ -61,6 +61,7 @@ fun FeedScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val syncing by viewModel.isSyncing.collectAsStateWithLifecycle()
+    val lastSyncAt by viewModel.lastSyncAt.collectAsStateWithLifecycle()
     var showSourcePicker by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
 
@@ -107,6 +108,7 @@ fun FeedScreen(
             Column(Modifier.fillMaxSize()) {
                 FeedFilterBar(
                     state = state,
+                    lastSyncAt = lastSyncAt,
                     onOpenSourcePicker = { showSourcePicker = true },
                     onToggleUnread = viewModel::toggleUnreadOnly,
                 )
@@ -170,10 +172,11 @@ fun FeedScreen(
 }
 
 @Composable
-private fun FeedFilterBar(state: FeedUiState, onOpenSourcePicker: () -> Unit, onToggleUnread: () -> Unit) {
+private fun FeedFilterBar(state: FeedUiState, lastSyncAt: Long?, onOpenSourcePicker: () -> Unit, onToggleUnread: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         FilterChip(
             selected = state.selectedSourceName != null,
@@ -182,6 +185,25 @@ private fun FeedFilterBar(state: FeedUiState, onOpenSourcePicker: () -> Unit, on
             trailingIcon = { Icon(Icons.Filled.ExpandMore, contentDescription = null) },
         )
         FilterChip(selected = state.unreadOnly, onClick = onToggleUnread, label = { Text("Αδιάβαστα") })
+        Text(
+            lastSyncAt?.let { "Ενημ.: ${lastSyncLabel(it)}" } ?: "Καμία ενημέρωση ακόμα",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** "12:34" if it happened today, "χθες 12:34" if yesterday, else "24/8 12:34". */
+private fun lastSyncLabel(millis: Long): String {
+    val now = java.util.Calendar.getInstance()
+    val then = java.util.Calendar.getInstance().apply { timeInMillis = millis }
+    val timeFmt = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+    return when {
+        now.get(java.util.Calendar.YEAR) == then.get(java.util.Calendar.YEAR) &&
+            now.get(java.util.Calendar.DAY_OF_YEAR) == then.get(java.util.Calendar.DAY_OF_YEAR) -> timeFmt.format(then.time)
+        now.get(java.util.Calendar.YEAR) == then.get(java.util.Calendar.YEAR) &&
+            now.get(java.util.Calendar.DAY_OF_YEAR) - then.get(java.util.Calendar.DAY_OF_YEAR) == 1 -> "χθες ${timeFmt.format(then.time)}"
+        else -> java.text.SimpleDateFormat("d/M HH:mm", java.util.Locale.getDefault()).format(then.time)
     }
 }
 

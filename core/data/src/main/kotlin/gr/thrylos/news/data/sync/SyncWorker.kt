@@ -67,6 +67,7 @@ class SyncWorker @AssistedInject constructor(
             }.flatMap { it.await() }
         }
 
+        appPreferences.setLastSyncCompletedAt(System.currentTimeMillis())
         recomputeDedupGroups()
 
         if (newArticles.isNotEmpty()) {

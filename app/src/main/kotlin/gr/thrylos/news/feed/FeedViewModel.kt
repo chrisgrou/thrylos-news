@@ -138,6 +138,9 @@ class FeedViewModel @Inject constructor(
     val isSyncing: StateFlow<Boolean> = syncScheduler.observeSyncing()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    val lastSyncAt: StateFlow<Long?> = appPreferences.lastSyncCompletedAt
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     fun refresh() = syncScheduler.syncNow()
 
     fun markAllRead() {

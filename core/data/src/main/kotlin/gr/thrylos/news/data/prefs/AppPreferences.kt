@@ -68,6 +68,7 @@ class AppPreferences @Inject constructor(
     private val notificationKey = stringPreferencesKey("notification_prefs")
     private val appThemeKey = stringPreferencesKey("app_theme_mode")
     private val lastOpenedAtKey = longPreferencesKey("last_opened_at")
+    private val lastSyncCompletedAtKey = longPreferencesKey("last_sync_completed_at")
 
     val readerPrefs: Flow<ReaderPrefs> = context.dataStore.data.map { prefs ->
         val dto = prefs[readerKey]?.let { runCatching { json.decodeFromString<ReaderPrefsDto>(it) }.getOrNull() } ?: ReaderPrefsDto()
@@ -103,6 +104,16 @@ class AppPreferences @Inject constructor(
             prefs[lastOpenedAtKey] = System.currentTimeMillis()
         }
         return previous
+    }
+
+    /** Stamped by [gr.thrylos.news.data.sync.SyncWorker] once the per-source sync loop
+     *  actually runs — not just enqueued — so the feed can show "when did this last
+     *  really happen", which also doubles as a way to tell whether a refresh tap did
+     *  anything at all (vs. WorkManager silently deferring/skipping it). */
+    val lastSyncCompletedAt: Flow<Long?> = context.dataStore.data.map { prefs -> prefs[lastSyncCompletedAtKey] }
+
+    suspend fun setLastSyncCompletedAt(millis: Long) {
+        context.dataStore.edit { prefs -> prefs[lastSyncCompletedAtKey] = millis }
     }
 
     suspend fun currentSyncPrefs(): SyncPrefs = syncPrefs.first()
