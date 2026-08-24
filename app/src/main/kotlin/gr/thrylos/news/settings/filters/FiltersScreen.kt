@@ -18,7 +18,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -48,6 +47,16 @@ fun FiltersScreen(
     val sourceNames by viewModel.sourceNames.collectAsStateWithLifecycle()
     var showEditor by remember { mutableStateOf(false) }
     var editingRule by remember { mutableStateOf<FilterRule?>(null) }
+
+    if (showEditor) {
+        FilterEditorScreen(
+            onBack = { showEditor = false },
+            sources = sourceNames,
+            initial = editingRule,
+            onSave = { rule -> viewModel.save(rule); showEditor = false },
+        )
+        return
+    }
 
     Scaffold(
         topBar = {
@@ -90,16 +99,6 @@ fun FiltersScreen(
                     }
                 }
             }
-        }
-    }
-
-    if (showEditor) {
-        ModalBottomSheet(onDismissRequest = { showEditor = false }) {
-            FilterEditor(
-                sources = sourceNames,
-                initial = editingRule,
-                onSave = { rule -> viewModel.save(rule); showEditor = false },
-            )
         }
     }
 }
