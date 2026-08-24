@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -116,7 +118,14 @@ fun FeedScreen(
                 )
 
                 if (state.isEmpty) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    // PullToRefreshBox only detects the pull gesture through nested
+                    // scroll deltas dispatched by a scrollable child — a plain static
+                    // Box never dispatches any, so the pull silently does nothing here
+                    // unless this is itself scrollable too.
+                    Box(
+                        Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                        contentAlignment = Alignment.Center,
+                    ) {
                         Text("Δεν υπάρχουν άρθρα ακόμα — τράβηξε για ανανέωση.")
                     }
                 } else {
