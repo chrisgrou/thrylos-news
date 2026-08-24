@@ -45,7 +45,9 @@ fun FiltersScreen(
     viewModel: FiltersViewModel = hiltViewModel(),
 ) {
     val rows by viewModel.rows.collectAsStateWithLifecycle()
+    val sourceNames by viewModel.sourceNames.collectAsStateWithLifecycle()
     var showEditor by remember { mutableStateOf(false) }
+    var editingRule by remember { mutableStateOf<FilterRule?>(null) }
 
     Scaffold(
         topBar = {
@@ -55,7 +57,7 @@ fun FiltersScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showEditor = true }) { Icon(Icons.Filled.Add, contentDescription = "Νέος κανόνας") }
+            FloatingActionButton(onClick = { editingRule = null; showEditor = true }) { Icon(Icons.Filled.Add, contentDescription = "Νέος κανόνας") }
         },
     ) { padding ->
         if (rows.isEmpty()) {
@@ -65,7 +67,10 @@ fun FiltersScreen(
         } else {
             LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp)) {
                 items(rows, key = { it.rule.id }) { row ->
-                    Card(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
+                    Card(
+                        onClick = { editingRule = row.rule; showEditor = true },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                    ) {
                         Row(
                             Modifier.padding(14.dp).fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -90,7 +95,11 @@ fun FiltersScreen(
 
     if (showEditor) {
         ModalBottomSheet(onDismissRequest = { showEditor = false }) {
-            FilterEditor(onSave = { rule -> viewModel.save(rule); showEditor = false })
+            FilterEditor(
+                sources = sourceNames,
+                initial = editingRule,
+                onSave = { rule -> viewModel.save(rule); showEditor = false },
+            )
         }
     }
 }

@@ -2,6 +2,7 @@ package gr.thrylos.news.settings.filters
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -34,20 +35,29 @@ import gr.thrylos.news.model.FilterField
 import gr.thrylos.news.model.FilterMatch
 import gr.thrylos.news.model.FilterRule
 import java.util.UUID
+import java.util.regex.Pattern
 
 private data class ConditionDraft(
     var field: FilterField = FilterField.TITLE,
     var match: FilterMatch = FilterMatch.CONTAINS,
     var value: String = "",
+    /** Only used when field == SOURCE: which of the known source names are checked. */
+    var selectedSources: Set<String> = emptySet(),
 )
 
 @Composable
-fun FilterEditor(onSave: (FilterRule) -> Unit) {
-    val conditions = remember { mutableStateListOf(ConditionDraft()) }
-    var combinator by remember { mutableStateOf(FilterCombinator.AND) }
-    var action by remember { mutableStateOf(FilterAction.HIDE) }
+fun FilterEditor(sources: List<String>, initial: FilterRule? = null, onSave: (FilterRule) -> Unit) {
+    val conditions = remember {
+        mutableStateListOf(
+            *(initial?.conditions?.map { toDraft(it, sources) }?.toTypedArray() ?: arrayOf(ConditionDraft())),
+        )
+    }
+    var combinator by remember { mutableStateOf(initial?.combinator ?: FilterCombinator.AND) }
+    var action by remember { mutableStateOf(initial?.action ?: FilterAction.HIDE) }
 
     Column(Modifier.fillMaxWidth().padding(20.dp)) {
+        Text(if (initial != null) "Επεξεργασία κανόνα" else "Νέος κανόνας", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 12.dp))
+
         Text("Ενέργεια", style = MaterialTheme.typography.titleSmall)
         Row(Modifier.padding(top = 8.dp, bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             FilterChip(selected = action == FilterAction.HIDE, onClick = { action = FilterAction.HIDE }, label = { Text("Απόκρυψη") })
@@ -78,18 +88,48 @@ fun FilterEditor(onSave: (FilterRule) -> Unit) {
                             FilterChip(selected = draft.field == it, onClick = { conditions[index] = draft.copy(field = it) }, label = { Text(labelFor(it)) })
                         }
                     }
-                    Text("Κανόνας", style = MaterialTheme.typography.labelSmall)
-                    Row(Modifier.padding(top = 4.dp, bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        FilterMatch.entries.forEach {
-                            FilterChip(selected = draft.match == it, onClick = { conditions[index] = draft.copy(match = it) }, label = { Text(labelFor(it)) })
+
+                    if (draft.field == FilterField.SOURCE) {
+                        Text("Πηγές (επιλογή πολλαπλών)", style = MaterialTheme.typography.labelSmall)
+                        if (sources.isEmpty()) {
+                            Text(
+                                "Δεν βρέθηκαν πηγές ακόμα.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        } else {
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                sources.forEach { name ->
+                                    val checked = name in draft.selectedSources
+                                    FilterChip(
+                                        selected = checked,
+                                        onClick = {
+                                            val next = if (checked) draft.selectedSources - name else draft.selectedSources + name
+                                            conditions[index] = draft.copy(selectedSources = next)
+                                        },
+                                        label = { Text(name) },
+                                    )
+                                }
+                            }
                         }
+                    } else {
+                        Text("Κανόνας", style = MaterialTheme.typography.labelSmall)
+                        Row(Modifier.padding(top = 4.dp, bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            FilterMatch.entries.forEach {
+                                FilterChip(selected = draft.match == it, onClick = { conditions[index] = draft.copy(match = it) }, label = { Text(labelFor(it)) })
+                            }
+                        }
+                        OutlinedTextField(
+                            value = draft.value,
+                            onValueChange = { conditions[index] = draft.copy(value = it) },
+                            label = { Text("Τιμή (π.χ. στοίχημα)") },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
-                    OutlinedTextField(
-                        value = draft.value,
-                        onValueChange = { conditions[index] = draft.copy(value = it) },
-                        label = { Text("Τιμή (π.χ. στοίχημα)") },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
                 }
             }
         }
@@ -103,24 +143,60 @@ fun FilterEditor(onSave: (FilterRule) -> Unit) {
 
         Button(
             onClick = {
-                val validConditions = conditions.filter { it.value.isNotBlank() }
-                    .map { FilterCondition(it.field, it.match, it.value) }
+                val validConditions = conditions.mapNotNull { toCondition(it) }
                 if (validConditions.isNotEmpty()) {
                     onSave(
                         FilterRule(
-                            id = UUID.randomUUID().toString(),
+                            id = initial?.id ?: UUID.randomUUID().toString(),
                             conditions = validConditions,
                             combinator = combinator,
                             action = action,
+                            scopeSourceId = initial?.scopeSourceId,
+                            enabled = initial?.enabled ?: true,
                         ),
                     )
                 }
             },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("Προσθήκη κανόνα")
+            Text(if (initial != null) "Αποθήκευση" else "Προσθήκη κανόνα")
         }
     }
+}
+
+private fun toCondition(draft: ConditionDraft): FilterCondition? {
+    if (draft.field == FilterField.SOURCE) {
+        return when (draft.selectedSources.size) {
+            0 -> null
+            1 -> FilterCondition(FilterField.SOURCE, FilterMatch.EXACT, draft.selectedSources.first())
+            else -> FilterCondition(FilterField.SOURCE, FilterMatch.REGEX, sourceAlternationRegex(draft.selectedSources))
+        }
+    }
+    return if (draft.value.isNotBlank()) FilterCondition(draft.field, draft.match, draft.value) else null
+}
+
+private fun sourceAlternationRegex(names: Set<String>) =
+    "^(" + names.joinToString("|") { Pattern.quote(it) } + ")$"
+
+/** Reconstructs the editor's draft state from a saved condition — a SOURCE condition
+ *  is either a single EXACT name or our own generated alternation regex; anything
+ *  else (e.g. hand-written regex/CONTAINS) falls back to the free-text form. */
+private fun toDraft(condition: FilterCondition, sources: List<String>): ConditionDraft {
+    if (condition.field == FilterField.SOURCE) {
+        val selected = when (condition.match) {
+            FilterMatch.EXACT -> setOf(condition.value)
+            FilterMatch.REGEX -> {
+                val inner = condition.value.removePrefix("^(").removeSuffix(")$")
+                inner.split("|")
+                    .map { it.removePrefix("\\Q").removeSuffix("\\E") }
+                    .filter { it in sources }
+                    .toSet()
+            }
+            else -> emptySet()
+        }
+        return ConditionDraft(field = FilterField.SOURCE, match = condition.match, value = condition.value, selectedSources = selected)
+    }
+    return ConditionDraft(field = condition.field, match = condition.match, value = condition.value)
 }
 
 private fun labelFor(field: FilterField) = when (field) {
