@@ -5,6 +5,7 @@ import gr.thrylos.news.sources.http.HttpFetcher
 import gr.thrylos.news.sources.plugin.SourcePlugin
 import gr.thrylos.news.sources.plugin.textOf
 import gr.thrylos.news.sources.url.UrlNormalizer
+import gr.thrylos.news.sources.util.DateParsing
 import org.jsoup.Jsoup
 
 /** Scrapes a listing page (e.g. a category/tag page) using the plugin's [gr.thrylos.news.sources.plugin.ListSelectors]. */
@@ -24,7 +25,8 @@ class HtmlListDiscovery : ArticleDiscovery {
             // the article page itself, which always overrides this stub value.
             val title = selectors.title?.let { item.textOf(it) } ?: item.text().take(160)
             val image = selectors.image?.let { item.textOf(it) }?.let { UrlNormalizer.resolve(plugin.discovery.url, it) }
-            ArticleStub(plugin.id, link, title.ifBlank { "(χωρίς τίτλο)" }, image, publishedAt = null)
+            val publishedAt = selectors.date?.let { item.textOf(it) }?.let { DateParsing.parse(it) }
+            ArticleStub(plugin.id, link, title.ifBlank { "(χωρίς τίτλο)" }, image, publishedAt)
         }.take(plugin.discovery.maxItems)
     }
 }
