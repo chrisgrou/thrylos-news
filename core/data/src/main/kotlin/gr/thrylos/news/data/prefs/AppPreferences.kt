@@ -69,6 +69,7 @@ class AppPreferences @Inject constructor(
     private val appThemeKey = stringPreferencesKey("app_theme_mode")
     private val lastOpenedAtKey = longPreferencesKey("last_opened_at")
     private val lastSyncCompletedAtKey = longPreferencesKey("last_sync_completed_at")
+    private val lastSyncOutcomeKey = stringPreferencesKey("last_sync_outcome")
 
     val readerPrefs: Flow<ReaderPrefs> = context.dataStore.data.map { prefs ->
         val dto = prefs[readerKey]?.let { runCatching { json.decodeFromString<ReaderPrefsDto>(it) }.getOrNull() } ?: ReaderPrefsDto()
@@ -106,14 +107,19 @@ class AppPreferences @Inject constructor(
         return previous
     }
 
-    /** Stamped by [gr.thrylos.news.data.sync.SyncWorker] once the per-source sync loop
-     *  actually runs — not just enqueued — so the feed can show "when did this last
-     *  really happen", which also doubles as a way to tell whether a refresh tap did
-     *  anything at all (vs. WorkManager silently deferring/skipping it). */
+    /** Stamped by [gr.thrylos.news.data.sync.SyncWorker] on every doWork() exit —
+     *  including its early-return guards (quiet hours / offline / wifi-only) — so the
+     *  feed can show "when did this last really happen, and why did it stop there" as
+     *  a single glance-able diagnostic instead of a silent no-op. [lastSyncOutcome] is
+     *  "Ολοκληρώθηκε" on a normal completion, or the guard's reason otherwise. */
     val lastSyncCompletedAt: Flow<Long?> = context.dataStore.data.map { prefs -> prefs[lastSyncCompletedAtKey] }
+    val lastSyncOutcome: Flow<String?> = context.dataStore.data.map { prefs -> prefs[lastSyncOutcomeKey] }
 
-    suspend fun setLastSyncCompletedAt(millis: Long) {
-        context.dataStore.edit { prefs -> prefs[lastSyncCompletedAtKey] = millis }
+    suspend fun recordSyncAttempt(outcome: String) {
+        context.dataStore.edit { prefs ->
+            prefs[lastSyncCompletedAtKey] = System.currentTimeMillis()
+            prefs[lastSyncOutcomeKey] = outcome
+        }
     }
 
     suspend fun currentSyncPrefs(): SyncPrefs = syncPrefs.first()

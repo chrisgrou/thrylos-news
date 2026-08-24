@@ -46,9 +46,18 @@ class SyncWorker @AssistedInject constructor(
         val syncPrefs = appPreferences.currentSyncPrefs()
         val now = Calendar.getInstance()
         val minuteOfDay = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
-        if (syncPrefs.isQuietAt(minuteOfDay)) return@withContext Result.success()
-        if (!NetworkUtil.isOnline(applicationContext)) return@withContext Result.retry()
-        if (syncPrefs.syncOnlyOnWifi && !NetworkUtil.isOnWifi(applicationContext)) return@withContext Result.success()
+        if (syncPrefs.isQuietAt(minuteOfDay)) {
+            appPreferences.recordSyncAttempt("Παράθυρο ησυχίας ενεργό")
+            return@withContext Result.success()
+        }
+        if (!NetworkUtil.isOnline(applicationContext)) {
+            appPreferences.recordSyncAttempt("Καμία σύνδεση δικτύου")
+            return@withContext Result.retry()
+        }
+        if (syncPrefs.syncOnlyOnWifi && !NetworkUtil.isOnWifi(applicationContext)) {
+            appPreferences.recordSyncAttempt("Ρύθμιση \"Μόνο σε Wi-Fi\" ενεργή, όχι σε Wi-Fi")
+            return@withContext Result.success()
+        }
 
         val plugins = sourceRepository.getEnabledPlugins()
         val filters = filterRepository.getEnabled()
@@ -67,7 +76,7 @@ class SyncWorker @AssistedInject constructor(
             }.flatMap { it.await() }
         }
 
-        appPreferences.setLastSyncCompletedAt(System.currentTimeMillis())
+        appPreferences.recordSyncAttempt("Ολοκληρώθηκε")
         recomputeDedupGroups()
 
         if (newArticles.isNotEmpty()) {

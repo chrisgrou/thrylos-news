@@ -62,6 +62,7 @@ fun FeedScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val syncing by viewModel.isSyncing.collectAsStateWithLifecycle()
     val lastSyncAt by viewModel.lastSyncAt.collectAsStateWithLifecycle()
+    val lastSyncOutcome by viewModel.lastSyncOutcome.collectAsStateWithLifecycle()
     var showSourcePicker by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
 
@@ -109,6 +110,7 @@ fun FeedScreen(
                 FeedFilterBar(
                     state = state,
                     lastSyncAt = lastSyncAt,
+                    lastSyncOutcome = lastSyncOutcome,
                     onOpenSourcePicker = { showSourcePicker = true },
                     onToggleUnread = viewModel::toggleUnreadOnly,
                 )
@@ -172,23 +174,36 @@ fun FeedScreen(
 }
 
 @Composable
-private fun FeedFilterBar(state: FeedUiState, lastSyncAt: Long?, onOpenSourcePicker: () -> Unit, onToggleUnread: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        FilterChip(
-            selected = state.selectedSourceName != null,
-            onClick = onOpenSourcePicker,
-            label = { Text(state.selectedSourceName?.let(::stripSourceSuffix) ?: "Όλες οι πηγές") },
-            trailingIcon = { Icon(Icons.Filled.ExpandMore, contentDescription = null) },
-        )
-        FilterChip(selected = state.unreadOnly, onClick = onToggleUnread, label = { Text("Αδιάβαστα") })
+private fun FeedFilterBar(
+    state: FeedUiState,
+    lastSyncAt: Long?,
+    lastSyncOutcome: String?,
+    onOpenSourcePicker: () -> Unit,
+    onToggleUnread: () -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FilterChip(
+                selected = state.selectedSourceName != null,
+                onClick = onOpenSourcePicker,
+                label = { Text(state.selectedSourceName?.let(::stripSourceSuffix) ?: "Όλες οι πηγές") },
+                trailingIcon = { Icon(Icons.Filled.ExpandMore, contentDescription = null) },
+            )
+            FilterChip(selected = state.unreadOnly, onClick = onToggleUnread, label = { Text("Αδιάβαστα") })
+        }
+        val isNormal = lastSyncOutcome == null || lastSyncOutcome == "Ολοκληρώθηκε"
         Text(
-            lastSyncAt?.let { "Ενημ.: ${lastSyncLabel(it)}" } ?: "Καμία ενημέρωση ακόμα",
+            when {
+                lastSyncAt == null -> "Καμία ενημέρωση ακόμα"
+                isNormal -> "Τελευταία ενημέρωση: ${lastSyncLabel(lastSyncAt)}"
+                else -> "Τελευταία προσπάθεια: ${lastSyncLabel(lastSyncAt)} — $lastSyncOutcome"
+            },
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (isNormal) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(top = 6.dp, start = 4.dp),
         )
     }
 }
