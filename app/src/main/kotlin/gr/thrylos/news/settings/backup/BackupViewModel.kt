@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import gr.thrylos.news.data.backup.BackupManager
 import gr.thrylos.news.data.backup.RestoreResult
+import gr.thrylos.news.data.repo.ArticleRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,6 +15,7 @@ import javax.inject.Inject
 @HiltViewModel
 class BackupViewModel @Inject constructor(
     private val backupManager: BackupManager,
+    private val articleRepository: ArticleRepository,
 ) : ViewModel() {
 
     private val _status = MutableStateFlow<String?>(null)
@@ -39,6 +41,17 @@ class BackupViewModel @Inject constructor(
                 is RestoreResult.Success -> "Έγινε επαναφορά: ${result.sourcesImported} πηγές, ${result.filtersImported} φίλτρα, ${result.bookmarksImported} bookmarks."
                 is RestoreResult.Failure -> "Σφάλμα: ${result.message}"
             }
+        }
+    }
+
+    /** Deletes every non-bookmarked article so the next sync re-discovers and
+     *  re-extracts everything from scratch — the only way to fix already-synced
+     *  articles' data (e.g. a wrong published time from a since-fixed parsing bug)
+     *  without waiting for their natural offline-retention expiry. */
+    fun clearArticleHistory() {
+        viewModelScope.launch {
+            articleRepository.clearHistory()
+            _status.value = "Το ιστορικό άρθρων εκκαθαρίστηκε."
         }
     }
 }

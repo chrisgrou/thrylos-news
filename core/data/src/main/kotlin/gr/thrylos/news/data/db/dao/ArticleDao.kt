@@ -73,4 +73,9 @@ interface ArticleDao {
 
     @Query("DELETE FROM articles WHERE sourceId = :sourceId")
     suspend fun deleteBySource(sourceId: String)
+
+    /** Keeps bookmarks — those are the one thing a user explicitly chose to keep,
+     *  everything else is just resynced from its source on the next refresh. */
+    @Query("DELETE FROM articles WHERE isBookmarked = 0")
+    suspend fun deleteAllUnbookmarked()
 }

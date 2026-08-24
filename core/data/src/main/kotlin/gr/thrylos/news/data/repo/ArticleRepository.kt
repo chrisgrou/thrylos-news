@@ -48,4 +48,11 @@ class ArticleRepository @Inject constructor(
     }
 
     suspend fun deleteBySource(sourceId: String) = dao.deleteBySource(sourceId)
+
+    /** Clears everything except bookmarks, and (via [existingCanonicalUrls] then
+     *  finding nothing known) forces every source to be fully re-discovered and
+     *  re-extracted on the next sync — useful after a data-quality fix (e.g. a
+     *  published-date parsing bug) that only affects newly-synced articles, since
+     *  existing ones are otherwise never re-fetched once already known. */
+    suspend fun clearHistory() = dao.deleteAllUnbookmarked()
 }
