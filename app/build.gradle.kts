@@ -18,6 +18,21 @@ android {
         versionName = "0.1.0"
     }
 
+    signingConfigs {
+        // Committed on purpose: this is a debug-only key (never used for a Play
+        // Store release), fixed so every CI build is signed identically. Without
+        // this, AGP falls back to ~/.android/debug.keystore, which CI regenerates
+        // fresh on every run — a new signature each time means Android treats
+        // the next APK as a different app and refuses to "update" over the last
+        // one, forcing an uninstall before every install.
+        getByName("debug") {
+            storeFile = rootProject.file("keystore/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -26,6 +41,7 @@ android {
         }
         debug {
             applicationIdSuffix = ".debug"
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

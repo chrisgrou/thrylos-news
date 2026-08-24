@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "sportdog-olympiacos",
+  "name": "Sportdog",
+  "homepage": "https://www.sportdog.gr/teams/olympiakos",
+  "enabled": true,
+  "discovery": {
+    "type": "html-list",
+    "url": "https://www.sportdog.gr/teams/olympiakos",
+    "maxItems": 20
+  },
+  "listSelectors": {
+    "item": "div.row.g-0",
+    "link": "a.stretched-link@href",
+    "title": "a.stretched-link h2",
+    "image": "img@src"
+  },
+  "article": {
+    "title": "h1",
+    "author": "small.fs-6 strong",
+    "date": "meta[property=article:published_time]@content",
+    "leadImage": "img#article-main-image@src",
+    "content": "div.article-body",
+    "remove": ["#outstream", "div.border-top.border-bottom.py-2", "div.col-xl-3.col-xxl-3"]
+  },
+  "urlRules": {
+    "stripQueryParams": ["utm_source", "utm_medium", "utm_campaign", "fbclid"]
+  },
+  "http": { "userAgent": "default", "delayMs": 400 },
+  "fallback": "readability"
+}

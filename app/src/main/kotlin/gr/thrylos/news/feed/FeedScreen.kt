@@ -14,18 +14,19 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -53,38 +54,34 @@ fun FeedScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var refreshing by remember { mutableStateOf(false) }
     var showSourcePicker by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Thrylos News") },
                 actions = {
-                    IconButton(onClick = { viewModel.refresh() }) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Ανανέωση")
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "Μενού")
+                    }
+                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Bookmarks") },
+                            leadingIcon = { Icon(Icons.Filled.Bookmarks, contentDescription = null) },
+                            onClick = { showMenu = false; onOpenBookmarks() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Ρυθμίσεις") },
+                            leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                            onClick = { showMenu = false; onOpenSettings() },
+                        )
                     }
                 },
             )
         },
-        bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    selected = true,
-                    onClick = {},
-                    icon = { Icon(Icons.Filled.Home, contentDescription = null) },
-                    label = { Text("Ροή") },
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = onOpenBookmarks,
-                    icon = { Icon(Icons.Filled.Bookmarks, contentDescription = null) },
-                    label = { Text("Bookmarks") },
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = onOpenSettings,
-                    icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
-                    label = { Text("Ρυθμίσεις") },
-                )
+        floatingActionButton = {
+            FloatingActionButton(onClick = { viewModel.refresh() }) {
+                Icon(Icons.Filled.Refresh, contentDescription = "Ανανέωση")
             }
         },
     ) { padding ->

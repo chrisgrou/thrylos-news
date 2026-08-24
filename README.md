@@ -48,11 +48,13 @@ Android εφαρμογή ανάγνωσης άρθρων για τον Ολυμ�
 | **gazzetta** | ✅ Επαληθευμένο σε πραγματικό HTML (`html-list` — το site δεν έχει RSS καθόλου) |
 | **athletiko** | ✅ Επαληθευμένο σε πραγματικό HTML (`html-list` — το site δεν έχει per-team RSS) |
 | **sportal (ποδόσφαιρο/μπάσκετ)** | ✅ Επαληθευμένο σε πραγματικό HTML (`html-list`)· διορθώθηκε λάθος typo στο URL του μπάσκετ (διπλό "b" αντί για ένα στο slug) |
+| **sportdog** | ✅ Επαληθευμένο σε πραγματικό HTML (`html-list` — το site δεν έχει RSS) |
 
 Οι επαληθευμένες πηγές τρέχουν πάνω σε πραγματικά snapshots από
 `core/sources/src/test/resources/fixtures/` μέσω `To10PluginTest`,
 `SportFmPluginTest`, `Sport24PluginTest`, `AthlosnewsPluginTest`,
-`GazzettaPluginTest`, `AthletikoPluginTest`, `SportalPluginTest` — τα tests φορτώνουν τα **shipped** plugin JSON από το
+`GazzettaPluginTest`, `AthletikoPluginTest`, `SportalPluginTest`,
+`SportdogPluginTest` — τα tests φορτώνουν τα **shipped** plugin JSON από το
 `app/src/main/assets/plugins/`, ώστε plugin και tests να μη μπορούν να
 αποκλίνουν.
 
