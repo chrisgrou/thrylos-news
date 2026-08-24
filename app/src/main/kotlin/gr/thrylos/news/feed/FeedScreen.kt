@@ -68,15 +68,13 @@ fun FeedScreen(
             TopAppBar(
                 title = { Text("Thrylos News") },
                 actions = {
+                    IconButton(onClick = { viewModel.markAllRead() }) {
+                        Icon(Icons.Filled.DoneAll, contentDescription = "Μαρκάρισμα όλων ως διαβασμένα")
+                    }
                     IconButton(onClick = { showMenu = true }) {
                         Icon(Icons.Filled.MoreVert, contentDescription = "Μενού")
                     }
                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                        DropdownMenuItem(
-                            text = { Text("Μαρκάρισμα όλων ως διαβασμένα") },
-                            leadingIcon = { Icon(Icons.Filled.DoneAll, contentDescription = null) },
-                            onClick = { showMenu = false; viewModel.markAllRead() },
-                        )
                         DropdownMenuItem(
                             text = { Text("Bookmarks") },
                             leadingIcon = { Icon(Icons.Filled.Bookmarks, contentDescription = null) },

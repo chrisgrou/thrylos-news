@@ -1,7 +1,6 @@
 package gr.thrylos.news.feed
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,64 +34,67 @@ import java.util.Locale
 @Composable
 fun ArticleCard(item: FeedItem, onClick: () -> Unit) {
     val article = item.article
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = when {
-                item.isImportant -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-                article.isRead -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                else -> MaterialTheme.colorScheme.surface
-            },
-        ),
-    ) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
-            if (article.leadImageUrl != null) {
-                AsyncImage(
-                    model = article.leadImageUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(80.dp).clip(RoundedCornerShape(14.dp)),
-                )
-            } else {
-                Box(Modifier.size(80.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.primaryContainer))
-            }
-
-            Column(Modifier.padding(start = 14.dp).weight(1f)) {
-                if (item.isImportant) {
-                    ImportantBadge(modifier = Modifier.padding(bottom = 6.dp))
+    Box(Modifier.fillMaxWidth()) {
+        Card(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = when {
+                    item.isImportant -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                    article.isRead -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                    else -> MaterialTheme.colorScheme.surface
+                },
+            ),
+        ) {
+            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
+                if (article.leadImageUrl != null) {
+                    AsyncImage(
+                        model = article.leadImageUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.size(80.dp).clip(RoundedCornerShape(14.dp)),
+                    )
+                } else {
+                    Box(Modifier.size(80.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.primaryContainer))
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (!article.isRead) {
-                        Box(
-                            Modifier.size(7.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
+
+                Column(Modifier.padding(start = 14.dp).weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (!article.isRead) {
+                            Box(
+                                Modifier.size(7.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
+                            )
+                            Spacer(Modifier.width(6.dp))
+                        }
+                        Text(
+                            text = article.sourceName.uppercase() + " · " + formatRelative(article.publishedAt ?: article.fetchedAt),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
-                        Spacer(Modifier.width(6.dp))
                     }
                     Text(
-                        text = article.sourceName.uppercase() + " · " + formatRelative(article.publishedAt ?: article.fetchedAt),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
+                        text = article.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                Text(
-                    text = article.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 5.dp),
-                )
-                if (item.extraSourceCount > 0) {
-                    Text(
-                        text = "+${item.extraSourceCount} πηγές",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(top = 5.dp),
                     )
+                    if (item.extraSourceCount > 0) {
+                        Text(
+                            text = "+${item.extraSourceCount} πηγές",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 5.dp),
+                        )
+                    }
                 }
             }
+        }
+
+        if (item.isImportant) {
+            ImportantBadge(modifier = Modifier.align(Alignment.TopEnd).padding(top = 10.dp, end = 10.dp))
         }
     }
 }
@@ -113,7 +115,7 @@ private fun ImportantBadge(modifier: Modifier = Modifier) {
             modifier = Modifier.size(12.dp),
         )
         Text(
-            "Σημαντικό",
+            "Featured",
             color = MaterialTheme.colorScheme.onPrimary,
             fontSize = 11.sp,
             modifier = Modifier.padding(start = 4.dp),
