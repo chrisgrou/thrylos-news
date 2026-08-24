@@ -1,9 +1,11 @@
 package gr.thrylos.news.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import gr.thrylos.news.feed.BookmarksScreen
@@ -49,12 +51,13 @@ fun ThrylosNavGraph() {
                 onOpenAuthorProfile = { author -> navController.navigate(Routes.authorProfile(author)) },
             )
         }
-        composable(
+        dialog(
             Routes.MEDIA_VIEWER,
             arguments = listOf(
                 navArgument("articleId") { type = NavType.StringType },
                 navArgument("index") { type = NavType.StringType },
             ),
+            dialogProperties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
             MediaViewerScreen(onBack = { navController.popBackStack() })
         }

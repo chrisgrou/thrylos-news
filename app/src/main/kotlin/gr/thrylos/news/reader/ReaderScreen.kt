@@ -117,38 +117,6 @@ fun ReaderScreen(
                             },
                         )
                         DropdownMenuItem(
-                            text = { Text("Κοινοποίηση") },
-                            leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                val a = currentArticle ?: return@DropdownMenuItem
-                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, "${a.title}\n${a.url}")
-                                }
-                                context.startActivity(Intent.createChooser(intent, null))
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Άνοιγμα στον browser") },
-                            leadingIcon = { Icon(Icons.Filled.OpenInBrowser, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                val a = currentArticle ?: return@DropdownMenuItem
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(a.url)))
-                            },
-                        )
-                        if (mediaCount > 0) {
-                            DropdownMenuItem(
-                                text = { Text("Media ($mediaCount)") },
-                                leadingIcon = { Icon(Icons.Filled.PermMedia, contentDescription = null) },
-                                onClick = {
-                                    showMenu = false
-                                    onOpenMedia(currentId, 0)
-                                },
-                            )
-                        }
-                        DropdownMenuItem(
                             text = { Text("Ρυθμίσεις ανάγνωσης") },
                             leadingIcon = { Icon(Icons.Filled.TextFields, contentDescription = null) },
                             onClick = {
@@ -216,6 +184,33 @@ fun ReaderScreen(
                                 onMediaClick = mediaIndexByContentIndex[index]?.let { mediaIndex -> { onOpenMedia(id, mediaIndex) } },
                             )
                         }
+                    }
+                }
+            }
+
+            Row(
+                Modifier.fillMaxWidth().systemBarsPadding().padding(horizontal = 8.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                IconButton(onClick = {
+                    val a = currentArticle ?: return@IconButton
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, "${a.title}\n${a.url}")
+                    }
+                    context.startActivity(Intent.createChooser(intent, null))
+                }) {
+                    Icon(Icons.Filled.Share, contentDescription = "Κοινοποίηση", tint = colors.text)
+                }
+                IconButton(onClick = {
+                    val a = currentArticle ?: return@IconButton
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(a.url)))
+                }) {
+                    Icon(Icons.Filled.OpenInBrowser, contentDescription = "Άνοιγμα στον browser", tint = colors.text)
+                }
+                if (mediaCount > 0) {
+                    IconButton(onClick = { onOpenMedia(currentId, 0) }) {
+                        Icon(Icons.Filled.PermMedia, contentDescription = "Media ($mediaCount)", tint = colors.text)
                     }
                 }
             }
