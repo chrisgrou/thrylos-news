@@ -18,6 +18,8 @@ data class SourceWithPlugin(
     val isBundled: Boolean,
     val plugin: SourcePlugin?,
     val pluginJson: String,
+    val lastSyncError: String?,
+    val lastSyncAt: Long?,
 )
 
 @Singleton
@@ -53,6 +55,11 @@ class SourceRepository @Inject constructor(
     }
 
     suspend fun setEnabled(id: String, enabled: Boolean) = dao.setEnabled(id, enabled)
+
+    /** Called by SyncWorker after every per-source sync attempt — error is the
+     *  exception message on failure, or null on success — so a broken source is
+     *  visible in Settings instead of only ever failing silently. */
+    suspend fun recordSyncResult(id: String, error: String?) = dao.setSyncStatus(id, error, System.currentTimeMillis())
 
     suspend fun reorder(idsInOrder: List<String>) {
         idsInOrder.forEachIndexed { index, id -> dao.setSortOrder(id, index) }
@@ -90,6 +97,8 @@ class SourceRepository @Inject constructor(
             isBundled = entity.isBundled,
             plugin = parsed,
             pluginJson = entity.pluginJson,
+            lastSyncError = entity.lastSyncError,
+            lastSyncAt = entity.lastSyncAt,
         )
     }
 }

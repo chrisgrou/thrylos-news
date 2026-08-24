@@ -13,7 +13,7 @@ import gr.thrylos.news.data.db.entity.UpdateHistoryEntity
 
 @Database(
     entities = [ArticleEntity::class, SourceEntity::class, FilterRuleEntity::class, UpdateHistoryEntity::class],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

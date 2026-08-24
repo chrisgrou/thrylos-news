@@ -13,4 +13,10 @@ data class SourceEntity(
     val enabled: Boolean = true,
     val sortOrder: Int = 0,
     val isBundled: Boolean = false,
+    /** Set after every sync attempt for this source — null on success, the exception
+     *  message on failure — so a broken source is visible in the UI instead of only
+     *  ever failing silently (SyncWorker swallows per-source exceptions to keep one
+     *  bad source from failing the whole sync run). */
+    val lastSyncError: String? = null,
+    val lastSyncAt: Long? = null,
 )

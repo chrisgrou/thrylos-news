@@ -39,6 +39,9 @@ interface SourceDao {
     @Query("UPDATE sources SET sortOrder = :sortOrder WHERE id = :id")
     suspend fun setSortOrder(id: String, sortOrder: Int)
 
+    @Query("UPDATE sources SET lastSyncError = :error, lastSyncAt = :syncedAt WHERE id = :id")
+    suspend fun setSyncStatus(id: String, error: String?, syncedAt: Long)
+
     @Delete
     suspend fun delete(source: SourceEntity)
 }

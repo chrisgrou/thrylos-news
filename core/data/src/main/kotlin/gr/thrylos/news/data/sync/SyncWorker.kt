@@ -58,7 +58,10 @@ class SyncWorker @AssistedInject constructor(
             plugins.map { plugin ->
                 async {
                     semaphore.withPermit {
-                        runCatching { syncOneSource(plugin, filters) }.getOrElse { emptyList() }
+                        runCatching { syncOneSource(plugin, filters) }
+                            .onSuccess { sourceRepository.recordSyncResult(plugin.id, error = null) }
+                            .onFailure { e -> sourceRepository.recordSyncResult(plugin.id, error = e.message ?: e.toString()) }
+                            .getOrElse { emptyList() }
                     }
                 }
             }.flatMap { it.await() }

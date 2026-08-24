@@ -22,6 +22,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -65,8 +66,13 @@ fun SourcesScreen(
                     if (group.members.size == 1) onEditSource(group.members.first().id) else showEditMenu = true
                 }
 
+                val syncError = group.members.firstNotNullOfOrNull { it.lastSyncError }
+
                 ListItem(
                     headlineContent = { Text(group.displayName) },
+                    supportingContent = syncError?.let {
+                        { Text("Σφάλμα sync: $it", color = MaterialTheme.colorScheme.error) }
+                    },
                     leadingContent = {
                         Row {
                             IconButton(onClick = { viewModel.moveUp(group.displayName) }) {
