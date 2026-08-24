@@ -15,10 +15,24 @@ class RssDiscovery : ArticleDiscovery {
 
     override fun discover(plugin: SourcePlugin, http: HttpFetcher): List<ArticleStub> {
         val xml = http.fetchText(plugin.discovery.url, plugin.http)
-        val doc = DocumentBuilderFactory.newInstance().apply {
-            isNamespaceAware = false
-            setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
-        }.newDocumentBuilder().parse(ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
+        // A site without RSS typically serves its normal HTML page (or a 404 page)
+        // at the guessed /feed URL. Detect that up front: otherwise the XML parser
+        // fails on the HTML doctype with an error that means nothing to the user.
+        if (looksLikeHtml(xml)) {
+            error(
+                "Το URL δεν επιστρέφει RSS feed αλλά ιστοσελίδα HTML. " +
+                    "Ίσως το site δεν έχει RSS — δοκίμασε discovery.type=\"html-list\".",
+            )
+        }
+
+        val doc = try {
+            DocumentBuilderFactory.newInstance().apply {
+                isNamespaceAware = false
+                setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+            }.newDocumentBuilder().parse(ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
+        } catch (e: Exception) {
+            error("Το URL δεν επιστρέφει έγκυρο RSS/Atom XML (${e.message?.take(120)}).")
+        }
 
         val items = doc.getElementsByTagName("item")
         val entries = doc.getElementsByTagName("entry")
@@ -26,9 +40,15 @@ class RssDiscovery : ArticleDiscovery {
         val stubs = when {
             items.length > 0 -> (0 until items.length).mapNotNull { parseRssItem(items.item(it) as Element, plugin.id) }
             entries.length > 0 -> (0 until entries.length).mapNotNull { parseAtomEntry(entries.item(it) as Element, plugin.id) }
-            else -> emptyList()
+            else -> error("Το feed δεν περιέχει άρθρα (κανένα <item> ή <entry>).")
         }
         return stubs.take(plugin.discovery.maxItems)
+    }
+
+    private fun looksLikeHtml(body: String): Boolean {
+        val head = body.trimStart().take(600).lowercase()
+        if (head.startsWith("<?xml") || head.contains("<rss") || head.contains("<feed")) return false
+        return head.contains("<!doctype html") || head.contains("<html")
     }
 
     private fun Element.child(tag: String): String? =

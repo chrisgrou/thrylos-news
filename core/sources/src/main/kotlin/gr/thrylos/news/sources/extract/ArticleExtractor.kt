@@ -12,9 +12,11 @@ import gr.thrylos.news.sources.util.Ids
 import net.dankito.readability4j.Readability4J
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeParseException
 
 /** Minimum combined paragraph text length below which we consider the plugin's
  * selectors to have failed and fall back to Readability. */
@@ -98,18 +100,31 @@ class ArticleExtractor(private val http: HttpFetcher = HttpFetcher()) {
         )
     }
 
-    private fun parseDate(text: String, pattern: String?): Long? {
-        val candidates = buildList {
-            if (pattern != null) add(DateTimeFormatter.ofPattern(pattern))
+    /**
+     * Parses a published date. Real sites publish dates in three shapes, and all
+     * three show up across the bundled sources, so each is tried in turn:
+     * with an explicit offset ("2026-08-24T18:31:30+03:00"), as a zoneless local
+     * timestamp ("24.08.2026-18:31"), or as a bare date. Zoneless values are
+     * resolved against [zone], since a site's local time is what it means.
+     */
+    private fun parseDate(text: String, pattern: String?, zone: ZoneId = ZoneId.systemDefault()): Long? {
+        val formatters = buildList {
+            if (pattern != null) runCatching { DateTimeFormatter.ofPattern(pattern) }.getOrNull()?.let { add(it) }
             add(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
             add(DateTimeFormatter.RFC_1123_DATE_TIME)
+            add(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+            add(DateTimeFormatter.ISO_LOCAL_DATE)
         }
-        for (fmt in candidates) {
-            try {
-                return OffsetDateTime.parse(text, fmt).toInstant().toEpochMilli()
-            } catch (e: DateTimeParseException) {
-                // try next
-            }
+        for (fmt in formatters) {
+            val parsed = runCatching { fmt.parse(text) }.getOrNull() ?: continue
+            // Narrow from the most specific interpretation to the least, so a value
+            // that really does carry an offset never gets re-interpreted as local.
+            runCatching { OffsetDateTime.from(parsed).toInstant().toEpochMilli() }
+                .getOrNull()?.let { return it }
+            runCatching { LocalDateTime.from(parsed).atZone(zone).toInstant().toEpochMilli() }
+                .getOrNull()?.let { return it }
+            runCatching { LocalDate.from(parsed).atStartOfDay(zone).toInstant().toEpochMilli() }
+                .getOrNull()?.let { return it }
         }
         return null
     }
