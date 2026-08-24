@@ -68,7 +68,8 @@ fun SyncSettingsScreen(
                     )
                 }
             }
-            if (sync.refreshInterval.minutes != null && sync.refreshInterval.minutes < 15) {
+            val refreshMinutes = sync.refreshInterval.minutes
+            if (refreshMinutes != null && refreshMinutes < 15) {
                 Text(
                     "Διαστήματα κάτω των 15′ χρησιμοποιούν συναγερμό συστήματος αντί για το WorkManager· το Android μπορεί να καθυστερήσει την ανανέωση όταν η συσκευή είναι σε αδράνεια.",
                     style = MaterialTheme.typography.bodySmall,
