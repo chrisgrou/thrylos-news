@@ -278,6 +278,7 @@ private fun labelFor(field: FilterField) = when (field) {
 
 private fun labelFor(match: FilterMatch) = when (match) {
     FilterMatch.CONTAINS -> "περιέχει"
+    FilterMatch.NOT_CONTAINS -> "δεν περιέχει"
     FilterMatch.REGEX -> "regex"
     FilterMatch.EXACT -> "ακριβώς"
 }

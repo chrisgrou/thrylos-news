@@ -46,6 +46,38 @@ class FilterEngineTest {
     }
 
     @Test
+    fun `not-contains rule matches when the value is absent`() {
+        val rule = FilterRule("r5b", FilterField.AUTHOR, FilterMatch.NOT_CONTAINS, "Παπαδόπουλος")
+        assertTrue(FilterEngine.matches(rule, article))
+    }
+
+    @Test
+    fun `not-contains rule does not match when the value is present`() {
+        val rule = FilterRule("r5c", FilterField.AUTHOR, FilterMatch.NOT_CONTAINS, "Ιωάννου")
+        assertFalse(FilterEngine.matches(rule, article))
+    }
+
+    @Test
+    fun `combining source with author not-contains hides only that source's other authors`() {
+        val rule = FilterRule(
+            id = "r5d",
+            conditions = listOf(
+                FilterCondition(FilterField.SOURCE, FilterMatch.EXACT, "Gazzetta"),
+                FilterCondition(FilterField.AUTHOR, FilterMatch.NOT_CONTAINS, "Ιωάννου"),
+            ),
+            combinator = FilterCombinator.AND,
+            action = FilterAction.HIDE,
+        )
+        assertFalse(FilterEngine.isHidden(article, listOf(rule))) // same source, matching author -> stays visible
+
+        val otherAuthor = article.copy(author = "Κ. Παπαδόπουλος")
+        assertTrue(FilterEngine.isHidden(otherAuthor, listOf(rule))) // same source, different author -> hidden
+
+        val otherSource = article.copy(sourceName = "Sportdog", author = "Κ. Παπαδόπουλος")
+        assertFalse(FilterEngine.isHidden(otherSource, listOf(rule))) // different source -> unaffected
+    }
+
+    @Test
     fun `regex rule matches`() {
         val rule = FilterRule("r5", FilterField.TITLE, FilterMatch.REGEX, "στοίχημ\\w+")
         assertTrue(FilterEngine.matches(rule, article))

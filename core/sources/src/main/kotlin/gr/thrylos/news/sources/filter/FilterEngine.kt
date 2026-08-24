@@ -88,6 +88,11 @@ object FilterEngine {
                 val v = if (condition.caseSensitive) normalizedValue else normalizedValue.lowercase()
                 h.contains(v)
             }
+            FilterMatch.NOT_CONTAINS -> {
+                val h = if (condition.caseSensitive) normalizedHaystack else normalizedHaystack.lowercase()
+                val v = if (condition.caseSensitive) normalizedValue else normalizedValue.lowercase()
+                !h.contains(v)
+            }
             FilterMatch.EXACT -> {
                 if (condition.caseSensitive) normalizedHaystack == normalizedValue else normalizedHaystack.equals(normalizedValue, ignoreCase = true)
             }
