@@ -35,6 +35,9 @@ class NotificationHelper @Inject constructor(
     fun notifyNewArticles(articles: List<Article>, groupIntoSummary: Boolean) {
         if (articles.isEmpty()) return
         val manager = NotificationManagerCompat.from(context)
+        // The user may not have granted POST_NOTIFICATIONS (API 33+) or may have
+        // disabled notifications for the app entirely — both are covered by this check.
+        if (!manager.areNotificationsEnabled()) return
 
         articles.take(10).forEach { article ->
             val notification = NotificationCompat.Builder(context, CHANNEL_ID)
