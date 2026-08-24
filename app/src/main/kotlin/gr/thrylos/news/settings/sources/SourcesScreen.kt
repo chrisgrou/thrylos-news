@@ -85,7 +85,7 @@ fun SourcesScreen(
                     },
                     trailingContent = {
                         Row {
-                            IconButton(onClick = { onOpenSourceProfile(group.displayName) }) {
+                            IconButton(onClick = { onOpenSourceProfile(group.rawName) }) {
                                 Icon(Icons.Filled.OpenInNew, contentDescription = "Αρχική")
                             }
                             Switch(checked = group.enabled, onCheckedChange = { viewModel.setGroupEnabled(group, it) })

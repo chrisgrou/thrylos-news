@@ -85,6 +85,16 @@ fun SourceProfileScreen(
                 }
             }
 
+            if (visibleArticles.isEmpty()) {
+                Box(Modifier.fillMaxSize().padding(32.dp)) {
+                    Text(
+                        "Δεν υπάρχουν άρθρα ακόμα από αυτή την πηγή.",
+                        modifier = Modifier.align(androidx.compose.ui.Alignment.Center),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             LazyColumn(Modifier.fillMaxSize()) {
                 items(visibleArticles, key = { it.id }) { article ->
                     ListItem(

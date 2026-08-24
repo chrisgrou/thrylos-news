@@ -16,6 +16,7 @@ import javax.inject.Inject
  *  scrapers), in which case they render — and toggle — as a single row. */
 data class SourceGroupRow(
     val displayName: String,
+    val rawName: String,
     val members: List<SourceWithPlugin>,
     val enabled: Boolean,
     val isBundled: Boolean,
@@ -33,6 +34,7 @@ class SourcesViewModel @Inject constructor(
         list.groupBy { it.name }.map { (name, members) ->
             SourceGroupRow(
                 displayName = name.substringBefore(" — ").trim(),
+                rawName = name,
                 members = members,
                 enabled = members.all { it.enabled },
                 isBundled = members.any { it.isBundled },
