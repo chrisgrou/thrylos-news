@@ -8,6 +8,7 @@ import gr.thrylos.news.model.FilterCondition
 import gr.thrylos.news.model.FilterField
 import gr.thrylos.news.model.FilterMatch
 import gr.thrylos.news.model.FilterRule
+import java.text.Normalizer
 
 object FilterEngine {
 
@@ -72,20 +73,28 @@ object FilterEngine {
         FilterCombinator.OR -> results.any { it }
     }
 
+    /** Scraped Greek text can arrive as precomposed or decomposed Unicode (e.g. "ά" as
+     *  one codepoint vs. "α" + a combining accent) depending on the source site, which
+     *  makes String.contains/equals silently fail even though the text looks identical
+     *  on screen. Normalizing both sides to NFC before comparing avoids that. */
+    private fun nfc(text: String): String = Normalizer.normalize(text, Normalizer.Form.NFC)
+
     private fun matchValue(haystack: String, condition: FilterCondition): Boolean {
+        val normalizedHaystack = nfc(haystack)
+        val normalizedValue = nfc(condition.value)
         return when (condition.match) {
             FilterMatch.CONTAINS -> {
-                val h = if (condition.caseSensitive) haystack else haystack.lowercase()
-                val v = if (condition.caseSensitive) condition.value else condition.value.lowercase()
+                val h = if (condition.caseSensitive) normalizedHaystack else normalizedHaystack.lowercase()
+                val v = if (condition.caseSensitive) normalizedValue else normalizedValue.lowercase()
                 h.contains(v)
             }
             FilterMatch.EXACT -> {
-                if (condition.caseSensitive) haystack == condition.value else haystack.equals(condition.value, ignoreCase = true)
+                if (condition.caseSensitive) normalizedHaystack == normalizedValue else normalizedHaystack.equals(normalizedValue, ignoreCase = true)
             }
             FilterMatch.REGEX -> runCatching {
                 val options = if (condition.caseSensitive) emptySet() else setOf(RegexOption.IGNORE_CASE)
                 // (?U) makes \w/\d/\s Unicode-aware so patterns work against Greek text too.
-                Regex("(?U)" + condition.value, options).containsMatchIn(haystack)
+                Regex("(?U)" + normalizedValue, options).containsMatchIn(normalizedHaystack)
             }.getOrDefault(false)
         }
     }
