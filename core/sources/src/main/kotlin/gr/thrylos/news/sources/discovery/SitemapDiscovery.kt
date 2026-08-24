@@ -5,7 +5,6 @@ import gr.thrylos.news.sources.http.HttpFetcher
 import gr.thrylos.news.sources.plugin.SourcePlugin
 import org.w3c.dom.Element
 import java.io.ByteArrayInputStream
-import javax.xml.parsers.DocumentBuilderFactory
 
 /**
  * Parses a `<urlset>` sitemap. Sitemaps carry no title, so the stub title is a
@@ -15,15 +14,7 @@ class SitemapDiscovery : ArticleDiscovery {
 
     override fun discover(plugin: SourcePlugin, http: HttpFetcher): List<ArticleStub> {
         val xml = http.fetchText(plugin.discovery.url, plugin.http)
-        val doc = DocumentBuilderFactory.newInstance().apply {
-            isNamespaceAware = false
-            // Block external entity/DTD resolution (XXE prevention) without rejecting
-            // DOCTYPE outright — see RssDiscovery for why disallow-doctype-decl is too strict.
-            setFeature("http://xml.org/sax/features/external-general-entities", false)
-            setFeature("http://xml.org/sax/features/external-parameter-entities", false)
-            setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
-            isXIncludeAware = false
-        }.newDocumentBuilder().parse(ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
+        val doc = secureDocumentBuilder().parse(ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
 
         val urlNodes = doc.getElementsByTagName("url")
         return (0 until urlNodes.length).mapNotNull { i ->

@@ -8,7 +8,6 @@ import java.io.ByteArrayInputStream
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
-import javax.xml.parsers.DocumentBuilderFactory
 
 /** Parses RSS 2.0 and Atom feeds — the two formats real-world sites actually use. */
 class RssDiscovery : ArticleDiscovery {
@@ -26,16 +25,7 @@ class RssDiscovery : ArticleDiscovery {
         }
 
         val doc = try {
-            DocumentBuilderFactory.newInstance().apply {
-                isNamespaceAware = false
-                // Block external entity/DTD resolution (XXE prevention) without rejecting
-                // DOCTYPE outright — plenty of real WordPress RSS feeds declare one just to
-                // define HTML entities like &nbsp; in an internal DTD subset.
-                setFeature("http://xml.org/sax/features/external-general-entities", false)
-                setFeature("http://xml.org/sax/features/external-parameter-entities", false)
-                setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
-                isXIncludeAware = false
-            }.newDocumentBuilder().parse(ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
+            secureDocumentBuilder().parse(ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
         } catch (e: Exception) {
             error("Το URL δεν επιστρέφει έγκυρο RSS/Atom XML (${e.message?.take(120)}).")
         }
