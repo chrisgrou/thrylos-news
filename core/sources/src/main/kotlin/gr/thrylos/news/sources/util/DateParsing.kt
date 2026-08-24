@@ -5,6 +5,33 @@ import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeFormatterBuilder
+import java.time.format.SignStyle
+import java.time.format.TextStyle
+import java.time.temporal.ChronoField
+import java.util.Locale
+
+/** Real RSS feeds routinely bend the RFC-822 spec [DateTimeFormatter.RFC_1123_DATE_TIME]
+ *  enforces strictly — a single-digit day ("5 Aug" instead of "05 Aug"), a lowercase
+ *  month, or stray extra whitespace are all common and otherwise silently drop the
+ *  published date (falling back to "when we happened to sync" instead). */
+private val LENIENT_RFC_1123 = DateTimeFormatterBuilder()
+    .parseCaseInsensitive()
+    .parseLenient()
+    .optionalStart().appendPattern("EEE,").appendLiteral(' ').optionalEnd()
+    .appendValue(ChronoField.DAY_OF_MONTH, 1, 2, SignStyle.NOT_NEGATIVE)
+    .appendLiteral(' ')
+    .appendText(ChronoField.MONTH_OF_YEAR, TextStyle.SHORT)
+    .appendLiteral(' ')
+    .appendValue(ChronoField.YEAR, 4)
+    .appendLiteral(' ')
+    .appendValue(ChronoField.HOUR_OF_DAY, 2)
+    .appendLiteral(':')
+    .appendValue(ChronoField.MINUTE_OF_HOUR, 2)
+    .optionalStart().appendLiteral(':').appendValue(ChronoField.SECOND_OF_MINUTE, 2).optionalEnd()
+    .appendLiteral(' ')
+    .appendOffset("+HHMM", "GMT")
+    .toFormatter(Locale.ENGLISH)
 
 /**
  * Parses a published-date string. Real sites publish dates in three shapes,
@@ -16,16 +43,18 @@ import java.time.format.DateTimeFormatter
  */
 object DateParsing {
     fun parse(text: String, pattern: String? = null, zone: ZoneId = ZoneId.systemDefault()): Long? {
+        val trimmed = text.trim().replace(Regex("\\s+"), " ")
         val formatters = buildList {
             if (pattern != null) runCatching { DateTimeFormatter.ofPattern(pattern) }.getOrNull()?.let { add(it) }
             add(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
             add(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ"))
             add(DateTimeFormatter.RFC_1123_DATE_TIME)
+            add(LENIENT_RFC_1123)
             add(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
             add(DateTimeFormatter.ISO_LOCAL_DATE)
         }
         for (fmt in formatters) {
-            val parsed = runCatching { fmt.parse(text) }.getOrNull() ?: continue
+            val parsed = runCatching { fmt.parse(trimmed) }.getOrNull() ?: continue
             // Narrow from the most specific interpretation to the least, so a value
             // that really does carry an offset never gets re-interpreted as local.
             runCatching { OffsetDateTime.from(parsed).toInstant().toEpochMilli() }

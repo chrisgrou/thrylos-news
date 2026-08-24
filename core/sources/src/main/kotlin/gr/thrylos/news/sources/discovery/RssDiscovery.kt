@@ -3,11 +3,9 @@ package gr.thrylos.news.sources.discovery
 import gr.thrylos.news.model.ArticleStub
 import gr.thrylos.news.sources.http.HttpFetcher
 import gr.thrylos.news.sources.plugin.SourcePlugin
+import gr.thrylos.news.sources.util.DateParsing
 import org.w3c.dom.Element
 import java.io.ByteArrayInputStream
-import java.time.OffsetDateTime
-import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeParseException
 
 /** Parses RSS 2.0 and Atom feeds — the two formats real-world sites actually use. */
 class RssDiscovery : ArticleDiscovery {
@@ -57,7 +55,7 @@ class RssDiscovery : ArticleDiscovery {
         // blank) and carry the image URL as an attribute, not as element text.
         val image = (item.getElementsByTagName("enclosure").item(0) as? Element)?.getAttribute("url")?.ifBlank { null }
             ?: (item.getElementsByTagName("media:content").item(0) as? Element)?.getAttribute("url")?.ifBlank { null }
-        val published = item.child("pubDate")?.let(::parseRfc822)
+        val published = item.child("pubDate")?.let { DateParsing.parse(it) }
         return ArticleStub(sourceId, link.trim(), title, image?.ifBlank { null }, published)
     }
 
@@ -74,19 +72,7 @@ class RssDiscovery : ArticleDiscovery {
         }
         val link = href ?: return null
         val title = entry.child("title") ?: return null
-        val published = (entry.child("published") ?: entry.child("updated"))?.let(::parseIso8601)
+        val published = (entry.child("published") ?: entry.child("updated"))?.let { DateParsing.parse(it) }
         return ArticleStub(sourceId, link.trim(), title, null, published)
-    }
-
-    private fun parseRfc822(text: String): Long? = try {
-        OffsetDateTime.parse(text, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toEpochMilli()
-    } catch (e: DateTimeParseException) {
-        null
-    }
-
-    private fun parseIso8601(text: String): Long? = try {
-        OffsetDateTime.parse(text).toInstant().toEpochMilli()
-    } catch (e: DateTimeParseException) {
-        null
     }
 }

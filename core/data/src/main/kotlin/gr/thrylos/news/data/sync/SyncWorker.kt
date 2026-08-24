@@ -44,12 +44,6 @@ class SyncWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val syncPrefs = appPreferences.currentSyncPrefs()
-        val now = Calendar.getInstance()
-        val minuteOfDay = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
-        if (syncPrefs.isQuietAt(minuteOfDay)) {
-            appPreferences.recordSyncAttempt("Παράθυρο ησυχίας ενεργό")
-            return@withContext Result.success()
-        }
         if (!NetworkUtil.isOnline(applicationContext)) {
             appPreferences.recordSyncAttempt("Καμία σύνδεση δικτύου")
             return@withContext Result.retry()
@@ -79,9 +73,16 @@ class SyncWorker @AssistedInject constructor(
         appPreferences.recordSyncAttempt("Ολοκληρώθηκε")
         recomputeDedupGroups()
 
+        // Quiet hours mute notifications only — sync itself must keep running, or the
+        // feed simply stops updating (silently, from the user's point of view) for
+        // however long the quiet window lasts.
+        val now = Calendar.getInstance()
+        val minuteOfDay = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+        val isQuiet = syncPrefs.isQuietAt(minuteOfDay)
+
         if (newArticles.isNotEmpty()) {
             val notificationPrefs = appPreferences.currentNotificationPrefs()
-            if (notificationPrefs.enabled) {
+            if (notificationPrefs.enabled && !isQuiet) {
                 val eligible = newArticles.filter { article ->
                     (notificationPrefs.onlySourceIds.isEmpty() || article.sourceId in notificationPrefs.onlySourceIds) &&
                         (notificationPrefs.onlyKeywords.isEmpty() || notificationPrefs.onlyKeywords.any { article.title.contains(it, ignoreCase = true) }) &&
