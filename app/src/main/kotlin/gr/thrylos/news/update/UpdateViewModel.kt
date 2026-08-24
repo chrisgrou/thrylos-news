@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import gr.thrylos.news.BuildConfig
+import gr.thrylos.news.data.repo.UpdateHistoryRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -26,6 +27,7 @@ sealed class UpdateState {
 @HiltViewModel
 class UpdateViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val updateHistoryRepository: UpdateHistoryRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<UpdateState>(UpdateState.Idle)
@@ -58,6 +60,7 @@ class UpdateViewModel @Inject constructor(
                 _state.value = UpdateState.Error(it.message ?: "Αποτυχία λήψης")
                 return@launch
             }
+            updateHistoryRepository.record(info.versionCode, info.releaseNotes.orEmpty())
             UpdateInstaller.launchInstall(context, uri)
             _state.value = UpdateState.Idle
         }

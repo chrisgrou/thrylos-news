@@ -6,7 +6,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 
-data class UpdateInfo(val versionCode: Int, val apkUrl: String, val releaseUrl: String)
+data class UpdateInfo(val versionCode: Int, val apkUrl: String, val releaseUrl: String, val releaseNotes: String?)
 
 /**
  * Checks the repo's "latest" GitHub Release (a fixed tag CI replaces on every push,
@@ -36,6 +36,7 @@ object UpdateChecker {
                 versionCode = remoteVersionCode,
                 apkUrl = asset.optString("browser_download_url"),
                 releaseUrl = json.optString("html_url"),
+                releaseNotes = json.optString("body").trim().ifBlank { null },
             )
         }
     }

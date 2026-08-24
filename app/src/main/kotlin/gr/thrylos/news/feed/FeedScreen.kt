@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -26,7 +27,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -70,6 +70,9 @@ fun FeedScreen(
                 actions = {
                     IconButton(onClick = { viewModel.markAllRead() }) {
                         Icon(Icons.Filled.DoneAll, contentDescription = "Μαρκάρισμα όλων ως διαβασμένα")
+                    }
+                    if (state.pageCount > 1) {
+                        CompactPager(state = state, onSetPage = viewModel::setPage)
                     }
                     IconButton(onClick = { showMenu = true }) {
                         Icon(Icons.Filled.MoreVert, contentDescription = "Μενού")
@@ -115,22 +118,17 @@ fun FeedScreen(
                     val listState = rememberLazyListState()
                     LaunchedEffect(state.page) { listState.scrollToItem(0) }
 
-                    Column(Modifier.weight(1f)) {
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            items(state.items, key = { it.article.id }) { item ->
-                                ArticleCard(item = item, onClick = {
-                                    viewModel.openArticle(item.article.id)
-                                    onOpenArticle(item.article.id)
-                                })
-                            }
-                        }
-                        if (state.pageCount > 1) {
-                            PageBar(state = state, onSetPage = viewModel::setPage)
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        items(state.items, key = { it.article.id }) { item ->
+                            ArticleCard(item = item, onClick = {
+                                viewModel.openArticle(item.article.id)
+                                onOpenArticle(item.article.id)
+                            })
                         }
                     }
                 }
@@ -172,23 +170,24 @@ private fun FeedFilterBar(state: FeedUiState, onOpenSourcePicker: () -> Unit, on
 }
 
 @Composable
-private fun PageBar(state: FeedUiState, onSetPage: (Int) -> Unit) {
-    HorizontalDivider()
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(onClick = { onSetPage(state.page - 1) }, enabled = state.page > 0) {
+private fun CompactPager(state: FeedUiState, onSetPage: (Int) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(
+            onClick = { onSetPage(state.page - 1) },
+            enabled = state.page > 0,
+            modifier = Modifier.size(32.dp),
+        ) {
             Icon(Icons.Filled.ChevronLeft, contentDescription = "Προηγούμενη σελίδα")
         }
         Text(
-            "Σελίδα ${state.page + 1} από ${state.pageCount}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 8.dp),
+            "${state.page + 1}/${state.pageCount}",
+            style = MaterialTheme.typography.labelLarge,
         )
-        IconButton(onClick = { onSetPage(state.page + 1) }, enabled = state.page < state.pageCount - 1) {
+        IconButton(
+            onClick = { onSetPage(state.page + 1) },
+            enabled = state.page < state.pageCount - 1,
+            modifier = Modifier.size(32.dp),
+        ) {
             Icon(Icons.Filled.ChevronRight, contentDescription = "Επόμενη σελίδα")
         }
     }

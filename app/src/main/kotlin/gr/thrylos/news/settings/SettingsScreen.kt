@@ -38,6 +38,7 @@ fun SettingsScreen(
     onOpenFilters: () -> Unit,
     onOpenSync: () -> Unit,
     onOpenBackup: () -> Unit,
+    onOpenUpdateHistory: () -> Unit,
     updateViewModel: UpdateViewModel = hiltViewModel(),
 ) {
     val updateState by updateViewModel.state.collectAsStateWithLifecycle()
@@ -61,6 +62,7 @@ fun SettingsScreen(
                 onClick = updateViewModel::checkForUpdate,
                 showChevron = false,
             )
+            SettingsRow("Ιστορικό ενημερώσεων", "Τι άλλαξε σε κάθε προηγούμενη έκδοση", onOpenUpdateHistory)
         }
     }
 
@@ -68,7 +70,19 @@ fun SettingsScreen(
         is UpdateState.Available -> AlertDialog(
             onDismissRequest = updateViewModel::dismiss,
             title = { Text("Νέα έκδοση διαθέσιμη") },
-            text = { Text("Βρέθηκε νέα έκδοση (build ${s.info.versionCode}). Λήψη και εγκατάσταση;") },
+            text = {
+                Column {
+                    Text("Βρέθηκε νέα έκδοση (build ${s.info.versionCode}). Λήψη και εγκατάσταση;")
+                    if (!s.info.releaseNotes.isNullOrBlank()) {
+                        Text(
+                            "Τι άλλαξε:",
+                            style = androidx.compose.material3.MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
+                        )
+                        Text(s.info.releaseNotes)
+                    }
+                }
+            },
             confirmButton = { TextButton(onClick = { updateViewModel.downloadAndInstall(s.info) }) { Text("Λήψη & εγκατάσταση") } },
             dismissButton = { TextButton(onClick = updateViewModel::dismiss) { Text("Άκυρο") } },
         )

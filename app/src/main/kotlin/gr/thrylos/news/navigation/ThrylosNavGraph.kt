@@ -20,6 +20,7 @@ import gr.thrylos.news.settings.filters.FiltersScreen
 import gr.thrylos.news.settings.sources.SourceEditorScreen
 import gr.thrylos.news.settings.sources.SourcesScreen
 import gr.thrylos.news.settings.sync.SyncSettingsScreen
+import gr.thrylos.news.update.UpdateHistoryScreen
 
 @Composable
 fun ThrylosNavGraph() {
@@ -86,6 +87,7 @@ fun ThrylosNavGraph() {
                 onOpenFilters = { navController.navigate(Routes.SETTINGS_FILTERS) },
                 onOpenSync = { navController.navigate(Routes.SETTINGS_SYNC) },
                 onOpenBackup = { navController.navigate(Routes.SETTINGS_BACKUP) },
+                onOpenUpdateHistory = { navController.navigate(Routes.SETTINGS_UPDATE_HISTORY) },
             )
         }
         composable(Routes.SETTINGS_SOURCES) {
@@ -110,6 +112,9 @@ fun ThrylosNavGraph() {
         }
         composable(Routes.SETTINGS_BACKUP) {
             BackupScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.SETTINGS_UPDATE_HISTORY) {
+            UpdateHistoryScreen(onBack = { navController.popBackStack() })
         }
     }
 }
