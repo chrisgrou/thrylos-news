@@ -17,6 +17,8 @@ class ArticleRepository @Inject constructor(
 
     suspend fun getById(id: String): Article? = dao.getById(id)?.let(ArticleMapper::toDomain)
 
+    fun observeById(id: String): Flow<Article?> = dao.observeById(id).map { it?.let(ArticleMapper::toDomain) }
+
     suspend fun existingCanonicalUrls(sourceId: String): Set<String> = dao.existingUrls(sourceId).toSet()
 
     suspend fun upsertAll(articles: List<Article>) = dao.upsertAll(articles.map(ArticleMapper::toEntity))

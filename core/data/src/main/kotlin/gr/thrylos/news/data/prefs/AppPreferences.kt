@@ -1,6 +1,7 @@
 package gr.thrylos.news.data.prefs
 
 import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -52,7 +53,7 @@ private data class NotificationPrefsDto(
 
 @Singleton
 class AppPreferences @Inject constructor(
-    private val context: Context,
+    @ApplicationContext private val context: Context,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 

@@ -1,0 +1,107 @@
+package gr.thrylos.news.settings.filters
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import gr.thrylos.news.model.FilterAction
+import gr.thrylos.news.model.FilterField
+import gr.thrylos.news.model.FilterMatch
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FiltersScreen(
+    onBack: () -> Unit,
+    viewModel: FiltersViewModel = hiltViewModel(),
+) {
+    val rows by viewModel.rows.collectAsStateWithLifecycle()
+    var showEditor by remember { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Φίλτρα") },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Πίσω") } },
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { showEditor = true }) { Icon(Icons.Filled.Add, contentDescription = "Νέος κανόνας") }
+        },
+    ) { padding ->
+        if (rows.isEmpty()) {
+            Column(Modifier.fillMaxSize().padding(padding).padding(24.dp)) {
+                Text("Δεν έχεις κανόνες φίλτρων ακόμα. Πρόσθεσε έναν για να κρύβεις άρθρα με συγκεκριμένες λέξεις-κλειδιά, συντάκτη ή πηγή.")
+            }
+        } else {
+            LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp)) {
+                items(rows, key = { it.rule.id }) { row ->
+                    Card(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
+                        Row(
+                            Modifier.padding(14.dp).fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Column {
+                                Text("${labelFor(row.rule.field)} ${labelFor(row.rule.match)} \"${row.rule.value}\"", style = MaterialTheme.typography.titleSmall)
+                                Text(
+                                    "→ κρύβει ${row.hiddenCount} άρθρα αυτή τη στιγμή" + (row.rule.scopeSourceId?.let { " · μόνο στην πηγή $it" } ?: ""),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            IconButton(onClick = { viewModel.delete(row.rule) }) {
+                                Icon(Icons.Filled.Delete, contentDescription = "Διαγραφή")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showEditor) {
+        ModalBottomSheet(onDismissRequest = { showEditor = false }) {
+            FilterEditor(onSave = { rule -> viewModel.save(rule); showEditor = false })
+        }
+    }
+}
+
+private fun labelFor(field: FilterField) = when (field) {
+    FilterField.TITLE -> "Τίτλος"
+    FilterField.BODY -> "Κείμενο"
+    FilterField.AUTHOR -> "Συντάκτης"
+    FilterField.URL -> "URL"
+    FilterField.SOURCE -> "Πηγή"
+}
+
+private fun labelFor(match: FilterMatch) = when (match) {
+    FilterMatch.CONTAINS -> "περιέχει"
+    FilterMatch.REGEX -> "ταιριάζει με regex"
+    FilterMatch.EXACT -> "είναι ακριβώς"
+}

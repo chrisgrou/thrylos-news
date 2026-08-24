@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "sportfm-olympiacos",
+  "name": "Sport-FM — Ολυμπιακός",
+  "homepage": "https://www.sport-fm.gr/tag/olympiakos",
+  "enabled": true,
+  "discovery": {
+    "type": "rss",
+    "url": "https://www.sport-fm.gr/tag/olympiakos/feed/",
+    "maxItems": 30
+  },
+  "article": {
+    "title": "h1.entry-title, h1.post-title, article h1, h1",
+    "author": ".author-name, .post-author, .entry-author, [rel=author], .byline",
+    "date": "time@datetime, time.published@datetime",
+    "leadImage": "figure.post-thumbnail img@src, .featured-image img@src, article img@src",
+    "content": "div.entry-content, div.post-content, div.article-content, article .content, article",
+    "remove": [
+      ".ad", ".ads", ".adsbygoogle", ".related", ".related-posts", ".read-also",
+      ".newsletter", ".social-share", ".share-buttons", ".author-box", ".tags",
+      ".comments", "#comments", "aside", "nav", "iframe", "script", "style"
+    ]
+  },
+  "urlRules": {
+    "stripQueryParams": ["utm_source", "utm_medium", "utm_campaign", "fbclid"]
+  },
+  "http": { "userAgent": "default", "delayMs": 400 },
+  "fallback": "readability"
+}

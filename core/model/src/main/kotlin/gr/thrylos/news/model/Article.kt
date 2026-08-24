@@ -1,8 +1,11 @@
 package gr.thrylos.news.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * A fully extracted article, ready to be persisted and rendered by the reader.
  */
+@Serializable
 data class Article(
     val id: String,
     val sourceId: String,

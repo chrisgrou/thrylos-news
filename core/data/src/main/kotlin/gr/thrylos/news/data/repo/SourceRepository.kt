@@ -26,6 +26,8 @@ class SourceRepository @Inject constructor(
 ) {
     fun observeAll(): Flow<List<SourceWithPlugin>> = dao.observeAll().map { list -> list.map(::toDomain) }
 
+    suspend fun getById(id: String): SourceWithPlugin? = dao.getById(id)?.let(::toDomain)
+
     suspend fun getEnabledPlugins(): List<SourcePlugin> =
         dao.getEnabled().mapNotNull { entity -> (PluginParser.parse(entity.pluginJson) as? PluginParseResult.Success)?.plugin }
 

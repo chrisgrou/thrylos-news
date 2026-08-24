@@ -1,0 +1,140 @@
+package gr.thrylos.news.feed
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmarks
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FeedScreen(
+    onOpenArticle: (String) -> Unit,
+    onOpenBookmarks: () -> Unit,
+    onOpenSettings: () -> Unit,
+    viewModel: FeedViewModel = hiltViewModel(),
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var refreshing by remember { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Thrylos News") },
+                actions = {
+                    IconButton(onClick = { viewModel.refresh() }) {
+                        Icon(Icons.Filled.Refresh, contentDescription = "Ανανέωση")
+                    }
+                },
+            )
+        },
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = true,
+                    onClick = {},
+                    icon = { Icon(Icons.Filled.Home, contentDescription = null) },
+                    label = { Text("Ροή") },
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = onOpenBookmarks,
+                    icon = { Icon(Icons.Filled.Bookmarks, contentDescription = null) },
+                    label = { Text("Bookmarks") },
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = onOpenSettings,
+                    icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                    label = { Text("Ρυθμίσεις") },
+                )
+            }
+        },
+    ) { padding ->
+        PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = {
+                refreshing = true
+                viewModel.refresh()
+                refreshing = false
+            },
+            modifier = Modifier.fillMaxSize().padding(padding),
+        ) {
+            Column(Modifier.fillMaxSize()) {
+                SourceChipsRow(state, onSelect = viewModel::selectSource, onToggleUnread = viewModel::toggleUnreadOnly)
+
+                if (state.isEmpty) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Δεν υπάρχουν άρθρα ακόμα — τράβηξε για ανανέωση.")
+                    }
+                } else {
+                    LazyColumn(
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        items(state.items, key = { it.article.id }) { item ->
+                            ArticleCard(item = item, onClick = {
+                                viewModel.openArticle(item.article.id)
+                                onOpenArticle(item.article.id)
+                            })
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SourceChipsRow(state: FeedUiState, onSelect: (String?) -> Unit, onToggleUnread: () -> Unit) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item {
+            FilterChip(selected = state.selectedSourceId == null, onClick = { onSelect(null) }, label = { Text("Όλα") })
+        }
+        item {
+            FilterChip(selected = state.unreadOnly, onClick = onToggleUnread, label = { Text("Αδιάβαστα") })
+        }
+        items(state.sources, key = { it.id }) { source ->
+            FilterChip(
+                selected = state.selectedSourceId == source.id,
+                onClick = { onSelect(if (state.selectedSourceId == source.id) null else source.id) },
+                label = { Text(source.name) },
+            )
+        }
+    }
+}

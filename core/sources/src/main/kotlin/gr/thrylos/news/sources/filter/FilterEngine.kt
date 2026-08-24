@@ -33,6 +33,26 @@ object FilterEngine {
         return matchValue(haystack, rule)
     }
 
+    /**
+     * Pre-fetch check used during sync to skip downloading an article body entirely
+     * when a title/source/url rule already hides it. AUTHOR and BODY rules can't be
+     * evaluated yet at this point, so they're deferred to [isHidden] after extraction.
+     */
+    fun matchesStub(rule: FilterRule, title: String, sourceId: String, sourceName: String, url: String): Boolean {
+        if (!rule.enabled) return false
+        if (rule.scopeSourceId != null && rule.scopeSourceId != sourceId) return false
+        val haystack = when (rule.field) {
+            FilterField.TITLE -> title
+            FilterField.SOURCE -> sourceName
+            FilterField.URL -> url
+            FilterField.AUTHOR, FilterField.BODY -> return false
+        }
+        return matchValue(haystack, rule)
+    }
+
+    fun isHiddenStub(title: String, sourceId: String, sourceName: String, url: String, rules: List<FilterRule>): Boolean =
+        rules.any { it.action == FilterAction.HIDE && matchesStub(it, title, sourceId, sourceName, url) }
+
     private fun matchValue(haystack: String, rule: FilterRule): Boolean {
         return when (rule.match) {
             FilterMatch.CONTAINS -> {

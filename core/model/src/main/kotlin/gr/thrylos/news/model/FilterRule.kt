@@ -1,7 +1,14 @@
 package gr.thrylos.news.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class FilterField { TITLE, BODY, AUTHOR, URL, SOURCE }
+
+@Serializable
 enum class FilterMatch { CONTAINS, REGEX, EXACT }
+
+@Serializable
 enum class FilterAction { HIDE, HIGHLIGHT }
 
 /**
@@ -9,6 +16,7 @@ enum class FilterAction { HIDE, HIGHLIGHT }
  * article whose title contains 'στοίχημα'". Applied both during sync (so
  * notifications never fire for hidden articles) and at query time in the feed.
  */
+@Serializable
 data class FilterRule(
     val id: String,
     val field: FilterField,

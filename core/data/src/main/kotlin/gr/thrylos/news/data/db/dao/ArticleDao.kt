@@ -20,6 +20,9 @@ interface ArticleDao {
     @Query("SELECT * FROM articles WHERE id = :id")
     suspend fun getById(id: String): ArticleEntity?
 
+    @Query("SELECT * FROM articles WHERE id = :id")
+    fun observeById(id: String): Flow<ArticleEntity?>
+
     @Query("SELECT url FROM articles WHERE sourceId = :sourceId")
     suspend fun existingUrls(sourceId: String): List<String>
 
