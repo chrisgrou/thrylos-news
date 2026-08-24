@@ -65,6 +65,8 @@ class ReaderViewModel @Inject constructor(
 
     fun articlesForSource(sourceId: String): Flow<List<Article>> = articleRepository.observeBySource(sourceId)
 
+    fun articlesForAuthor(author: String): Flow<List<Article>> = articleRepository.observeByAuthor(author)
+
     fun isSourceImportant(sourceId: String): Flow<Boolean> = filterRepository.observeAll()
         .map { rules -> rules.any { it.id == SOURCE_IMPORTANT_PREFIX + sourceId && it.enabled } }
 

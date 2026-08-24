@@ -74,6 +74,7 @@ fun ReaderScreen(
     val pagerState = rememberPagerState(initialPage = viewModel.startIndex) { viewModel.idList.size }
     var showSettings by remember { mutableStateOf(false) }
     var showSourceSheet by remember { mutableStateOf(false) }
+    var authorSheetFor by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
 
     val currentId = viewModel.idList.getOrElse(pagerState.currentPage) { viewModel.idList.first() }
@@ -139,7 +140,12 @@ fun ReaderScreen(
                             )
                             val author = a.author
                             if (author != null) {
-                                Text(author, color = colors.secondaryText, modifier = Modifier.padding(top = 10.dp, bottom = 16.dp))
+                                Text(
+                                    author,
+                                    color = colors.secondaryText,
+                                    textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline,
+                                    modifier = Modifier.padding(top = 10.dp, bottom = 16.dp).clickable { authorSheetFor = author },
+                                )
                             } else {
                                 Spacer(Modifier.padding(top = 8.dp))
                             }
@@ -229,6 +235,51 @@ fun ReaderScreen(
                     onBack()
                 },
             )
+        }
+    }
+
+    val author = authorSheetFor
+    if (author != null) {
+        ModalBottomSheet(onDismissRequest = { authorSheetFor = null }) {
+            AuthorBannerSheet(
+                author = author,
+                viewModel = viewModel,
+                onOpenArticle = { id ->
+                    authorSheetFor = null
+                    if (id != currentId) onOpenArticle(id)
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun AuthorBannerSheet(
+    author: String,
+    viewModel: ReaderViewModel,
+    onOpenArticle: (String) -> Unit,
+) {
+    val articles by viewModel.articlesForAuthor(author).collectAsStateWithLifecycle(initialValue = emptyList())
+
+    Column(Modifier.fillMaxWidth().fillMaxHeight(0.66f).padding(16.dp)) {
+        Text(author, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 4.dp))
+        Text(
+            "Άρθρα από αυτόν τον συντάκτη",
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
+        )
+        LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
+            itemsIndexed(articles) { _, article ->
+                Column(
+                    Modifier.fillMaxWidth().clickable {
+                        viewModel.setCursorContext(articles.map { it.id })
+                        onOpenArticle(article.id)
+                    }.padding(vertical = 10.dp),
+                ) {
+                    Text(article.sourceName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(article.title, maxLines = 2)
+                }
+            }
         }
     }
 }
