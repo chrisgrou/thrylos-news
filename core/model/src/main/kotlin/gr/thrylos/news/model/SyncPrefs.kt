@@ -10,4 +10,18 @@ data class SyncPrefs(
     val offlineRetentionDays: Int = 14,
     val offlineMaxArticles: Int = 500,
     val prefetchImagesForOffline: Boolean = true,
-)
+    val quietHoursEnabled: Boolean = false,
+    /** Minute-of-day (0..1439), local time. */
+    val quietHoursStartMinute: Int = 23 * 60,
+    val quietHoursEndMinute: Int = 7 * 60,
+) {
+    /** Handles overnight windows where start > end (e.g. 23:00 → 07:00). */
+    fun isQuietAt(minuteOfDay: Int): Boolean {
+        if (!quietHoursEnabled) return false
+        return if (quietHoursStartMinute <= quietHoursEndMinute) {
+            minuteOfDay in quietHoursStartMinute until quietHoursEndMinute
+        } else {
+            minuteOfDay >= quietHoursStartMinute || minuteOfDay < quietHoursEndMinute
+        }
+    }
+}

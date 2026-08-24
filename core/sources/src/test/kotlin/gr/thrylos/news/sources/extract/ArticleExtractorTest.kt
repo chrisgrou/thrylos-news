@@ -68,6 +68,7 @@ class ArticleExtractorTest {
                 is ContentBlock.Quote -> block.text
                 is ContentBlock.ListBlock -> block.items.joinToString(" ")
                 is ContentBlock.Image -> ""
+                is ContentBlock.Video -> ""
             }
         }
         assertFalse(fullText.contains("Διαβάστε επίσης"))

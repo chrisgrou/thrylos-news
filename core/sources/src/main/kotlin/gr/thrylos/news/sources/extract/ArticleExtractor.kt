@@ -47,6 +47,7 @@ class ArticleExtractor(private val http: HttpFetcher = HttpFetcher()) {
                 is gr.thrylos.news.model.ContentBlock.Quote -> block.text.length
                 is gr.thrylos.news.model.ContentBlock.ListBlock -> block.items.sumOf { it.length }
                 is gr.thrylos.news.model.ContentBlock.Image -> 0
+                is gr.thrylos.news.model.ContentBlock.Video -> 0
             }
         }
 

@@ -2,4 +2,23 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <application>
+        <!-- Fires the AlarmManager-based auto-refresh for intervals shorter than
+             WorkManager's 15-minute platform floor (see SyncScheduler). -->
+        <receiver
+            android:name=".sync.SyncAlarmReceiver"
+            android:exported="false" />
+
+        <!-- AlarmManager alarms don't survive reboot, so re-arm the schedule on boot. -->
+        <receiver
+            android:name=".sync.BootReceiver"
+            android:exported="true"
+            android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+    </application>
 </manifest>

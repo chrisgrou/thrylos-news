@@ -24,8 +24,8 @@ data class BackupSource(val pluginJson: String, val enabled: Boolean, val sortOr
 
 @Serializable
 data class BackupFilter(
-    val id: String, val field: String, val match: String, val value: String,
-    val caseSensitive: Boolean, val action: String, val scopeSourceId: String?, val enabled: Boolean,
+    val id: String, val conditionsJson: String, val combinator: String,
+    val action: String, val scopeSourceId: String?, val enabled: Boolean,
 )
 
 @Serializable
@@ -64,7 +64,7 @@ class BackupManager @Inject constructor(
             BackupSource(it.pluginJson, it.enabled, it.sortOrder, it.isBundled)
         }
         val filters = filterDao.observeAll().first().map {
-            BackupFilter(it.id, it.field, it.match, it.value, it.caseSensitive, it.action, it.scopeSourceId, it.enabled)
+            BackupFilter(it.id, it.conditionsJson, it.combinator, it.action, it.scopeSourceId, it.enabled)
         }
         val bookmarks = articleDao.observeBookmarked().first().map(gr.thrylos.news.data.repo.ArticleMapper::toDomain)
 
@@ -107,7 +107,7 @@ class BackupManager @Inject constructor(
         }
 
         bundle.filters.forEach { f ->
-            filterDao.upsert(FilterRuleEntity(f.id, f.field, f.match, f.value, f.caseSensitive, f.action, f.scopeSourceId, f.enabled))
+            filterDao.upsert(FilterRuleEntity(f.id, f.conditionsJson, f.combinator, f.action, f.scopeSourceId, f.enabled))
         }
 
         bundle.bookmarkedArticles.forEach { article ->

@@ -9,6 +9,7 @@ import androidx.navigation.navArgument
 import gr.thrylos.news.feed.BookmarksScreen
 import gr.thrylos.news.feed.FeedScreen
 import gr.thrylos.news.reader.ReaderScreen
+import gr.thrylos.news.reader.media.MediaViewerScreen
 import gr.thrylos.news.settings.SettingsScreen
 import gr.thrylos.news.settings.backup.BackupScreen
 import gr.thrylos.news.settings.filters.FiltersScreen
@@ -38,7 +39,20 @@ fun ThrylosNavGraph() {
             Routes.READER,
             arguments = listOf(navArgument("articleId") { type = NavType.StringType }),
         ) {
-            ReaderScreen(onBack = { navController.popBackStack() })
+            ReaderScreen(
+                onBack = { navController.popBackStack() },
+                onOpenMedia = { articleId, index -> navController.navigate(Routes.mediaViewer(articleId, index)) },
+                onOpenArticle = { articleId -> navController.navigate(Routes.reader(articleId)) },
+            )
+        }
+        composable(
+            Routes.MEDIA_VIEWER,
+            arguments = listOf(
+                navArgument("articleId") { type = NavType.StringType },
+                navArgument("index") { type = NavType.StringType },
+            ),
+        ) {
+            MediaViewerScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.SETTINGS) {
             SettingsScreen(

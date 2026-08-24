@@ -3,6 +3,8 @@ package gr.thrylos.news.sources.filter
 import gr.thrylos.news.model.Article
 import gr.thrylos.news.model.ContentBlock
 import gr.thrylos.news.model.FilterAction
+import gr.thrylos.news.model.FilterCombinator
+import gr.thrylos.news.model.FilterCondition
 import gr.thrylos.news.model.FilterField
 import gr.thrylos.news.model.FilterMatch
 import gr.thrylos.news.model.FilterRule
@@ -57,5 +59,56 @@ class FilterEngineTest {
 
     private fun assertEqualsInt(expected: Int, actual: Int) {
         org.junit.jupiter.api.Assertions.assertEquals(expected, actual)
+    }
+
+    @Test
+    fun `AND combinator requires every condition to match`() {
+        val rule = FilterRule(
+            id = "r7",
+            conditions = listOf(
+                FilterCondition(FilterField.AUTHOR, FilterMatch.CONTAINS, "Ιωάννου"),
+                FilterCondition(FilterField.TITLE, FilterMatch.CONTAINS, "στοίχημα"),
+            ),
+            combinator = FilterCombinator.AND,
+            action = FilterAction.IMPORTANT,
+        )
+        assertTrue(FilterEngine.matches(rule, article))
+        assertTrue(FilterEngine.isImportant(article, listOf(rule)))
+
+        val onlyOneMatches = rule.copy(
+            conditions = listOf(
+                FilterCondition(FilterField.AUTHOR, FilterMatch.CONTAINS, "Ιωάννου"),
+                FilterCondition(FilterField.TITLE, FilterMatch.CONTAINS, "κάτι που δεν υπάρχει"),
+            ),
+        )
+        assertFalse(FilterEngine.matches(onlyOneMatches, article))
+    }
+
+    @Test
+    fun `OR combinator matches when any condition matches`() {
+        val rule = FilterRule(
+            id = "r8",
+            conditions = listOf(
+                FilterCondition(FilterField.TITLE, FilterMatch.CONTAINS, "κάτι που δεν υπάρχει"),
+                FilterCondition(FilterField.AUTHOR, FilterMatch.CONTAINS, "Ιωάννου"),
+            ),
+            combinator = FilterCombinator.OR,
+            action = FilterAction.IMPORTANT,
+        )
+        assertTrue(FilterEngine.matches(rule, article))
+    }
+
+    @Test
+    fun `matchesStub defers to full check when a condition needs AUTHOR or BODY`() {
+        val rule = FilterRule(
+            id = "r9",
+            conditions = listOf(
+                FilterCondition(FilterField.AUTHOR, FilterMatch.CONTAINS, "Ιωάννου"),
+                FilterCondition(FilterField.TITLE, FilterMatch.CONTAINS, "στοίχημα"),
+            ),
+            action = FilterAction.HIDE,
+        )
+        assertFalse(FilterEngine.matchesStub(rule, article.title, article.sourceId, article.sourceName, article.url))
+        assertTrue(FilterEngine.isHidden(article, listOf(rule)))
     }
 }

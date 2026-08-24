@@ -3,32 +3,41 @@ package gr.thrylos.news.reader
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.OpenInBrowser
+import androidx.compose.material.icons.filled.PermMedia
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,6 +54,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import gr.thrylos.news.model.ContentBlock
+import gr.thrylos.news.reader.media.mediaItems
 import gr.thrylos.news.theme.READER_BASE_HEADING_SP
 import gr.thrylos.news.theme.colorsFor
 import gr.thrylos.news.theme.fontFamilyFor
@@ -54,12 +65,15 @@ import kotlinx.coroutines.delay
 @Composable
 fun ReaderScreen(
     onBack: () -> Unit,
+    onOpenMedia: (articleId: String, index: Int) -> Unit,
+    onOpenArticle: (articleId: String) -> Unit,
     viewModel: ReaderViewModel = hiltViewModel(),
 ) {
     val prefs by viewModel.readerPrefs.collectAsStateWithLifecycle()
     val colors = colorsFor(prefs.theme)
     val pagerState = rememberPagerState(initialPage = viewModel.startIndex) { viewModel.idList.size }
     var showSettings by remember { mutableStateOf(false) }
+    var showSourceSheet by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     val currentId = viewModel.idList.getOrElse(pagerState.currentPage) { viewModel.idList.first() }
@@ -78,7 +92,13 @@ fun ReaderScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Πίσω", tint = colors.text) }
-                Text(currentArticle?.sourceName.orEmpty(), color = colors.secondaryText)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable(enabled = currentArticle != null) { showSourceSheet = true }.padding(horizontal = 4.dp),
+                ) {
+                    Text(currentArticle?.sourceName.orEmpty(), color = colors.secondaryText)
+                    Icon(Icons.Filled.ExpandMore, contentDescription = "Πηγή", tint = colors.secondaryText, modifier = Modifier.padding(start = 2.dp))
+                }
                 Spacer(Modifier)
             }
 
@@ -89,6 +109,19 @@ fun ReaderScreen(
                 if (a == null) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 } else {
+                    val mediaIndexByContentIndex = remember(a.content) {
+                        val map = mutableMapOf<Int, Int>()
+                        var counter = 0
+                        a.content.forEachIndexed { i, block ->
+                            if (block is ContentBlock.Image || block is ContentBlock.Video) {
+                                map[i] = counter
+                                counter++
+                            }
+                        }
+                        map
+                    }
+                    val mediaCount = a.mediaItems().size
+
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(horizontal = (24 + prefs.marginWidth * 12).dp, vertical = 16.dp),
@@ -111,7 +144,30 @@ fun ReaderScreen(
                                 Spacer(Modifier.padding(top = 8.dp))
                             }
                         }
-                        items(a.content) { block -> ContentBlockView(block = block, prefs = prefs, colors = colors) }
+                        itemsIndexed(a.content) { index, block ->
+                            ContentBlockView(
+                                block = block,
+                                prefs = prefs,
+                                colors = colors,
+                                onMediaClick = mediaIndexByContentIndex[index]?.let { mediaIndex -> { onOpenMedia(id, mediaIndex) } },
+                            )
+                        }
+                        if (mediaCount > 0) {
+                            item {
+                                Card(
+                                    onClick = { onOpenMedia(id, 0) },
+                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp),
+                                ) {
+                                    Row(
+                                        Modifier.fillMaxWidth().padding(14.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Icon(Icons.Filled.PermMedia, contentDescription = null)
+                                        Text("Media ($mediaCount)", modifier = Modifier.padding(start = 10.dp))
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -154,6 +210,68 @@ fun ReaderScreen(
     if (showSettings) {
         ModalBottomSheet(onDismissRequest = { showSettings = false }) {
             ReadingSettingsSheet(prefs = prefs, onUpdate = viewModel::updateReaderPrefs)
+        }
+    }
+
+    val sourceArticle = currentArticle
+    if (showSourceSheet && sourceArticle != null) {
+        ModalBottomSheet(onDismissRequest = { showSourceSheet = false }) {
+            SourceBannerSheet(
+                sourceId = sourceArticle.sourceId,
+                sourceName = sourceArticle.sourceName,
+                viewModel = viewModel,
+                onOpenArticle = { id ->
+                    showSourceSheet = false
+                    if (id != currentId) onOpenArticle(id)
+                },
+                onIgnored = {
+                    showSourceSheet = false
+                    onBack()
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun SourceBannerSheet(
+    sourceId: String,
+    sourceName: String,
+    viewModel: ReaderViewModel,
+    onOpenArticle: (String) -> Unit,
+    onIgnored: () -> Unit,
+) {
+    val important by viewModel.isSourceImportant(sourceId).collectAsStateWithLifecycle(initialValue = false)
+    val articles by viewModel.articlesForSource(sourceId).collectAsStateWithLifecycle(initialValue = emptyList())
+
+    Column(Modifier.fillMaxWidth().fillMaxHeight(0.66f).padding(16.dp)) {
+        Text(sourceName, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 12.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedButton(onClick = { viewModel.toggleSourceImportant(sourceId, sourceName) }, modifier = Modifier.weight(1f)) {
+                Icon(Icons.Filled.Star, contentDescription = null, modifier = Modifier.padding(end = 6.dp))
+                Text(if (important) "Αφαίρεση σημαντικού" else "Σημαντική πηγή")
+            }
+            OutlinedButton(onClick = { viewModel.ignoreSource(sourceId); onIgnored() }, modifier = Modifier.weight(1f)) {
+                Icon(Icons.Filled.VisibilityOff, contentDescription = null, modifier = Modifier.padding(end = 6.dp))
+                Text("Αγνόησε")
+            }
+        }
+        Text(
+            "Άρθρα από αυτή την πηγή",
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.padding(top = 20.dp, bottom = 8.dp),
+        )
+        LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
+            itemsIndexed(articles) { _, article ->
+                Text(
+                    article.title,
+                    modifier = Modifier.fillMaxWidth().clickable {
+                        viewModel.setCursorContext(articles.map { it.id })
+                        onOpenArticle(article.id)
+                    }.padding(vertical = 10.dp),
+                    maxLines = 2,
+                )
+            }
         }
     }
 }

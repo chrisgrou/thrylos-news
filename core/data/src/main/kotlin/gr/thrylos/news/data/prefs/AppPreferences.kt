@@ -41,6 +41,9 @@ private data class SyncPrefsDto(
     val offlineRetentionDays: Int = 14,
     val offlineMaxArticles: Int = 500,
     val prefetchImagesForOffline: Boolean = true,
+    val quietHoursEnabled: Boolean = false,
+    val quietHoursStartMinute: Int = 23 * 60,
+    val quietHoursEndMinute: Int = 7 * 60,
 )
 
 @Serializable
@@ -106,8 +109,14 @@ class AppPreferences @Inject constructor(
     private fun ReaderPrefsDto.toDomain() = ReaderPrefs(theme, fontFamily, fontScale, lineHeightScale, marginWidth, textAlign, keepScreenOn)
     private fun ReaderPrefs.toDto() = ReaderPrefsDto(theme, fontFamily, fontScale, lineHeightScale, marginWidth, textAlign, keepScreenOn)
 
-    private fun SyncPrefsDto.toDomain() = SyncPrefs(refreshInterval, syncOnlyOnWifi, downloadImagesOnlyOnWifi, offlineRetentionDays, offlineMaxArticles, prefetchImagesForOffline)
-    private fun SyncPrefs.toDto() = SyncPrefsDto(refreshInterval, syncOnlyOnWifi, downloadImagesOnlyOnWifi, offlineRetentionDays, offlineMaxArticles, prefetchImagesForOffline)
+    private fun SyncPrefsDto.toDomain() = SyncPrefs(
+        refreshInterval, syncOnlyOnWifi, downloadImagesOnlyOnWifi, offlineRetentionDays, offlineMaxArticles,
+        prefetchImagesForOffline, quietHoursEnabled, quietHoursStartMinute, quietHoursEndMinute,
+    )
+    private fun SyncPrefs.toDto() = SyncPrefsDto(
+        refreshInterval, syncOnlyOnWifi, downloadImagesOnlyOnWifi, offlineRetentionDays, offlineMaxArticles,
+        prefetchImagesForOffline, quietHoursEnabled, quietHoursStartMinute, quietHoursEndMinute,
+    )
 
     private fun NotificationPrefsDto.toDomain() = NotificationPrefs(enabled, onlySourceIds, onlyKeywords, groupIntoSummary)
     private fun NotificationPrefs.toDto() = NotificationPrefsDto(enabled, onlySourceIds, onlyKeywords, groupIntoSummary)

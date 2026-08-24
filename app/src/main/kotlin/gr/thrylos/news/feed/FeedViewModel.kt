@@ -17,14 +17,18 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class SourceChip(val id: String, val name: String)
+/** Displayed source "chip". Two plugins sharing the same [name] (e.g. Sportal's
+ *  separate football/basketball scrapers) collapse into a single chip whose
+ *  selection filters by any of [memberSourceIds] — so the feed shows them as
+ *  one unified source even though they're distinct plugins under the hood. */
+data class SourceChip(val name: String, val memberSourceIds: Set<String>)
 
-data class FeedItem(val article: Article, val extraSourceCount: Int)
+data class FeedItem(val article: Article, val extraSourceCount: Int, val isImportant: Boolean = false)
 
 data class FeedUiState(
     val items: List<FeedItem> = emptyList(),
     val sources: List<SourceChip> = emptyList(),
-    val selectedSourceId: String? = null,
+    val selectedSourceName: String? = null,
     val unreadOnly: Boolean = false,
     val isEmpty: Boolean = false,
 )
@@ -38,7 +42,7 @@ class FeedViewModel @Inject constructor(
     private val cursor: ArticleListCursor,
 ) : ViewModel() {
 
-    private val selectedSourceId = MutableStateFlow<String?>(null)
+    private val selectedSourceName = MutableStateFlow<String?>(null)
     private val unreadOnly = MutableStateFlow(false)
 
     private val sourcesFlow = sourceRepository.observeAll()
@@ -48,12 +52,15 @@ class FeedViewModel @Inject constructor(
         articleRepository.observeAll(),
         filterRepository.observeAll(),
         sourcesFlow,
-        selectedSourceId,
+        selectedSourceName,
         unreadOnly,
-    ) { articles, filters, sources, sourceId, onlyUnread ->
+    ) { articles, filters, sources, sourceName, onlyUnread ->
+        val chips = sources.groupBy { it.name }.map { (name, group) -> SourceChip(name, group.map { it.id }.toSet()) }
+        val selectedIds = chips.firstOrNull { it.name == sourceName }?.memberSourceIds
+
         val visible = articles
             .filterNot { FilterEngine.isHidden(it, filters) }
-            .filter { sourceId == null || it.sourceId == sourceId }
+            .filter { selectedIds == null || it.sourceId in selectedIds }
             .filter { !onlyUnread || !it.isRead }
 
         // Collapse dedup groups: an article whose dedupGroupId points at another
@@ -64,13 +71,16 @@ class FeedViewModel @Inject constructor(
         val groupCounts = visible.groupingBy { it.dedupGroupId ?: it.id }.eachCount()
 
         val items = primaries
-            .sortedByDescending { it.publishedAt ?: it.fetchedAt }
-            .map { FeedItem(it, (groupCounts[it.id] ?: 1) - 1) }
+            .sortedWith(
+                compareByDescending<Article> { FilterEngine.isImportant(it, filters) }
+                    .thenByDescending { it.publishedAt ?: it.fetchedAt },
+            )
+            .map { FeedItem(it, (groupCounts[it.id] ?: 1) - 1, FilterEngine.isImportant(it, filters)) }
 
         FeedUiState(
             items = items,
-            sources = sources.map { SourceChip(it.id, it.name) },
-            selectedSourceId = sourceId,
+            sources = chips,
+            selectedSourceName = sourceName,
             unreadOnly = onlyUnread,
             isEmpty = items.isEmpty(),
         )
@@ -78,8 +88,8 @@ class FeedViewModel @Inject constructor(
 
     fun refresh() = syncScheduler.syncNow()
 
-    fun selectSource(id: String?) {
-        selectedSourceId.value = id
+    fun selectSource(name: String?) {
+        selectedSourceName.value = name
     }
 
     fun toggleUnreadOnly() {

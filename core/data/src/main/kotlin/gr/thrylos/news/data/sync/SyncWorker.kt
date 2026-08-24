@@ -22,6 +22,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.Calendar
 
 /** Caps how many new articles are fetched per source per run so one very active
  * source can't starve the others or make a single sync run unbounded. */
@@ -43,6 +44,9 @@ class SyncWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val syncPrefs = appPreferences.currentSyncPrefs()
+        val now = Calendar.getInstance()
+        val minuteOfDay = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+        if (syncPrefs.isQuietAt(minuteOfDay)) return@withContext Result.success()
         if (!NetworkUtil.isOnline(applicationContext)) return@withContext Result.retry()
         if (syncPrefs.syncOnlyOnWifi && !NetworkUtil.isOnWifi(applicationContext)) return@withContext Result.success()
 

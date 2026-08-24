@@ -12,8 +12,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,10 +39,10 @@ fun ArticleCard(item: FeedItem, onClick: () -> Unit) {
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (article.isRead) {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-            } else {
-                MaterialTheme.colorScheme.surface
+            containerColor = when {
+                item.isImportant -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                article.isRead -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                else -> MaterialTheme.colorScheme.surface
             },
         ),
     ) {
@@ -57,6 +60,15 @@ fun ArticleCard(item: FeedItem, onClick: () -> Unit) {
 
             Column(Modifier.padding(start = 11.dp).weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (item.isImportant) {
+                        Icon(
+                            Icons.Filled.Star,
+                            contentDescription = "Σημαντικό",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        androidx.compose.foundation.layout.Spacer(Modifier.width(4.dp))
+                    }
                     if (!article.isRead) {
                         Box(
                             Modifier.size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),

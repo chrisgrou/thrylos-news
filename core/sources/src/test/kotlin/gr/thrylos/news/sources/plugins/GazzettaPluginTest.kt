@@ -77,6 +77,7 @@ class GazzettaPluginTest {
                 is ContentBlock.Quote -> block.text
                 is ContentBlock.ListBlock -> block.items.joinToString(" ")
                 is ContentBlock.Image -> block.caption.orEmpty()
+                is ContentBlock.Video -> block.caption.orEmpty()
             }
         }
         val occurrences = Regex(Regex.escape("Οι ομάδες που έχει παίξει")).findAll(allText).count()

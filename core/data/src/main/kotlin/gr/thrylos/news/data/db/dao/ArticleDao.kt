@@ -17,6 +17,9 @@ interface ArticleDao {
     @Query("SELECT * FROM articles WHERE isBookmarked = 1 ORDER BY COALESCE(publishedAt, fetchedAt) DESC")
     fun observeBookmarked(): Flow<List<ArticleEntity>>
 
+    @Query("SELECT * FROM articles WHERE sourceId = :sourceId ORDER BY COALESCE(publishedAt, fetchedAt) DESC")
+    fun observeBySource(sourceId: String): Flow<List<ArticleEntity>>
+
     @Query("SELECT * FROM articles WHERE id = :id")
     suspend fun getById(id: String): ArticleEntity?
 

@@ -11,7 +11,7 @@ import gr.thrylos.news.data.db.entity.SourceEntity
 
 @Database(
     entities = [ArticleEntity::class, SourceEntity::class, FilterRuleEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -124,15 +124,15 @@ private fun SourceChipsRow(state: FeedUiState, onSelect: (String?) -> Unit, onTo
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
-            FilterChip(selected = state.selectedSourceId == null, onClick = { onSelect(null) }, label = { Text("Όλα") })
+            FilterChip(selected = state.selectedSourceName == null, onClick = { onSelect(null) }, label = { Text("Όλα") })
         }
         item {
             FilterChip(selected = state.unreadOnly, onClick = onToggleUnread, label = { Text("Αδιάβαστα") })
         }
-        items(state.sources, key = { it.id }) { source ->
+        items(state.sources, key = { it.name }) { source ->
             FilterChip(
-                selected = state.selectedSourceId == source.id,
-                onClick = { onSelect(if (state.selectedSourceId == source.id) null else source.id) },
+                selected = state.selectedSourceName == source.name,
+                onClick = { onSelect(if (state.selectedSourceName == source.name) null else source.name) },
                 label = { Text(source.name) },
             )
         }

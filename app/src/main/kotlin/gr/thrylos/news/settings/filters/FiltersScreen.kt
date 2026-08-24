@@ -32,8 +32,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import gr.thrylos.news.model.FilterAction
+import gr.thrylos.news.model.FilterCombinator
+import gr.thrylos.news.model.FilterCondition
 import gr.thrylos.news.model.FilterField
 import gr.thrylos.news.model.FilterMatch
+import gr.thrylos.news.model.FilterRule
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,9 +71,9 @@ fun FiltersScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Column {
-                                Text("${labelFor(row.rule.field)} ${labelFor(row.rule.match)} \"${row.rule.value}\"", style = MaterialTheme.typography.titleSmall)
+                                Text(describe(row.rule), style = MaterialTheme.typography.titleSmall)
                                 Text(
-                                    "→ κρύβει ${row.hiddenCount} άρθρα αυτή τη στιγμή" + (row.rule.scopeSourceId?.let { " · μόνο στην πηγή $it" } ?: ""),
+                                    "→ ${actionVerb(row.rule.action)} ${row.hiddenCount} άρθρα αυτή τη στιγμή" + (row.rule.scopeSourceId?.let { " · μόνο στην πηγή $it" } ?: ""),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -90,6 +93,20 @@ fun FiltersScreen(
             FilterEditor(onSave = { rule -> viewModel.save(rule); showEditor = false })
         }
     }
+}
+
+private fun describe(rule: FilterRule): String {
+    val joiner = if (rule.combinator == FilterCombinator.AND) " ΚΑΙ " else " Ή "
+    return rule.conditions.joinToString(joiner) { describe(it) }
+}
+
+private fun describe(condition: FilterCondition) =
+    "${labelFor(condition.field)} ${labelFor(condition.match)} \"${condition.value}\""
+
+private fun actionVerb(action: FilterAction) = when (action) {
+    FilterAction.HIDE -> "κρύβει"
+    FilterAction.IMPORTANT -> "μαρκάρει ως σημαντικά"
+    FilterAction.HIGHLIGHT -> "επισημαίνει"
 }
 
 private fun labelFor(field: FilterField) = when (field) {

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "sportal-football-olympiacos",
-  "name": "Sportal — Ολυμπιακός (Ποδόσφαιρο)",
+  "name": "Sportal",
   "homepage": "https://www.sportal.gr/podosfairo/olympiakos-554",
   "enabled": true,
   "discovery": {

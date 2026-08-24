@@ -6,10 +6,9 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "filter_rules")
 data class FilterRuleEntity(
     @PrimaryKey val id: String,
-    val field: String,
-    val match: String,
-    val value: String,
-    val caseSensitive: Boolean,
+    /** JSON-encoded List<FilterCondition>. */
+    val conditionsJson: String,
+    val combinator: String,
     val action: String,
     val scopeSourceId: String?,
     val enabled: Boolean,

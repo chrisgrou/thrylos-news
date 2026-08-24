@@ -20,7 +20,11 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
-        Room.databaseBuilder(context, AppDatabase::class.java, "thrylos-news.db").build()
+        Room.databaseBuilder(context, AppDatabase::class.java, "thrylos-news.db")
+            // No user-facing release yet, so a schema bump can just recreate the DB
+            // instead of carrying real migrations for internal test data.
+            .fallbackToDestructiveMigration()
+            .build()
 
     @Provides
     fun provideArticleDao(db: AppDatabase): ArticleDao = db.articleDao()

@@ -25,4 +25,9 @@ sealed class ContentBlock {
 
     @Serializable
     data class ListBlock(val items: List<String>, val ordered: Boolean = false) : ContentBlock()
+
+    /** An embedded video (YouTube/Vimeo/Facebook iframe or a native <video> tag). [url] is
+     *  the playable/embed URL; playback happens externally rather than in-app. */
+    @Serializable
+    data class Video(val url: String, val thumbnailUrl: String? = null, val caption: String? = null) : ContentBlock()
 }
