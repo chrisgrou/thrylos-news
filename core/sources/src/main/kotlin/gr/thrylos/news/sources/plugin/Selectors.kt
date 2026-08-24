@@ -20,7 +20,15 @@ data class ParsedSelector(val css: String, val attr: String?) {
 
 private fun Element.readValue(selector: ParsedSelector): String? {
     val target = if (selector.css.isBlank()) this else selectFirst(selector.css) ?: return null
-    val value = if (selector.attr != null) target.attr(selector.attr) else target.text()
+    // "@ownText" (not a real HTML attribute) reads only the text nodes that are
+    // direct children of the matched element, skipping any descendant elements'
+    // text — needed for markup like <div>Label: <span>...</span> actual value</div>
+    // where a plain .text() would prepend the label's own subtree text too.
+    val value = when {
+        selector.attr == "ownText" -> target.ownText()
+        selector.attr != null -> target.attr(selector.attr)
+        else -> target.text()
+    }
     return value.trim().ifBlank { null }
 }
 

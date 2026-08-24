@@ -30,4 +30,14 @@ class SelectorsTest {
         val doc = Jsoup.parse("<div></div>")
         assertNull(doc.textOf(null))
     }
+
+    @Test
+    fun `at-ownText reads only the matched element's own text, skipping a child element's text`() {
+        // Real-world pattern: a label element followed by the actual value as a
+        // trailing plain-text sibling, e.g. sport-fm.gr's post-meta-date markup.
+        val doc = Jsoup.parse(
+            "<div class='meta'><span class='label'>ΗΜΕΡΟΜΗΝΙΑ:</span> 23/08/2026, 22:12</div>",
+        )
+        assertEquals("23/08/2026, 22:12", doc.textOf(".meta@ownText"))
+    }
 }
