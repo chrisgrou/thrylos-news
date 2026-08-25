@@ -1,6 +1,8 @@
 package gr.thrylos.news.reader
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,9 +19,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign as ComposeTextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -51,7 +60,7 @@ fun ContentBlockView(block: ContentBlock, prefs: ReaderPrefs, colors: ReaderColo
         )
 
         is ContentBlock.Paragraph -> Text(
-            text = block.text,
+            text = linkify(block.text),
             textAlign = align,
             style = TextStyle(
                 fontFamily = fontFamily,
@@ -62,17 +71,29 @@ fun ContentBlockView(block: ContentBlock, prefs: ReaderPrefs, colors: ReaderColo
             modifier = Modifier.padding(bottom = 14.dp),
         )
 
-        is ContentBlock.Quote -> Text(
-            text = "“${block.text}”",
-            style = TextStyle(
-                fontFamily = fontFamily,
-                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                fontSize = bodySize,
-                lineHeight = (READER_BASE_BODY_SP * prefs.fontScale * 1.55f * prefs.lineHeightScale).sp,
-                color = colors.secondaryText,
-            ),
-            modifier = Modifier.padding(bottom = 14.dp, start = 8.dp),
-        )
+        // Framed like a card: covers both an editorial pull-quote and an embedded
+        // social post (Twitter/X, Facebook, Instagram embeds all extract as a plain
+        // <blockquote> today, with no way to tell them apart) — a border reads as
+        // "quoted from elsewhere" either way, instead of blending into body text.
+        is ContentBlock.Quote -> Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 14.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .border(BorderStroke(1.dp, colors.secondaryText.copy(alpha = 0.35f)), RoundedCornerShape(10.dp))
+                .padding(12.dp),
+        ) {
+            Text(
+                text = linkify("“${block.text}”"),
+                style = TextStyle(
+                    fontFamily = fontFamily,
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                    fontSize = bodySize,
+                    lineHeight = (READER_BASE_BODY_SP * prefs.fontScale * 1.55f * prefs.lineHeightScale).sp,
+                    color = colors.secondaryText,
+                ),
+            )
+        }
 
         is ContentBlock.ListBlock -> Column(Modifier.padding(bottom = 14.dp)) {
             block.items.forEachIndexed { index, item ->
@@ -125,4 +146,38 @@ fun ContentBlockView(block: ContentBlock, prefs: ReaderPrefs, colors: ReaderColo
             }
         }
     }
+}
+
+/** Extraction strips out real `<a href>` links (only their visible text survives, e.g.
+ *  a tweet's "pic.twitter.com/xxx" media link becomes plain text), so bare URLs read
+ *  as inert text. Detect them at render time and make them tappable instead. */
+private val URL_REGEX = Regex(
+    "(https?://[\\w.-]+\\.[a-zA-Z]{2,}(?:/[\\w\\-._~:/?#\\[\\]@!$&'()*+,;=%]*)?)" +
+        "|(www\\.[\\w.-]+\\.[a-zA-Z]{2,}(?:/[\\w\\-._~:/?#\\[\\]@!$&'()*+,;=%]*)?)" +
+        "|((?:pic\\.twitter\\.com|t\\.co|instagram\\.com|fb\\.me|bit\\.ly)/[\\w-]+)",
+    RegexOption.IGNORE_CASE,
+)
+
+/** A fixed accent (not derived from the reader theme) so a link is recognizable as
+ *  tappable by color, not just the underline, across every reader theme (light/
+ *  sepia/dark/black/high-contrast). */
+private val LinkColor = Color(0xFF3B82F6)
+
+private fun linkify(text: String): AnnotatedString = buildAnnotatedString {
+    var last = 0
+    for (match in URL_REGEX.findAll(text)) {
+        append(text.substring(last, match.range.first))
+        val url = match.value
+        val href = if (url.startsWith("http", ignoreCase = true)) url else "https://$url"
+        withLink(
+            LinkAnnotation.Url(
+                href,
+                TextLinkStyles(style = SpanStyle(color = LinkColor, textDecoration = TextDecoration.Underline)),
+            ),
+        ) {
+            append(url)
+        }
+        last = match.range.last + 1
+    }
+    append(text.substring(last))
 }
