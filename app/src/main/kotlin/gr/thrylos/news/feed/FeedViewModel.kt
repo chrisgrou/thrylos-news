@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -145,6 +146,14 @@ class FeedViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), FeedUiState())
 
     val isSyncing: StateFlow<Boolean> = syncScheduler.observeSyncing()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    /** Whether any article anywhere is unread — used to disable "mark all as read"
+     *  when there's nothing for it to do (markAllRead() affects every article, not
+     *  just the currently filtered/paged ones). */
+    val hasUnread: StateFlow<Boolean> = articleRepository.observeAll()
+        .map { articles -> articles.any { !it.isRead } }
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val lastSyncAt: StateFlow<Long?> = appPreferences.lastSyncCompletedAt

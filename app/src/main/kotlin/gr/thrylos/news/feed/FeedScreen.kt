@@ -2,6 +2,8 @@ package gr.thrylos.news.feed
 
 import gr.thrylos.news.R
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
@@ -48,6 +51,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -67,6 +71,7 @@ fun FeedScreen(
     val syncing by viewModel.isSyncing.collectAsStateWithLifecycle()
     val lastSyncAt by viewModel.lastSyncAt.collectAsStateWithLifecycle()
     val lastSyncOutcome by viewModel.lastSyncOutcome.collectAsStateWithLifecycle()
+    val hasUnread by viewModel.hasUnread.collectAsStateWithLifecycle()
     var showSourcePicker by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -88,7 +93,7 @@ fun FeedScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.markAllRead() }) {
+                    IconButton(onClick = { viewModel.markAllRead() }, enabled = hasUnread) {
                         Icon(Icons.Filled.DoneAll, contentDescription = "Μαρκάρισμα όλων ως διαβασμένα")
                     }
                     IconButton(onClick = onOpenBookmarks) {
@@ -207,8 +212,7 @@ private fun FeedFilterBar(
                 label = { Text(state.selectedSourceName?.let(::stripSourceSuffix) ?: "Όλες οι πηγές") },
                 trailingIcon = { Icon(Icons.Filled.ExpandMore, contentDescription = null) },
             )
-            FilterChip(selected = !state.unreadOnly, onClick = { onSetUnreadOnly(false) }, label = { Text("Όλα") })
-            FilterChip(selected = state.unreadOnly, onClick = { onSetUnreadOnly(true) }, label = { Text("Νέα") })
+            UnreadOnlyToggle(unreadOnly = state.unreadOnly, onSetUnreadOnly = onSetUnreadOnly)
             if (state.pageCount > 1) {
                 CompactPager(state = state, onSetPage = onSetPage)
             }
@@ -238,6 +242,37 @@ private fun lastSyncLabel(millis: Long): String {
         now.get(java.util.Calendar.YEAR) == then.get(java.util.Calendar.YEAR) &&
             now.get(java.util.Calendar.DAY_OF_YEAR) - then.get(java.util.Calendar.DAY_OF_YEAR) == 1 -> "χθες ${timeFmt.format(then.time)}"
         else -> java.text.SimpleDateFormat("d/M HH:mm", java.util.Locale.getDefault()).format(then.time)
+    }
+}
+
+/** A single pill housing "Όλα"/"Νέα" as two joined segments, rather than two
+ *  separate chips with a gap between them. */
+@Composable
+private fun UnreadOnlyToggle(unreadOnly: Boolean, onSetUnreadOnly: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(50)),
+    ) {
+        UnreadOnlySegment(label = "Όλα", selected = !unreadOnly, onClick = { onSetUnreadOnly(false) })
+        UnreadOnlySegment(label = "Νέα", selected = unreadOnly, onClick = { onSetUnreadOnly(true) })
+    }
+}
+
+@Composable
+private fun UnreadOnlySegment(label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
