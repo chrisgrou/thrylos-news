@@ -162,7 +162,11 @@ fun FeedScreen(
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        itemsIndexed(state.items, key = { _, item -> item.article.id }) { index, item ->
+                        itemsIndexed(
+                            state.items,
+                            key = { _, item -> item.article.id },
+                            contentType = { _, _ -> "article" },
+                        ) { index, item ->
                             ArticleCard(item = item, onClick = {
                                 viewModel.openArticle(item.article.id)
                                 onOpenArticle(item.article.id)

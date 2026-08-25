@@ -1,15 +1,23 @@
 package gr.thrylos.news.settings.filters
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -28,17 +36,20 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.dp
 import gr.thrylos.news.feed.stripSourceSuffix
 import gr.thrylos.news.model.FilterAction
@@ -123,17 +134,15 @@ fun FilterEditorScreen(
                                 }
                             }
                         }
-                        Text("Πεδίο", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 4.dp))
-                        DropdownField(
+                        Text("Πεδίο", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 4.dp, bottom = 6.dp))
+                        FieldPill(
                             selected = draft.field,
-                            options = listOf(FilterField.TITLE, FilterField.AUTHOR, FilterField.SOURCE, FilterField.BODY, FilterField.URL),
-                            optionLabel = ::labelFor,
+                            palette = fieldPalette(draft.field),
                             onSelect = { conditions[index] = draft.copy(field = it) },
-                            modifier = Modifier.padding(top = 4.dp, bottom = 10.dp),
                         )
 
                         if (draft.field == FilterField.SOURCE) {
-                            Text("Πηγές (επιλογή πολλαπλών)", style = MaterialTheme.typography.labelSmall)
+                            Text("Πηγές (επιλογή πολλαπλών)", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 10.dp))
                             if (sources.isEmpty()) {
                                 Text(
                                     "Δεν βρέθηκαν πηγές ακόμα.",
@@ -160,19 +169,13 @@ fun FilterEditorScreen(
                                 }
                             }
                         } else {
-                            Text("Κανόνας", style = MaterialTheme.typography.labelSmall)
-                            DropdownField(
-                                selected = draft.match,
-                                options = FilterMatch.entries,
-                                optionLabel = ::labelFor,
-                                onSelect = { conditions[index] = draft.copy(match = it) },
-                                modifier = Modifier.padding(top = 4.dp, bottom = 10.dp),
-                            )
-                            OutlinedTextField(
+                            Text("Κανόνας & τιμή", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 10.dp, bottom = 6.dp))
+                            MatchValuePill(
+                                match = draft.match,
                                 value = draft.value,
+                                palette = fieldPalette(draft.field),
+                                onMatchChange = { conditions[index] = draft.copy(match = it) },
                                 onValueChange = { conditions[index] = draft.copy(value = it) },
-                                label = { Text("Τιμή (π.χ. στοίχημα)") },
-                                modifier = Modifier.fillMaxWidth(),
                             )
                         }
                     }
@@ -210,26 +213,100 @@ fun FilterEditorScreen(
     }
 }
 
+/** A single colored pill (matching the read-only rule list's badge style) that opens
+ *  a dropdown of every [FilterField] when tapped. */
 @Composable
-private fun <T> DropdownField(
-    selected: T,
-    options: List<T>,
-    optionLabel: (T) -> String,
-    onSelect: (T) -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun FieldPill(selected: FilterField, palette: FieldPalette, onSelect: (FilterField) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
-    Box(modifier) {
-        OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(optionLabel(selected))
-                Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
-            }
+    Box {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(MaterialTheme.shapes.small)
+                .background(palette.strong)
+                .clickable { expanded = true }
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+        ) {
+            Text(
+                uppercaseNoAccents(labelFor(selected)),
+                style = MaterialTheme.typography.labelMedium,
+                color = palette.onStrong,
+            )
+            Icon(
+                Icons.Filled.ArrowDropDown,
+                contentDescription = null,
+                tint = palette.onStrong,
+                modifier = Modifier.padding(start = 2.dp).size(18.dp),
+            )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            options.forEach { option ->
-                DropdownMenuItem(text = { Text(optionLabel(option)) }, onClick = { onSelect(option); expanded = false })
+            listOf(FilterField.TITLE, FilterField.AUTHOR, FilterField.SOURCE, FilterField.BODY, FilterField.URL).forEach { field ->
+                DropdownMenuItem(text = { Text(labelFor(field)) }, onClick = { onSelect(field); expanded = false })
             }
+        }
+    }
+}
+
+/** A single bordered pill combining the match rule (dropdown segment) and the free-text
+ *  value (inline text field segment) — the "[ ΚΑΝΟΝΑΣ | τιμή ]" concept, tinted by the
+ *  condition's field so it visually pairs with the [FieldPill] above it. */
+@Composable
+private fun MatchValuePill(
+    match: FilterMatch,
+    value: String,
+    palette: FieldPalette,
+    onMatchChange: (FilterMatch) -> Unit,
+    onValueChange: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+            .clip(MaterialTheme.shapes.small)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.small),
+    ) {
+        Box {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .background(palette.container)
+                    .clickable { expanded = true }
+                    .padding(horizontal = 10.dp),
+            ) {
+                Text(labelFor(match), style = MaterialTheme.typography.labelMedium, color = palette.onContainer)
+                Icon(
+                    Icons.Filled.ArrowDropDown,
+                    contentDescription = null,
+                    tint = palette.onContainer,
+                    modifier = Modifier.padding(start = 2.dp).size(16.dp),
+                )
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                FilterMatch.entries.forEach { option ->
+                    DropdownMenuItem(text = { Text(labelFor(option)) }, onClick = { onMatchChange(option); expanded = false })
+                }
+            }
+        }
+        VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Box(Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 10.dp)) {
+            if (value.isEmpty()) {
+                Text(
+                    "Τιμή (π.χ. στοίχημα)",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }

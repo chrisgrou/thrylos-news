@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -35,16 +36,22 @@ import java.util.Locale
 fun ArticleCard(item: FeedItem, onClick: () -> Unit) {
     val article = item.article
     Box(Modifier.fillMaxWidth()) {
+        val surface = MaterialTheme.colorScheme.surface
+        val containerColor = when {
+            // Opaque (pre-blended) colors instead of .copy(alpha = ...): a translucent
+            // container forces Compose to composite this card on an offscreen layer
+            // beneath its elevation shadow on every frame it's on screen, which is a
+            // real, measurable cost when a dozen cards are visible at once during a
+            // fling — this was part of the reported scroll jank.
+            item.isImportant -> lerp(surface, MaterialTheme.colorScheme.primaryContainer, 0.35f)
+            article.isRead -> lerp(surface, MaterialTheme.colorScheme.surfaceVariant, 0.4f)
+            else -> surface
+        }
         Card(
             onClick = onClick,
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = when {
-                    item.isImportant -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-                    article.isRead -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                    else -> MaterialTheme.colorScheme.surface
-                },
-            ),
+            colors = CardDefaults.cardColors(containerColor = containerColor),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         ) {
             Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
                 if (article.leadImageUrl != null) {
