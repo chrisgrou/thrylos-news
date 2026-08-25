@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,7 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -112,21 +113,22 @@ fun ContentBlockView(block: ContentBlock, prefs: ReaderPrefs, colors: ReaderColo
                     )
                     val sourceUrl = block.sourceUrl
                     if (sourceUrl != null) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .padding(top = 10.dp)
-                                .clip(RoundedCornerShape(50))
-                                .border(BorderStroke(1.dp, LinkColor), RoundedCornerShape(50))
-                                .clickable { uriHandler.openUri(sourceUrl) }
-                                .padding(horizontal = 10.dp, vertical = 5.dp),
-                        ) {
-                            Icon(Icons.Filled.OpenInNew, contentDescription = null, tint = LinkColor, modifier = Modifier.size(14.dp))
-                            Text(
-                                "Άνοιγμα ανάρτησης",
-                                style = TextStyle(fontFamily = fontFamily, fontSize = 12.sp, color = LinkColor),
-                                modifier = Modifier.padding(start = 4.dp),
-                            )
+                        Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.End) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(LinkColor.copy(alpha = 0.12f))
+                                    .clickable { uriHandler.openUri(sourceUrl) }
+                                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                            ) {
+                                Icon(Icons.Filled.Link, contentDescription = null, tint = LinkColor, modifier = Modifier.size(14.dp))
+                                Text(
+                                    "Άνοιγμα ανάρτησης",
+                                    style = TextStyle(fontFamily = fontFamily, fontSize = 12.sp, color = LinkColor),
+                                    modifier = Modifier.padding(start = 4.dp),
+                                )
+                            }
                         }
                     }
                 }
@@ -232,7 +234,7 @@ private fun linkify(text: String): Pair<AnnotatedString, Map<String, InlineTextC
                             .clickable { uriHandler.openUri(href) }
                             .padding(horizontal = 6.dp),
                     ) {
-                        Icon(Icons.Filled.OpenInNew, contentDescription = null, tint = LinkColor, modifier = Modifier.size(11.dp))
+                        Icon(Icons.Filled.Link, contentDescription = null, tint = LinkColor, modifier = Modifier.size(11.dp))
                         Text(
                             url,
                             style = TextStyle(fontSize = 11.sp, color = LinkColor),
