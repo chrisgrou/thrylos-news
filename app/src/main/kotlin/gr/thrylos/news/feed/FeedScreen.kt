@@ -51,6 +51,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -137,7 +138,16 @@ fun FeedScreen(
                     }
                 } else {
                     val listState = rememberLazyListState()
-                    LaunchedEffect(state.page) { listState.scrollToItem(0) }
+                    // Only scroll to top when the page number actually changes (real
+                    // pagination) — not on every recomposition, which also happens when
+                    // returning here from the reader. previousPage is rememberSaveable so
+                    // it (and listState) survive that round trip with their real prior
+                    // values instead of resetting to page 0 / scroll 0 every time.
+                    var previousPage by rememberSaveable { mutableStateOf(state.page) }
+                    LaunchedEffect(state.page) {
+                        if (state.page != previousPage) listState.scrollToItem(0)
+                        previousPage = state.page
+                    }
 
                     val newCount = state.items.takeWhile { it.isNew }.size
                     val showNewSection = newCount in 1 until state.items.size
