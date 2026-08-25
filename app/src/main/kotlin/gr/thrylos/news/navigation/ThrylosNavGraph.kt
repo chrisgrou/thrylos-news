@@ -1,6 +1,7 @@
 package gr.thrylos.news.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -23,8 +24,18 @@ import gr.thrylos.news.settings.sync.SyncSettingsScreen
 import gr.thrylos.news.update.UpdateHistoryScreen
 
 @Composable
-fun ThrylosNavGraph() {
+fun ThrylosNavGraph(
+    pendingArticleId: String? = null,
+    onPendingArticleConsumed: () -> Unit = {},
+) {
     val navController = rememberNavController()
+
+    LaunchedEffect(pendingArticleId) {
+        if (pendingArticleId != null) {
+            navController.navigate(Routes.reader(pendingArticleId))
+            onPendingArticleConsumed()
+        }
+    }
 
     NavHost(navController = navController, startDestination = Routes.FEED) {
         composable(Routes.FEED) {
