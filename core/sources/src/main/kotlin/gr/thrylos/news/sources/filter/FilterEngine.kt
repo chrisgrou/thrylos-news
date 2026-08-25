@@ -28,17 +28,24 @@ object FilterEngine {
         if (rule.scopeSourceId != null && rule.scopeSourceId != article.sourceId) return false
         if (rule.conditions.isEmpty()) return false
 
-        val results = rule.conditions.map { condition ->
-            val haystack = when (condition.field) {
-                FilterField.TITLE -> article.title
-                FilterField.BODY -> bodyText(article)
-                FilterField.AUTHOR -> article.author.orEmpty()
-                FilterField.URL -> article.url
-                FilterField.SOURCE -> article.sourceName
-            }
-            matchValue(haystack, condition)
-        }
+        val results = rule.conditions.map { condition -> matchesCondition(condition, article) }
         return combine(rule.combinator, results)
+    }
+
+    private fun matchesCondition(condition: FilterCondition, article: Article): Boolean = when (condition.field) {
+        FilterField.TITLE -> matchValue(article.title, condition)
+        FilterField.BODY -> matchValue(bodyText(article), condition)
+        FilterField.AUTHOR -> matchValue(article.author.orEmpty(), condition)
+        FilterField.URL -> matchValue(article.url, condition)
+        FilterField.SOURCE -> matchValue(article.sourceName, condition)
+        // "Οπουδήποτε": true if any field matches — except NOT_CONTAINS, where the
+        // useful meaning is "the value appears in none of them", i.e. every field's
+        // (already-negated) per-field result must hold, not just one.
+        FilterField.ANYWHERE -> {
+            val perField = listOf(article.title, bodyText(article), article.author.orEmpty(), article.url, article.sourceName)
+                .map { matchValue(it, condition) }
+            if (condition.match == FilterMatch.NOT_CONTAINS) perField.all { it } else perField.any { it }
+        }
     }
 
     /**
@@ -51,14 +58,14 @@ object FilterEngine {
         if (!rule.enabled) return false
         if (rule.scopeSourceId != null && rule.scopeSourceId != sourceId) return false
         if (rule.conditions.isEmpty()) return false
-        if (rule.conditions.any { it.field == FilterField.AUTHOR || it.field == FilterField.BODY }) return false
+        if (rule.conditions.any { it.field == FilterField.AUTHOR || it.field == FilterField.BODY || it.field == FilterField.ANYWHERE }) return false
 
         val results = rule.conditions.map { condition ->
             val haystack = when (condition.field) {
                 FilterField.TITLE -> title
                 FilterField.SOURCE -> sourceName
                 FilterField.URL -> url
-                FilterField.AUTHOR, FilterField.BODY -> return false
+                FilterField.AUTHOR, FilterField.BODY, FilterField.ANYWHERE -> return false
             }
             matchValue(haystack, condition)
         }

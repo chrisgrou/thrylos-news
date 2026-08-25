@@ -223,4 +223,5 @@ private fun labelFor(field: FilterField) = when (field) {
     FilterField.AUTHOR -> "Συντάκτης"
     FilterField.URL -> "URL"
     FilterField.SOURCE -> "Πηγή"
+    FilterField.ANYWHERE -> "Οπουδήποτε"
 }

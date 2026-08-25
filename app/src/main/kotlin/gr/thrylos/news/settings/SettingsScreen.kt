@@ -57,7 +57,7 @@ fun SettingsScreen(
             SettingsRow("Πηγές", "Ενεργοποίηση, εισαγωγή και επεξεργασία plugins", onOpenSources)
             SettingsRow("Φίλτρα", "Απόκρυψη ή προβολή άρθρων βάσει λέξεων-κλειδιών ή συντάκτη", onOpenFilters)
             SettingsRow("Εφαρμογή", "Εμφάνιση, ανανέωση, ειδοποιήσεις, αποθηκευτικός χώρος", onOpenSync)
-            SettingsRow("Αντίγραφο ασφαλείας", "Εξαγωγή/εισαγωγή πηγών, φίλτρων και bookmarks", onOpenBackup)
+            SettingsRow("Δεδομένα", "Αντίγραφο ασφαλείας, προτεινόμενα φίλτρα, ιστορικό άρθρων", onOpenBackup)
             ListItem(
                 headlineContent = { Text("Έλεγχος για ενημερώσεις") },
                 supportingContent = {

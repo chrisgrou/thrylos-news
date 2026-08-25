@@ -37,4 +37,10 @@ interface FilterRuleDao {
 
     @Delete
     suspend fun delete(rule: FilterRuleEntity)
+
+    @Query("SELECT COUNT(*) FROM filter_rules WHERE id LIKE :prefix || '%'")
+    suspend fun countByIdPrefix(prefix: String): Int
+
+    @Query("DELETE FROM filter_rules WHERE id LIKE :prefix || '%'")
+    suspend fun deleteByIdPrefix(prefix: String): Int
 }

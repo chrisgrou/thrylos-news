@@ -240,7 +240,7 @@ private fun FieldPill(selected: FilterField, palette: FieldPalette, onSelect: (F
             )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            listOf(FilterField.TITLE, FilterField.AUTHOR, FilterField.SOURCE, FilterField.BODY, FilterField.URL).forEach { field ->
+            listOf(FilterField.TITLE, FilterField.AUTHOR, FilterField.SOURCE, FilterField.BODY, FilterField.URL, FilterField.ANYWHERE).forEach { field ->
                 DropdownMenuItem(text = { Text(labelFor(field)) }, onClick = { onSelect(field); expanded = false })
             }
         }
@@ -352,6 +352,7 @@ private fun labelFor(field: FilterField) = when (field) {
     FilterField.AUTHOR -> "Συντάκτης"
     FilterField.URL -> "URL"
     FilterField.SOURCE -> "Πηγή"
+    FilterField.ANYWHERE -> "Οπουδήποτε"
 }
 
 private fun labelFor(match: FilterMatch) = when (match) {

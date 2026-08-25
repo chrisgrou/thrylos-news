@@ -16,6 +16,7 @@ private val FIELD_PALETTES = mapOf(
     FilterField.AUTHOR to FieldPalette(Color(0xFFEF6C00), Color.White, Color(0xFFFFE0B2), Color(0xFF5C3300)),
     FilterField.URL to FieldPalette(Color(0xFF37474F), Color.White, Color(0xFFCFD8DC), Color(0xFF1B2529)),
     FilterField.SOURCE to FieldPalette(Color(0xFF00695C), Color.White, Color(0xFFB2DFDB), Color(0xFF00332C)),
+    FilterField.ANYWHERE to FieldPalette(Color(0xFF6A1B9A), Color.White, Color(0xFFE1BEE7), Color(0xFF3B0764)),
 )
 
 internal fun fieldPalette(field: FilterField): FieldPalette = FIELD_PALETTES.getValue(field)

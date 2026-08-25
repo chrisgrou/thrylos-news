@@ -1,11 +1,14 @@
 package gr.thrylos.news.settings.backup
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import gr.thrylos.news.data.backup.BackupManager
 import gr.thrylos.news.data.backup.RestoreResult
 import gr.thrylos.news.data.repo.ArticleRepository
+import gr.thrylos.news.data.repo.FilterRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,12 +17,38 @@ import javax.inject.Inject
 
 @HiltViewModel
 class BackupViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val backupManager: BackupManager,
     private val articleRepository: ArticleRepository,
+    private val filterRepository: FilterRepository,
 ) : ViewModel() {
 
     private val _status = MutableStateFlow<String?>(null)
     val status: StateFlow<String?> = _status.asStateFlow()
+
+    private val _bundledFiltersActive = MutableStateFlow(false)
+    val bundledFiltersActive: StateFlow<Boolean> = _bundledFiltersActive.asStateFlow()
+
+    init {
+        viewModelScope.launch { _bundledFiltersActive.value = filterRepository.hasBundled() }
+    }
+
+    /** Bulk-imports (checked) or bulk-removes (unchecked) the filter rules shipped in
+     *  assets/filters/bundled_filters.json — a curated starting set the user can pull
+     *  in or discard as a group, without hand-recreating each rule. */
+    fun setBundledFiltersActive(active: Boolean) {
+        viewModelScope.launch {
+            if (active) {
+                val json = context.assets.open("filters/bundled_filters.json").bufferedReader(Charsets.UTF_8).use { it.readText() }
+                val count = filterRepository.importBundled(json)
+                _status.value = if (count > 0) "Εισήχθησαν $count προτεινόμενα φίλτρα." else "Δεν υπάρχουν ακόμα προτεινόμενα φίλτρα σε αυτή την έκδοση."
+            } else {
+                val count = filterRepository.removeBundled()
+                _status.value = "Αφαιρέθηκαν $count προτεινόμενα φίλτρα."
+            }
+            _bundledFiltersActive.value = filterRepository.hasBundled()
+        }
+    }
 
     fun export(write: suspend (String) -> Unit) {
         viewModelScope.launch {

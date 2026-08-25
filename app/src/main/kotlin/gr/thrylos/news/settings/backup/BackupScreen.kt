@@ -2,7 +2,9 @@ package gr.thrylos.news.settings.backup
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -17,6 +19,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -38,6 +41,7 @@ fun BackupScreen(
     viewModel: BackupViewModel = hiltViewModel(),
 ) {
     val status by viewModel.status.collectAsStateWithLifecycle()
+    val bundledFiltersActive by viewModel.bundledFiltersActive.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var confirmingClearHistory by remember { mutableStateOf(false) }
 
@@ -65,14 +69,14 @@ fun BackupScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Αντίγραφο ασφαλείας") },
+                title = { Text("Δεδομένα") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Πίσω") } },
             )
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(20.dp)) {
             Text(
-                "Εξαγωγή πηγών, φίλτρων, bookmarks και ρυθμίσεων σε ένα αρχείο — χρήσιμο πριν αλλάξεις συσκευή.",
+                "Εξαγωγή/εισαγωγή πηγών, φίλτρων, bookmarks και ρυθμίσεων, προτεινόμενα φίλτρα, και εκκαθάριση ιστορικού άρθρων.",
                 style = MaterialTheme.typography.bodyMedium,
             )
 
@@ -90,6 +94,20 @@ fun BackupScreen(
                 onClick = { exportOpmlLauncher.launch("thrylos-news-sources.opml") },
                 modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
             ) { Text("Εξαγωγή πηγών RSS ως OPML") }
+
+            HorizontalDivider(modifier = Modifier.padding(top = 28.dp, bottom = 4.dp))
+            Text(
+                "Ένα σετ προτεινόμενων φίλτρων, έτοιμων προς εισαγωγή με ένα κλικ — αντί να τα δημιουργήσεις ένα-ένα. Απενεργοποίηση = αφαίρεση ακριβώς αυτού του σετ.",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 12.dp),
+            )
+            Row(
+                Modifier.fillMaxWidth().padding(top = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("Προτεινόμενα φίλτρα", style = MaterialTheme.typography.bodyLarge)
+                Switch(checked = bundledFiltersActive, onCheckedChange = viewModel::setBundledFiltersActive)
+            }
 
             HorizontalDivider(modifier = Modifier.padding(top = 28.dp, bottom = 4.dp))
             Text(

@@ -3,7 +3,7 @@ package gr.thrylos.news.model
 import kotlinx.serialization.Serializable
 
 @Serializable
-enum class FilterField { TITLE, BODY, AUTHOR, URL, SOURCE }
+enum class FilterField { TITLE, BODY, AUTHOR, URL, SOURCE, ANYWHERE }
 
 @Serializable
 enum class FilterMatch { CONTAINS, REGEX, EXACT, NOT_CONTAINS }

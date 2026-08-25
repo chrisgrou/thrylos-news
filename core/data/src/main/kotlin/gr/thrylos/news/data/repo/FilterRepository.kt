@@ -20,6 +20,12 @@ class FilterRepository @Inject constructor(
     private val json = Json { ignoreUnknownKeys = true }
     private val conditionsSerializer = ListSerializer(FilterCondition.serializer())
 
+    companion object {
+        /** Id prefix given to every rule shipped in assets/filters/bundled_filters.json,
+         *  so they can be found/removed as a group without a separate DB column. */
+        const val BUNDLED_ID_PREFIX = "bundled-"
+    }
+
     fun observeAll(): Flow<List<FilterRule>> = dao.observeAll().map { list -> list.map(::toDomain) }
 
     suspend fun getEnabled(): List<FilterRule> = dao.getEnabled().map(::toDomain)
@@ -27,6 +33,23 @@ class FilterRepository @Inject constructor(
     suspend fun upsert(rule: FilterRule) = dao.upsert(toEntity(rule))
 
     suspend fun delete(rule: FilterRule) = dao.delete(toEntity(rule))
+
+    /** Whether any bundled ("Προτεινόμενα") filter rule is currently imported. */
+    suspend fun hasBundled(): Boolean = dao.countByIdPrefix(BUNDLED_ID_PREFIX) > 0
+
+    /** Imports every rule in [rawJson] (a JSON array of [FilterRule], shipped as an app
+     *  asset), upserting each — a rule already present with the same id is updated in
+     *  place rather than duplicated. Returns how many were imported. */
+    suspend fun importBundled(rawJson: String): Int {
+        val rules = runCatching { json.decodeFromString(ListSerializer(FilterRule.serializer()), rawJson) }.getOrDefault(emptyList())
+        rules.forEach { upsert(it) }
+        return rules.size
+    }
+
+    /** Removes every rule whose id carries the bundled-rule prefix — the "toggle off"
+     *  half of the bundled-filters switch in Settings → Δεδομένα. Any other rule the
+     *  user created themselves is untouched. */
+    suspend fun removeBundled(): Int = dao.deleteByIdPrefix(BUNDLED_ID_PREFIX)
 
     private fun toEntity(rule: FilterRule) = FilterRuleEntity(
         id = rule.id,
