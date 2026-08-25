@@ -14,29 +14,28 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.InlineTextContent
-import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.Placeholder
-import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign as ComposeTextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import gr.thrylos.news.model.ContentBlock
@@ -66,21 +65,17 @@ fun ContentBlockView(block: ContentBlock, prefs: ReaderPrefs, colors: ReaderColo
             modifier = Modifier.padding(bottom = 8.dp),
         )
 
-        is ContentBlock.Paragraph -> {
-            val (text, inline) = linkify(block.text)
-            Text(
-                text = text,
-                inlineContent = inline,
-                textAlign = align,
-                style = TextStyle(
-                    fontFamily = fontFamily,
-                    fontSize = bodySize,
-                    lineHeight = (READER_BASE_BODY_SP * prefs.fontScale * 1.55f * prefs.lineHeightScale).sp,
-                    color = colors.text,
-                ),
-                modifier = Modifier.padding(bottom = 14.dp),
-            )
-        }
+        is ContentBlock.Paragraph -> Text(
+            text = linkify(block.text),
+            textAlign = align,
+            style = TextStyle(
+                fontFamily = fontFamily,
+                fontSize = bodySize,
+                lineHeight = (READER_BASE_BODY_SP * prefs.fontScale * 1.55f * prefs.lineHeightScale).sp,
+                color = colors.text,
+            ),
+            modifier = Modifier.padding(bottom = 14.dp),
+        )
 
         // Framed like a card: covers both an editorial pull-quote and an embedded
         // social post (Twitter/X, Facebook, Instagram embeds all extract as a plain
@@ -90,7 +85,6 @@ fun ContentBlockView(block: ContentBlock, prefs: ReaderPrefs, colors: ReaderColo
         // from the widget's trailing link), shown as an "open in browser" badge.
         is ContentBlock.Quote -> {
             val uriHandler = LocalUriHandler.current
-            val (text, inline) = linkify("“${block.text}”")
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -101,8 +95,7 @@ fun ContentBlockView(block: ContentBlock, prefs: ReaderPrefs, colors: ReaderColo
             ) {
                 Column {
                     Text(
-                        text = text,
-                        inlineContent = inline,
+                        text = linkify("“${block.text}”"),
                         style = TextStyle(
                             fontFamily = fontFamily,
                             fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
@@ -119,6 +112,7 @@ fun ContentBlockView(block: ContentBlock, prefs: ReaderPrefs, colors: ReaderColo
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(50))
                                     .background(LinkColor.copy(alpha = 0.12f))
+                                    .border(BorderStroke(1.dp, LinkColor), RoundedCornerShape(50))
                                     .clickable { uriHandler.openUri(sourceUrl) }
                                     .padding(horizontal = 10.dp, vertical = 5.dp),
                             ) {
@@ -190,8 +184,8 @@ fun ContentBlockView(block: ContentBlock, prefs: ReaderPrefs, colors: ReaderColo
 
 /** Extraction strips out real `<a href>` links (only their visible text survives, e.g.
  *  a tweet's "pic.twitter.com/xxx" media link becomes plain text), so bare URLs read
- *  as inert text. Detect them at render time and swap each one for a small tappable
- *  badge instead of just coloring/underlining the text in place. */
+ *  as inert text. Detect them at render time and make them tappable — plain
+ *  underlined/colored text, not a boxed badge (tried that, too busy inline). */
 private val URL_REGEX = Regex(
     "(https?://[\\w.-]+\\.[a-zA-Z]{2,}(?:/[\\w\\-._~:/?#\\[\\]@!$&'()*+,;=%]*)?)" +
         "|(www\\.[\\w.-]+\\.[a-zA-Z]{2,}(?:/[\\w\\-._~:/?#\\[\\]@!$&'()*+,;=%]*)?)" +
@@ -199,56 +193,25 @@ private val URL_REGEX = Regex(
     RegexOption.IGNORE_CASE,
 )
 
-/** A fixed accent (not derived from the reader theme) so a link badge is recognizable
- *  as tappable across every reader theme (light/sepia/dark/black/high-contrast). */
+/** A fixed accent (not derived from the reader theme) so a link is recognizable as
+ *  tappable across every reader theme (light/sepia/dark/black/high-contrast). */
 private val LinkColor = Color(0xFF3B82F6)
 
-@Composable
-private fun linkify(text: String): Pair<AnnotatedString, Map<String, InlineTextContent>> {
-    val uriHandler = LocalUriHandler.current
-    val inlineContent = remember(text) { mutableMapOf<String, InlineTextContent>() }
-    val annotated = remember(text) {
-        buildAnnotatedString {
-            var last = 0
-            var index = 0
-            for (match in URL_REGEX.findAll(text)) {
-                append(text.substring(last, match.range.first))
-                val url = match.value
-                val href = if (url.startsWith("http", ignoreCase = true)) url else "https://$url"
-                val id = "link_$index"
-                appendInlineContent(id, url)
-                // Placeholder size can't be measured from the actual text, only set
-                // up front — approximate a monospace-ish width from character count
-                // (generous, so the label never gets clipped) plus room for the icon.
-                val widthEm = (url.length * 0.62f + 2.6f).em
-                inlineContent[id] = InlineTextContent(
-                    Placeholder(width = widthEm, height = 1.5.em, placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(50))
-                            .background(LinkColor.copy(alpha = 0.15f))
-                            .border(BorderStroke(1.dp, LinkColor), RoundedCornerShape(50))
-                            .clickable { uriHandler.openUri(href) }
-                            .padding(horizontal = 6.dp),
-                    ) {
-                        Icon(Icons.Filled.Link, contentDescription = null, tint = LinkColor, modifier = Modifier.size(11.dp))
-                        Text(
-                            url,
-                            style = TextStyle(fontSize = 11.sp, color = LinkColor),
-                            maxLines = 1,
-                            softWrap = false,
-                            modifier = Modifier.padding(start = 3.dp),
-                        )
-                    }
-                }
-                index++
-                last = match.range.last + 1
-            }
-            append(text.substring(last))
+private fun linkify(text: String): AnnotatedString = buildAnnotatedString {
+    var last = 0
+    for (match in URL_REGEX.findAll(text)) {
+        append(text.substring(last, match.range.first))
+        val url = match.value
+        val href = if (url.startsWith("http", ignoreCase = true)) url else "https://$url"
+        withLink(
+            LinkAnnotation.Url(
+                href,
+                TextLinkStyles(style = SpanStyle(color = LinkColor, textDecoration = TextDecoration.Underline)),
+            ),
+        ) {
+            append(url)
         }
+        last = match.range.last + 1
     }
-    return annotated to inlineContent
+    append(text.substring(last))
 }
