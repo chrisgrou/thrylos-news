@@ -108,6 +108,15 @@ fun SyncSettingsScreen(
             SettingSwitchRow("Ενεργές ειδοποιήσεις", notifications.enabled) {
                 viewModel.updateNotificationPrefs { p -> p.copy(enabled = it) }
             }
+            SettingSwitchRow("Μόνο για σημαντικά άρθρα", notifications.onlyImportant) {
+                viewModel.updateNotificationPrefs { p -> p.copy(onlyImportant = it) }
+            }
+            Text(
+                "Ειδοποίηση μόνο για άρθρα που πιάνει κάποιος κανόνας φίλτρου με ενέργεια \"Σημαντικό\" — τα υπόλοιπα συγχρονίζονται κανονικά αλλά χωρίς ειδοποίηση.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
             SettingSwitchRow("Ομαδοποίηση σε μία ειδοποίηση", notifications.groupIntoSummary) {
                 viewModel.updateNotificationPrefs { p -> p.copy(groupIntoSummary = it) }
             }

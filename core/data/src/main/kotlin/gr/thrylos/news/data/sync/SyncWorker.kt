@@ -86,6 +86,7 @@ class SyncWorker @AssistedInject constructor(
                 val eligible = newArticles.filter { article ->
                     (notificationPrefs.onlySourceIds.isEmpty() || article.sourceId in notificationPrefs.onlySourceIds) &&
                         (notificationPrefs.onlyKeywords.isEmpty() || notificationPrefs.onlyKeywords.any { article.title.contains(it, ignoreCase = true) }) &&
+                        (!notificationPrefs.onlyImportant || FilterEngine.isImportant(article, filters)) &&
                         FilterEngine.isVisible(article, filters)
                 }
                 notificationHelper.notifyNewArticles(eligible, notificationPrefs.groupIntoSummary)

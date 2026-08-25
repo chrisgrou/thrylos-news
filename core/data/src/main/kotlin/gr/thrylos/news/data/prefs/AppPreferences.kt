@@ -54,6 +54,7 @@ private data class NotificationPrefsDto(
     val enabled: Boolean = true,
     val onlySourceIds: Set<String> = emptySet(),
     val onlyKeywords: Set<String> = emptySet(),
+    val onlyImportant: Boolean = true,
     val groupIntoSummary: Boolean = true,
 )
 
@@ -161,6 +162,6 @@ class AppPreferences @Inject constructor(
         prefetchImagesForOffline, quietHoursEnabled, quietHoursStartMinute, quietHoursEndMinute, highlightNewSinceRefresh,
     )
 
-    private fun NotificationPrefsDto.toDomain() = NotificationPrefs(enabled, onlySourceIds, onlyKeywords, groupIntoSummary)
-    private fun NotificationPrefs.toDto() = NotificationPrefsDto(enabled, onlySourceIds, onlyKeywords, groupIntoSummary)
+    private fun NotificationPrefsDto.toDomain() = NotificationPrefs(enabled, onlySourceIds, onlyKeywords, onlyImportant, groupIntoSummary)
+    private fun NotificationPrefs.toDto() = NotificationPrefsDto(enabled, onlySourceIds, onlyKeywords, onlyImportant, groupIntoSummary)
 }
