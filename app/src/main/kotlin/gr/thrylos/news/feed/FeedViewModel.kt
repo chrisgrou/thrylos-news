@@ -168,8 +168,8 @@ class FeedViewModel @Inject constructor(
         page.value = 0
     }
 
-    fun toggleUnreadOnly() {
-        unreadOnly.value = !unreadOnly.value
+    fun setUnreadOnly(value: Boolean) {
+        unreadOnly.value = value
         page.value = 0
     }
 

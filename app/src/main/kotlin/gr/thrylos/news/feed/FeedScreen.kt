@@ -36,6 +36,9 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -115,7 +118,7 @@ fun FeedScreen(
                     lastSyncAt = lastSyncAt,
                     lastSyncOutcome = lastSyncOutcome,
                     onOpenSourcePicker = { showSourcePicker = true },
-                    onToggleUnread = viewModel::toggleUnreadOnly,
+                    onSetUnreadOnly = viewModel::setUnreadOnly,
                 )
 
                 if (state.isEmpty) {
@@ -192,13 +195,14 @@ fun FeedScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FeedFilterBar(
     state: FeedUiState,
     lastSyncAt: Long?,
     lastSyncOutcome: String?,
     onOpenSourcePicker: () -> Unit,
-    onToggleUnread: () -> Unit,
+    onSetUnreadOnly: (Boolean) -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp)) {
         Row(
@@ -211,7 +215,20 @@ private fun FeedFilterBar(
                 label = { Text(state.selectedSourceName?.let(::stripSourceSuffix) ?: "Όλες οι πηγές") },
                 trailingIcon = { Icon(Icons.Filled.ExpandMore, contentDescription = null) },
             )
-            FilterChip(selected = state.unreadOnly, onClick = onToggleUnread, label = { Text("Αδιάβαστα") })
+            SingleChoiceSegmentedButtonRow {
+                SegmentedButton(
+                    selected = !state.unreadOnly,
+                    onClick = { onSetUnreadOnly(false) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                    label = { Text("Όλα") },
+                )
+                SegmentedButton(
+                    selected = state.unreadOnly,
+                    onClick = { onSetUnreadOnly(true) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                    label = { Text("Νέα") },
+                )
+            }
         }
         val isNormal = lastSyncOutcome == null || lastSyncOutcome == "Ολοκληρώθηκε"
         Text(
