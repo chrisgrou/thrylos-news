@@ -8,9 +8,11 @@ import gr.thrylos.news.data.repo.FilterRepository
 import gr.thrylos.news.data.repo.SourceRepository
 import gr.thrylos.news.model.FilterRule
 import gr.thrylos.news.sources.filter.FilterEngine
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -30,7 +32,14 @@ class FiltersViewModel @Inject constructor(
         articleRepository.observeAll(),
     ) { rules, articles ->
         rules.map { FilterRow(it, FilterEngine.countMatches(it, articles)) }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }
+        // countMatches re-evaluates every rule against every stored article (and, for a
+        // BODY/ANYWHERE rule, rejoins that article's content blocks into one string each
+        // time) — on the main thread this is exactly the kind of blocking work that made
+        // the Feed screen jank before it got the same fix; here it showed up as a visible
+        // pause when opening Ρυθμίσεις → Φίλτρα.
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val sourceNames: StateFlow<List<String>> = sourceRepository.observeAll()
         .map { sources -> sources.map { it.name }.distinct().sorted() }
