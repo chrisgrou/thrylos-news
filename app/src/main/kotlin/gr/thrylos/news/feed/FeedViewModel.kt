@@ -52,6 +52,15 @@ data class FeedUiState(
     val pageCount: Int = 1,
 )
 
+/** Everything that depends on articles/filters/sources/selected-source but NOT on the
+ *  Όλα/Νέα toggle — kept as its own stage so flipping that toggle doesn't re-run
+ *  FilterEngine (rule matching over every article) and dedup-collapse from scratch. */
+private data class DedupedFeed(
+    val items: List<FeedItem>,
+    val sources: List<SourceChip>,
+    val selectedSourceName: String?,
+)
+
 private data class ComputedFeed(
     val items: List<FeedItem>,
     val sources: List<SourceChip>,
@@ -83,20 +92,18 @@ class FeedViewModel @Inject constructor(
         newArticlesBoundary.threshold,
     ) { prefs, threshold -> prefs.highlightNewSinceRefresh to threshold }
 
-    private val computedFeed: StateFlow<ComputedFeed> = combine(
+    private val dedupedFeed: StateFlow<DedupedFeed> = combine(
         articleRepository.observeAll(),
         filterRepository.observeAll(),
         sourcesFlow,
         selectedSourceName,
-        unreadOnly,
-    ) { articles, filters, sources, sourceName, onlyUnread ->
+    ) { articles, filters, sources, sourceName ->
         val chips = sources.groupBy { it.name }.map { (name, group) -> SourceChip(name, group.map { it.id }.toSet()) }
         val selectedIds = chips.firstOrNull { it.name == sourceName }?.memberSourceIds
 
         val visible = articles
             .filter { FilterEngine.isVisible(it, filters) }
             .filter { selectedIds == null || it.sourceId in selectedIds }
-            .filter { !onlyUnread || !it.isRead }
 
         // Collapse dedup groups: an article whose dedupGroupId points at another
         // article is a duplicate — only the group's primary (or an ungrouped
@@ -115,12 +122,26 @@ class FeedViewModel @Inject constructor(
             )
             .map { FeedItem(it, (groupCounts[it.id] ?: 1) - 1, FilterEngine.isImportant(it, filters)) }
 
-        ComputedFeed(items = items, sources = chips, selectedSourceName = sourceName, unreadOnly = onlyUnread)
+        DedupedFeed(items = items, sources = chips, selectedSourceName = sourceName)
     }
         // This recomputes the full filter/dedup/sort pass over every stored article on
         // every single database change — combine()'s default dispatcher is whatever the
         // collector uses, which for viewModelScope is the main thread, so without this
         // it runs (and can jank scrolling/navigation animations) on the UI thread.
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DedupedFeed(emptyList(), emptyList(), null))
+
+    /** Separate stage so toggling Όλα/Νέα is a cheap O(n) re-filter of the already
+     *  deduped/sorted list instead of re-running FilterEngine + dedup from scratch —
+     *  the Όλα/Νέα toggle doesn't change which articles pass the filter rules. */
+    private val computedFeed: StateFlow<ComputedFeed> = combine(dedupedFeed, unreadOnly) { deduped, onlyUnread ->
+        ComputedFeed(
+            items = deduped.items.filter { !onlyUnread || !it.article.isRead },
+            sources = deduped.sources,
+            selectedSourceName = deduped.selectedSourceName,
+            unreadOnly = onlyUnread,
+        )
+    }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ComputedFeed(emptyList(), emptyList(), null, false))
 
