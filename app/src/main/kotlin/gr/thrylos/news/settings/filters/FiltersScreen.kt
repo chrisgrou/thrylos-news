@@ -167,7 +167,7 @@ private fun RuleDescription(rule: FilterRule) {
 
 @Composable
 private fun ConditionBadge(condition: FilterCondition) {
-    val (strongColor, onStrongColor, containerColor) = fieldColors(condition.field)
+    val palette = fieldPalette(condition.field)
     val displayValue = if (condition.field == FilterField.SOURCE && condition.match == FilterMatch.EXACT) {
         stripSourceSuffix(condition.value)
     } else {
@@ -185,9 +185,9 @@ private fun ConditionBadge(condition: FilterCondition) {
             uppercaseNoAccents(labelFor(condition.field)),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = onStrongColor,
+            color = palette.onStrong,
             modifier = Modifier
-                .background(strongColor)
+                .background(palette.strong)
                 .padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
         )
         VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -196,9 +196,9 @@ private fun ConditionBadge(condition: FilterCondition) {
             style = MaterialTheme.typography.labelSmall.copy(
                 textDecoration = if (strike) TextDecoration.LineThrough else TextDecoration.None,
             ),
-            color = MaterialTheme.colorScheme.onSurface,
+            color = palette.onContainer,
             modifier = Modifier
-                .background(containerColor)
+                .background(palette.container)
                 .padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
         )
     }
@@ -214,16 +214,20 @@ private val GREEK_ACCENTS = mapOf(
 private fun uppercaseNoAccents(text: String): String =
     text.map { GREEK_ACCENTS[it] ?: it }.joinToString("").uppercase()
 
-/** Distinct badge colors per field so a rule's category is recognizable at a glance:
- *  a strong (label) half with high-contrast text, and a lighter (value) half. */
-@Composable
-private fun fieldColors(field: FilterField): Triple<Color, Color, Color> = when (field) {
-    FilterField.TITLE -> Triple(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary, MaterialTheme.colorScheme.primaryContainer)
-    FilterField.BODY -> Triple(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.onSecondary, MaterialTheme.colorScheme.secondaryContainer)
-    FilterField.AUTHOR -> Triple(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.onTertiary, MaterialTheme.colorScheme.tertiaryContainer)
-    FilterField.URL -> Triple(MaterialTheme.colorScheme.onSurfaceVariant, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surfaceVariant)
-    FilterField.SOURCE -> Triple(MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.onError, MaterialTheme.colorScheme.errorContainer)
-}
+private data class FieldPalette(val strong: Color, val onStrong: Color, val container: Color, val onContainer: Color)
+
+// Fixed (theme-independent) hues, deliberately far from the app's red/pink brand
+// color so a badge's category reads clearly instead of blending into the rest
+// of the UI (buttons, switches, the app bar are all shades of Olympiacos red).
+private val FIELD_PALETTES = mapOf(
+    FilterField.TITLE to FieldPalette(Color(0xFF1565C0), Color.White, Color(0xFFBBDEFB), Color(0xFF0D2B4E)),
+    FilterField.BODY to FieldPalette(Color(0xFF2E7D32), Color.White, Color(0xFFC8E6C9), Color(0xFF13351A)),
+    FilterField.AUTHOR to FieldPalette(Color(0xFFEF6C00), Color.White, Color(0xFFFFE0B2), Color(0xFF5C3300)),
+    FilterField.URL to FieldPalette(Color(0xFF37474F), Color.White, Color(0xFFCFD8DC), Color(0xFF1B2529)),
+    FilterField.SOURCE to FieldPalette(Color(0xFF00695C), Color.White, Color(0xFFB2DFDB), Color(0xFF00332C)),
+)
+
+private fun fieldPalette(field: FilterField): FieldPalette = FIELD_PALETTES.getValue(field)
 
 private fun sectionTitleFor(action: FilterAction) = when (action) {
     FilterAction.HIDE -> "Απόκρυψη"
