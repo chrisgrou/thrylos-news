@@ -181,7 +181,7 @@ fun FilterEditorScreen(
 
             OutlinedButton(onClick = { conditions.add(ConditionDraft()) }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
                 Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.padding(end = 6.dp))
-                Text("Προσθήκη συνθήκης (Ή/ΚΑΙ)")
+                Text("Προσθήκη συνθήκης")
             }
 
             HorizontalDivider(Modifier.padding(vertical = 16.dp))
