@@ -278,7 +278,13 @@ private fun UnreadOnlySegment(label: String, selected: Boolean, onClick: () -> U
 
 @Composable
 private fun CompactPager(state: FeedUiState, onSetPage: (Int) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(50))
+            .padding(horizontal = 2.dp),
+    ) {
         IconButton(
             onClick = { onSetPage(state.page - 1) },
             enabled = state.page > 0,
