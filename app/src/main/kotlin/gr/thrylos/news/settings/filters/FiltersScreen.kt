@@ -1,13 +1,16 @@
 package gr.thrylos.news.settings.filters
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,6 +29,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -163,7 +167,7 @@ private fun RuleDescription(rule: FilterRule) {
 
 @Composable
 private fun ConditionBadge(condition: FilterCondition) {
-    val (containerColor, labelColor) = fieldColors(condition.field)
+    val (strongColor, onStrongColor, containerColor) = fieldColors(condition.field)
     val displayValue = if (condition.field == FilterField.SOURCE && condition.match == FilterMatch.EXACT) {
         stripSourceSuffix(condition.value)
     } else {
@@ -172,34 +176,53 @@ private fun ConditionBadge(condition: FilterCondition) {
     val strike = condition.match == FilterMatch.NOT_CONTAINS
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.clip(MaterialTheme.shapes.small).background(containerColor),
+        modifier = Modifier
+            .height(IntrinsicSize.Min)
+            .clip(MaterialTheme.shapes.small)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.small),
     ) {
         Text(
-            labelFor(condition.field).uppercase(),
+            uppercaseNoAccents(labelFor(condition.field)),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = labelColor,
-            modifier = Modifier.padding(start = 8.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+            color = onStrongColor,
+            modifier = Modifier
+                .background(strongColor)
+                .padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
         )
+        VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Text(
             displayValue,
             style = MaterialTheme.typography.labelSmall.copy(
                 textDecoration = if (strike) TextDecoration.LineThrough else TextDecoration.None,
             ),
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(start = 0.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
+            modifier = Modifier
+                .background(containerColor)
+                .padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
         )
     }
 }
 
-/** Distinct badge colors per field so a rule's category is recognizable at a glance. */
+private val GREEK_ACCENTS = mapOf(
+    'ά' to 'α', 'έ' to 'ε', 'ή' to 'η', 'ί' to 'ι', 'ό' to 'ο', 'ύ' to 'υ', 'ώ' to 'ω',
+    'ϊ' to 'ι', 'ΐ' to 'ι', 'ϋ' to 'υ', 'ΰ' to 'υ',
+)
+
+/** Greek typographic convention: monotonic accents are dropped when a word is
+ *  written in all caps (e.g. "τίτλος" → "ΤΙΤΛΟΣ", not "ΤΊΤΛΟΣ"). */
+private fun uppercaseNoAccents(text: String): String =
+    text.map { GREEK_ACCENTS[it] ?: it }.joinToString("").uppercase()
+
+/** Distinct badge colors per field so a rule's category is recognizable at a glance:
+ *  a strong (label) half with high-contrast text, and a lighter (value) half. */
 @Composable
-private fun fieldColors(field: FilterField): Pair<Color, Color> = when (field) {
-    FilterField.TITLE -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
-    FilterField.BODY -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
-    FilterField.AUTHOR -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
-    FilterField.URL -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
-    FilterField.SOURCE -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+private fun fieldColors(field: FilterField): Triple<Color, Color, Color> = when (field) {
+    FilterField.TITLE -> Triple(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary, MaterialTheme.colorScheme.primaryContainer)
+    FilterField.BODY -> Triple(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.onSecondary, MaterialTheme.colorScheme.secondaryContainer)
+    FilterField.AUTHOR -> Triple(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.onTertiary, MaterialTheme.colorScheme.tertiaryContainer)
+    FilterField.URL -> Triple(MaterialTheme.colorScheme.onSurfaceVariant, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surfaceVariant)
+    FilterField.SOURCE -> Triple(MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.onError, MaterialTheme.colorScheme.errorContainer)
 }
 
 private fun sectionTitleFor(action: FilterAction) = when (action) {
