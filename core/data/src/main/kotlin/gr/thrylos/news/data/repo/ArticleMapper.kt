@@ -5,10 +5,38 @@ import gr.thrylos.news.model.Article
 import gr.thrylos.news.model.ContentBlock
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
+import java.util.Collections
+import java.util.LinkedHashMap
 
 object ArticleMapper {
     private val json = Json { ignoreUnknownKeys = true }
     private val blockListSerializer = ListSerializer(ContentBlock.serializer())
+
+    private const val CONTENT_CACHE_CAPACITY = 3000
+
+    /** Room re-emits (and this re-maps) every stored row on every write to the table —
+     *  even one to a single unrelated article's isRead flag — and a sync run fires
+     *  several such writes in quick succession right after app launch. Re-parsing
+     *  every article's full content JSON on every one of those emissions, even though
+     *  almost none of them actually changed, was the main cost behind the feed
+     *  appearing briefly empty (and the page count slow to settle) on open. Cache the
+     *  decoded blocks per article id, keyed by the exact JSON that produced them, so
+     *  an unchanged row's content is never re-parsed; bounded (LRU) so it can't grow
+     *  unboundedly across a long-running process as articles get replaced over time. */
+    private val contentCache: MutableMap<String, Pair<String, List<ContentBlock>>> = Collections.synchronizedMap(
+        object : LinkedHashMap<String, Pair<String, List<ContentBlock>>>(16, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<String, List<ContentBlock>>>): Boolean =
+                size > CONTENT_CACHE_CAPACITY
+        },
+    )
+
+    private fun decodeContent(entity: ArticleEntity): List<ContentBlock> {
+        val cached = contentCache[entity.id]
+        if (cached != null && cached.first == entity.contentJson) return cached.second
+        val decoded = runCatching { json.decodeFromString(blockListSerializer, entity.contentJson) }.getOrDefault(emptyList())
+        contentCache[entity.id] = entity.contentJson to decoded
+        return decoded
+    }
 
     fun toEntity(article: Article): ArticleEntity = ArticleEntity(
         id = article.id,
@@ -37,7 +65,7 @@ object ArticleMapper {
         publishedAt = entity.publishedAt,
         fetchedAt = entity.fetchedAt,
         leadImageUrl = entity.leadImageUrl,
-        content = runCatching { json.decodeFromString(blockListSerializer, entity.contentJson) }.getOrDefault(emptyList()),
+        content = decodeContent(entity),
         usedFallbackExtraction = entity.usedFallbackExtraction,
         isRead = entity.isRead,
         isBookmarked = entity.isBookmarked,
