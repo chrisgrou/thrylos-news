@@ -19,6 +19,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -49,6 +51,7 @@ fun FiltersScreen(
     val sourceNames by viewModel.sourceNames.collectAsStateWithLifecycle()
     var showEditor by remember { mutableStateOf(false) }
     var editingRule by remember { mutableStateOf<FilterRule?>(null) }
+    var selectedTab by remember { mutableStateOf(0) }
 
     if (showEditor) {
         FilterEditorScreen(
@@ -72,29 +75,33 @@ fun FiltersScreen(
             FloatingActionButton(onClick = { editingRule = null; showEditor = true }) { Icon(Icons.Filled.Add, contentDescription = "Νέος κανόνας") }
         },
     ) { padding ->
-        if (rows.isEmpty()) {
-            Column(Modifier.fillMaxSize().padding(padding).padding(24.dp)) {
-                Text("Δεν έχεις κανόνες φίλτρων ακόμα. Πρόσθεσε έναν για να κρύβεις άρθρα με συγκεκριμένες λέξεις-κλειδιά, συντάκτη ή πηγή.")
-            }
-        } else {
+        Column(Modifier.fillMaxSize().padding(padding)) {
             // Fixed category order (matching how the user asked for them, not the enum's
-            // declaration order) regardless of how many rules each has; HIGHLIGHT has no
-            // editor entry anymore but a section still renders for it if legacy rules exist.
-            val sectionOrder = listOf(FilterAction.HIDE, FilterAction.SHOW_ONLY, FilterAction.IMPORTANT, FilterAction.HIGHLIGHT)
-            val grouped = sectionOrder
-                .mapNotNull { action -> rows.filter { it.rule.action == action }.takeIf { it.isNotEmpty() }?.let { action to it } }
+            // declaration order); HIGHLIGHT has no editor entry anymore but still gets a
+            // tab if any legacy rule of that type exists.
+            val tabOrder = listOf(FilterAction.HIDE, FilterAction.SHOW_ONLY, FilterAction.IMPORTANT) +
+                (if (rows.any { it.rule.action == FilterAction.HIGHLIGHT }) listOf(FilterAction.HIGHLIGHT) else emptyList())
+            val clampedTab = selectedTab.coerceIn(0, tabOrder.lastIndex)
 
-            LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp)) {
-                grouped.forEach { (action, groupRows) ->
-                    item(key = "header-$action") {
-                        Text(
-                            sectionTitleFor(action),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
-                        )
-                    }
-                    items(groupRows, key = { it.rule.id }) { row ->
+            TabRow(selectedTabIndex = clampedTab) {
+                tabOrder.forEachIndexed { index, action ->
+                    Tab(
+                        selected = clampedTab == index,
+                        onClick = { selectedTab = index },
+                        text = { Text(sectionTitleFor(action)) },
+                    )
+                }
+            }
+
+            val tabRows = rows.filter { it.rule.action == tabOrder[clampedTab] }
+
+            if (tabRows.isEmpty()) {
+                Column(Modifier.fillMaxSize().padding(24.dp)) {
+                    Text("Δεν υπάρχουν κανόνες σε αυτή την κατηγορία ακόμα.")
+                }
+            } else {
+                LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp)) {
+                    items(tabRows, key = { it.rule.id }) { row ->
                         Card(
                             onClick = { editingRule = row.rule; showEditor = true },
                             modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
