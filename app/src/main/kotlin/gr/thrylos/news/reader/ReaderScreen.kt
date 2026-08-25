@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -151,51 +152,53 @@ fun ReaderScreen(
                         }
                         map
                     }
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = (12 + prefs.marginWidth * 12).dp, vertical = 10.dp),
-                    ) {
-                        item {
-                            Text(
-                                a.title,
-                                color = colors.text,
-                                style = TextStyle(
-                                    fontFamily = fontFamilyFor(prefs.fontFamily),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = (READER_BASE_HEADING_SP * 1.15f * prefs.fontScale).sp,
-                                    lineHeight = (READER_BASE_HEADING_SP * 1.15f * 1.2f * prefs.fontScale).sp,
-                                ),
-                            )
-                            val author = a.author
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(top = 8.dp, bottom = 14.dp),
-                            ) {
-                                if (author != null) {
-                                    Text(
-                                        author,
-                                        color = colors.secondaryText,
-                                        modifier = Modifier
-                                            .border(1.dp, colors.secondaryText, RoundedCornerShape(50))
-                                            .clickable { onOpenAuthorProfile(author) }
-                                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                                    )
-                                    Spacer(Modifier.width(10.dp))
-                                }
+                    SelectionContainer {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = (12 + prefs.marginWidth * 12).dp, vertical = 10.dp),
+                        ) {
+                            item {
                                 Text(
-                                    formatDateTime(a.publishedAt ?: a.fetchedAt),
-                                    color = colors.secondaryText,
-                                    fontSize = 13.sp,
+                                    a.title,
+                                    color = colors.text,
+                                    style = TextStyle(
+                                        fontFamily = fontFamilyFor(prefs.fontFamily),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = (READER_BASE_HEADING_SP * 1.15f * prefs.fontScale).sp,
+                                        lineHeight = (READER_BASE_HEADING_SP * 1.15f * 1.2f * prefs.fontScale).sp,
+                                    ),
+                                )
+                                val author = a.author
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(top = 8.dp, bottom = 14.dp),
+                                ) {
+                                    if (author != null) {
+                                        Text(
+                                            author,
+                                            color = colors.secondaryText,
+                                            modifier = Modifier
+                                                .border(1.dp, colors.secondaryText, RoundedCornerShape(50))
+                                                .clickable { onOpenAuthorProfile(author) }
+                                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                                        )
+                                        Spacer(Modifier.width(10.dp))
+                                    }
+                                    Text(
+                                        formatDateTime(a.publishedAt ?: a.fetchedAt),
+                                        color = colors.secondaryText,
+                                        fontSize = 13.sp,
+                                    )
+                                }
+                            }
+                            itemsIndexed(a.content) { index, block ->
+                                ContentBlockView(
+                                    block = block,
+                                    prefs = prefs,
+                                    colors = colors,
+                                    onMediaClick = mediaIndexByContentIndex[index]?.let { mediaIndex -> { onOpenMedia(id, mediaIndex) } },
                                 )
                             }
-                        }
-                        itemsIndexed(a.content) { index, block ->
-                            ContentBlockView(
-                                block = block,
-                                prefs = prefs,
-                                colors = colors,
-                                onMediaClick = mediaIndexByContentIndex[index]?.let { mediaIndex -> { onOpenMedia(id, mediaIndex) } },
-                            )
                         }
                     }
                 }
