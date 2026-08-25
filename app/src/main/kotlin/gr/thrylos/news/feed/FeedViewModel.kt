@@ -150,6 +150,10 @@ class FeedViewModel @Inject constructor(
         viewModelScope.launch { articleRepository.markAllRead() }
     }
 
+    fun markRead(id: String) {
+        viewModelScope.launch { articleRepository.setRead(id, true) }
+    }
+
     fun selectSource(name: String?) {
         selectedSourceName.value = name
         page.value = 0
