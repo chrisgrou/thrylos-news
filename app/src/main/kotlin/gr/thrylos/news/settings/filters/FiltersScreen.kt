@@ -77,30 +77,47 @@ fun FiltersScreen(
                 Text("Δεν έχεις κανόνες φίλτρων ακόμα. Πρόσθεσε έναν για να κρύβεις άρθρα με συγκεκριμένες λέξεις-κλειδιά, συντάκτη ή πηγή.")
             }
         } else {
+            // Fixed category order (matching how the user asked for them, not the enum's
+            // declaration order) regardless of how many rules each has; HIGHLIGHT has no
+            // editor entry anymore but a section still renders for it if legacy rules exist.
+            val sectionOrder = listOf(FilterAction.HIDE, FilterAction.SHOW_ONLY, FilterAction.IMPORTANT, FilterAction.HIGHLIGHT)
+            val grouped = sectionOrder
+                .mapNotNull { action -> rows.filter { it.rule.action == action }.takeIf { it.isNotEmpty() }?.let { action to it } }
+
             LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp)) {
-                items(rows, key = { it.rule.id }) { row ->
-                    Card(
-                        onClick = { editingRule = row.rule; showEditor = true },
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                    ) {
-                        Row(
-                            Modifier.padding(18.dp).fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
+                grouped.forEach { (action, groupRows) ->
+                    item(key = "header-$action") {
+                        Text(
+                            sectionTitleFor(action),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
+                        )
+                    }
+                    items(groupRows, key = { it.rule.id }) { row ->
+                        Card(
+                            onClick = { editingRule = row.rule; showEditor = true },
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                         ) {
-                            Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                                Text(describe(row.rule), style = MaterialTheme.typography.titleMedium)
-                                Text(
-                                    "→ ${actionVerb(row.rule.action)} ${row.hiddenCount} άρθρα αυτή τη στιγμή" + (row.rule.scopeSourceId?.let { " · μόνο στην πηγή $it" } ?: ""),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(top = 4.dp),
+                            Row(
+                                Modifier.padding(18.dp).fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                                    Text(describe(row.rule), style = MaterialTheme.typography.titleMedium)
+                                    Text(
+                                        "→ ${actionVerb(row.rule.action)} ${row.hiddenCount} άρθρα αυτή τη στιγμή" + (row.rule.scopeSourceId?.let { " · μόνο στην πηγή $it" } ?: ""),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = 4.dp),
+                                    )
+                                }
+                                Switch(
+                                    checked = row.rule.enabled,
+                                    onCheckedChange = { checked -> viewModel.setEnabled(row.rule, checked) },
                                 )
                             }
-                            Switch(
-                                checked = row.rule.enabled,
-                                onCheckedChange = { checked -> viewModel.setEnabled(row.rule, checked) },
-                            )
                         }
                     }
                 }
@@ -121,6 +138,13 @@ private fun describe(condition: FilterCondition): String {
         condition.value
     }
     return "${labelFor(condition.field)} ${labelFor(condition.match)} \"$displayValue\""
+}
+
+private fun sectionTitleFor(action: FilterAction) = when (action) {
+    FilterAction.HIDE -> "Απόκρυψη"
+    FilterAction.SHOW_ONLY -> "Εμφάνιση"
+    FilterAction.IMPORTANT -> "Σημαντικό"
+    FilterAction.HIGHLIGHT -> "Επισήμανση"
 }
 
 private fun actionVerb(action: FilterAction) = when (action) {
