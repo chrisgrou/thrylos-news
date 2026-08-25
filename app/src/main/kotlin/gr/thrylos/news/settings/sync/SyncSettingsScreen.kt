@@ -33,28 +33,54 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import gr.thrylos.news.model.AppThemeMode
 import gr.thrylos.news.model.RefreshInterval
+import gr.thrylos.news.theme.AppThemeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SyncSettingsScreen(
     onBack: () -> Unit,
     viewModel: SyncSettingsViewModel = hiltViewModel(),
+    themeViewModel: AppThemeViewModel = hiltViewModel(),
 ) {
     val sync by viewModel.syncPrefs.collectAsStateWithLifecycle()
     val notifications by viewModel.notificationPrefs.collectAsStateWithLifecycle()
+    val themeMode by themeViewModel.mode.collectAsStateWithLifecycle()
     var editingQuietStart by remember { mutableStateOf(false) }
     var editingQuietEnd by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Ανανέωση & Ειδοποιήσεις") },
+                title = { Text("Εφαρμογή") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Πίσω") } },
             )
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(16.dp).verticalScroll(rememberScrollState())) {
+            SectionTitle("Εμφάνιση")
+            Row(
+                Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilterChip(
+                    selected = themeMode == AppThemeMode.SYSTEM,
+                    onClick = { themeViewModel.setMode(AppThemeMode.SYSTEM) },
+                    label = { Text("Σύστημα") },
+                )
+                FilterChip(
+                    selected = themeMode == AppThemeMode.LIGHT,
+                    onClick = { themeViewModel.setMode(AppThemeMode.LIGHT) },
+                    label = { Text("Φωτεινό") },
+                )
+                FilterChip(
+                    selected = themeMode == AppThemeMode.DARK,
+                    onClick = { themeViewModel.setMode(AppThemeMode.DARK) },
+                    label = { Text("Σκοτεινό") },
+                )
+            }
+
             SectionTitle("Διάστημα αυτόματης ανανέωσης")
             Row(
                 Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp).horizontalScroll(rememberScrollState()),

@@ -22,12 +22,9 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
@@ -71,7 +68,6 @@ fun FeedScreen(
     val lastSyncAt by viewModel.lastSyncAt.collectAsStateWithLifecycle()
     val lastSyncOutcome by viewModel.lastSyncOutcome.collectAsStateWithLifecycle()
     var showSourcePicker by remember { mutableStateOf(false) }
-    var showMenu by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -95,23 +91,11 @@ fun FeedScreen(
                     IconButton(onClick = { viewModel.markAllRead() }) {
                         Icon(Icons.Filled.DoneAll, contentDescription = "Μαρκάρισμα όλων ως διαβασμένα")
                     }
-                    if (state.pageCount > 1) {
-                        CompactPager(state = state, onSetPage = viewModel::setPage)
+                    IconButton(onClick = onOpenBookmarks) {
+                        Icon(Icons.Filled.Bookmarks, contentDescription = "Bookmarks")
                     }
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = "Μενού")
-                    }
-                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                        DropdownMenuItem(
-                            text = { Text("Bookmarks") },
-                            leadingIcon = { Icon(Icons.Filled.Bookmarks, contentDescription = null) },
-                            onClick = { showMenu = false; onOpenBookmarks() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Ρυθμίσεις") },
-                            leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null) },
-                            onClick = { showMenu = false; onOpenSettings() },
-                        )
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(Icons.Filled.Settings, contentDescription = "Ρυθμίσεις")
                     }
                 },
             )
@@ -134,6 +118,7 @@ fun FeedScreen(
                     lastSyncOutcome = lastSyncOutcome,
                     onOpenSourcePicker = { showSourcePicker = true },
                     onSetUnreadOnly = viewModel::setUnreadOnly,
+                    onSetPage = viewModel::setPage,
                 )
 
                 if (state.isEmpty) {
@@ -209,6 +194,7 @@ private fun FeedFilterBar(
     lastSyncOutcome: String?,
     onOpenSourcePicker: () -> Unit,
     onSetUnreadOnly: (Boolean) -> Unit,
+    onSetPage: (Int) -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp)) {
         Row(
@@ -223,6 +209,9 @@ private fun FeedFilterBar(
             )
             FilterChip(selected = !state.unreadOnly, onClick = { onSetUnreadOnly(false) }, label = { Text("Όλα") })
             FilterChip(selected = state.unreadOnly, onClick = { onSetUnreadOnly(true) }, label = { Text("Νέα") })
+            if (state.pageCount > 1) {
+                CompactPager(state = state, onSetPage = onSetPage)
+            }
         }
         val isNormal = lastSyncOutcome == null || lastSyncOutcome == "Ολοκληρώθηκε"
         Text(
