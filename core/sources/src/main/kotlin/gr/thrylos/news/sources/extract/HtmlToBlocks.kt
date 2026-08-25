@@ -143,8 +143,12 @@ object HtmlToBlocks {
      *  the quote, which for a Twitter embed is the "— Name (@handle) <a>Date</a>"
      *  permalink; returns null for a plain editorial quote with no such link. */
     private fun quoteSourceUrl(el: Element, baseUrl: String): String? {
+        // Accept any non-empty, non-fragment href here (not just absolute https://) —
+        // resolve() below turns a protocol-relative ("//twitter.com/...") or relative
+        // href into an absolute one; requiring an absolute scheme up front missed those.
         val permalink = el.attr("data-instgrm-permalink").ifBlank { null }
-            ?: el.select("a[href~=^https?://]").lastOrNull()?.attr("href")?.ifBlank { null }
+            ?: el.select("a[href]").lastOrNull { it.attr("href").isNotBlank() && !it.attr("href").startsWith("#") }
+                ?.attr("href")
             ?: return null
         return UrlNormalizer.resolve(baseUrl, permalink)
     }

@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
@@ -216,19 +215,31 @@ private fun linkify(text: String): Pair<AnnotatedString, Map<String, InlineTextC
                 val href = if (url.startsWith("http", ignoreCase = true)) url else "https://$url"
                 val id = "link_$index"
                 appendInlineContent(id, url)
+                // Placeholder size can't be measured from the actual text, only set
+                // up front — approximate a monospace-ish width from character count
+                // (generous, so the label never gets clipped) plus room for the icon.
+                val widthEm = (url.length * 0.62f + 2.6f).em
                 inlineContent[id] = InlineTextContent(
-                    Placeholder(width = 1.3.em, height = 1.3.em, placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter),
+                    Placeholder(width = widthEm, height = 1.5.em, placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter),
                 ) {
-                    Box(
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxSize()
-                            .clip(CircleShape)
+                            .clip(RoundedCornerShape(50))
                             .background(LinkColor.copy(alpha = 0.15f))
-                            .border(BorderStroke(1.dp, LinkColor), CircleShape)
-                            .clickable { uriHandler.openUri(href) },
-                        contentAlignment = Alignment.Center,
+                            .border(BorderStroke(1.dp, LinkColor), RoundedCornerShape(50))
+                            .clickable { uriHandler.openUri(href) }
+                            .padding(horizontal = 6.dp),
                     ) {
-                        Icon(Icons.Filled.OpenInNew, contentDescription = "Άνοιγμα συνδέσμου: $url", tint = LinkColor, modifier = Modifier.fillMaxSize().padding(2.dp))
+                        Icon(Icons.Filled.OpenInNew, contentDescription = null, tint = LinkColor, modifier = Modifier.size(11.dp))
+                        Text(
+                            url,
+                            style = TextStyle(fontSize = 11.sp, color = LinkColor),
+                            maxLines = 1,
+                            softWrap = false,
+                            modifier = Modifier.padding(start = 3.dp),
+                        )
                     }
                 }
                 index++
