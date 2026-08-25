@@ -10,8 +10,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -85,7 +88,7 @@ fun FeedScreen(
                             modifier = Modifier.size(36.dp),
                         )
                         Text(
-                            "Τα νέα του\nΟλυμπιακού",
+                            "ΤΑ ΝΕΑ ΤΟΥ\nΟΛΥΜΠΙΑΚΟΥ",
                             style = MaterialTheme.typography.titleSmall,
                             lineHeight = 15.sp,
                             modifier = Modifier.padding(start = 10.dp),
@@ -211,6 +214,8 @@ private fun FeedFilterBar(
                 onClick = onOpenSourcePicker,
                 label = { Text(state.selectedSourceName?.let(::stripSourceSuffix) ?: "Όλες οι πηγές") },
                 trailingIcon = { Icon(Icons.Filled.ExpandMore, contentDescription = null) },
+                shape = FilterBarShape,
+                modifier = Modifier.height(FilterBarHeight),
             )
             UnreadOnlyToggle(unreadOnly = state.unreadOnly, onSetUnreadOnly = onSetUnreadOnly)
             if (state.pageCount > 1) {
@@ -245,14 +250,21 @@ private fun lastSyncLabel(millis: Long): String {
     }
 }
 
-/** A single pill housing "Όλα"/"Νέα" as two joined segments, rather than two
+/** Shared with [UnreadOnlyToggle] and [CompactPager] so every control in the filter
+ *  bar — including the "Όλες οι πηγές" [FilterChip] — has the same squared corners
+ *  and the same 32dp height. */
+private val FilterBarShape = RoundedCornerShape(8.dp)
+private val FilterBarHeight = 32.dp
+
+/** A single control housing "Όλα"/"Νέα" as two joined segments, rather than two
  *  separate chips with a gap between them. */
 @Composable
 private fun UnreadOnlyToggle(unreadOnly: Boolean, onSetUnreadOnly: (Boolean) -> Unit) {
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(50)),
+            .height(FilterBarHeight)
+            .clip(FilterBarShape)
+            .border(1.dp, MaterialTheme.colorScheme.outline, FilterBarShape),
     ) {
         UnreadOnlySegment(label = "Όλα", selected = !unreadOnly, onClick = { onSetUnreadOnly(false) })
         UnreadOnlySegment(label = "Νέα", selected = unreadOnly, onClick = { onSetUnreadOnly(true) })
@@ -260,12 +272,13 @@ private fun UnreadOnlyToggle(unreadOnly: Boolean, onSetUnreadOnly: (Boolean) -> 
 }
 
 @Composable
-private fun UnreadOnlySegment(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun RowScope.UnreadOnlySegment(label: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
+            .fillMaxHeight()
             .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -281,14 +294,14 @@ private fun CompactPager(state: FeedUiState, onSetPage: (Int) -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(50))
-            .padding(horizontal = 2.dp),
+            .height(FilterBarHeight)
+            .clip(FilterBarShape)
+            .border(1.dp, MaterialTheme.colorScheme.outline, FilterBarShape),
     ) {
         IconButton(
             onClick = { onSetPage(state.page - 1) },
             enabled = state.page > 0,
-            modifier = Modifier.size(32.dp),
+            modifier = Modifier.size(FilterBarHeight),
         ) {
             Icon(Icons.Filled.ChevronLeft, contentDescription = "Προηγούμενη σελίδα")
         }
@@ -299,7 +312,7 @@ private fun CompactPager(state: FeedUiState, onSetPage: (Int) -> Unit) {
         IconButton(
             onClick = { onSetPage(state.page + 1) },
             enabled = state.page < state.pageCount - 1,
-            modifier = Modifier.size(32.dp),
+            modifier = Modifier.size(FilterBarHeight),
         ) {
             Icon(Icons.Filled.ChevronRight, contentDescription = "Επόμενη σελίδα")
         }
