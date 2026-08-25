@@ -154,15 +154,6 @@ fun FeedScreen(
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        if (showNewSection) {
-                            item(key = "new-articles-label") {
-                                Text(
-                                    "Νέα άρθρα από το τελευταίο άνοιγμα",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        }
                         itemsIndexed(state.items, key = { _, item -> item.article.id }) { index, item ->
                             ArticleCard(item = item, onClick = {
                                 viewModel.openArticle(item.article.id)
