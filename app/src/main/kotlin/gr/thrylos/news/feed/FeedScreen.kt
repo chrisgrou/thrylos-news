@@ -19,7 +19,6 @@ import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DoneAll
-import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.OpenInNew
@@ -37,15 +36,10 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.rememberSwipeToDismissBoxState
-import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -55,7 +49,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -168,14 +161,10 @@ fun FeedScreen(
                             }
                         }
                         itemsIndexed(state.items, key = { _, item -> item.article.id }) { index, item ->
-                            SwipeToMarkReadCard(
-                                onMarkRead = { viewModel.markRead(item.article.id) },
-                            ) {
-                                ArticleCard(item = item, onClick = {
-                                    viewModel.openArticle(item.article.id)
-                                    onOpenArticle(item.article.id)
-                                })
-                            }
+                            ArticleCard(item = item, onClick = {
+                                viewModel.openArticle(item.article.id)
+                                onOpenArticle(item.article.id)
+                            })
                             if (showNewSection && index == newCount - 1) {
                                 HorizontalDivider(modifier = Modifier.padding(top = 4.dp))
                             }
@@ -200,33 +189,6 @@ fun FeedScreen(
                 },
             )
         }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SwipeToMarkReadCard(onMarkRead: () -> Unit, content: @Composable () -> Unit) {
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.StartToEnd) onMarkRead()
-            false // never actually remove the card — just mark read and snap back
-        },
-    )
-    SwipeToDismissBox(
-        state = dismissState,
-        enableDismissFromEndToStart = false,
-        backgroundContent = {
-            Box(
-                Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .padding(start = 20.dp),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                Icon(Icons.Filled.Done, contentDescription = "Μαρκάρισμα ως διαβασμένο", tint = MaterialTheme.colorScheme.onPrimaryContainer)
-            }
-        },
-    ) {
-        content()
     }
 }
 
