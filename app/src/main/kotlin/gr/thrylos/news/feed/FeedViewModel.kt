@@ -11,11 +11,13 @@ import gr.thrylos.news.data.repo.SourceRepository
 import gr.thrylos.news.data.sync.SyncScheduler
 import gr.thrylos.news.model.Article
 import gr.thrylos.news.sources.filter.FilterEngine
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -99,7 +101,8 @@ class FeedViewModel @Inject constructor(
         // article is a duplicate — only the group's primary (or an ungrouped
         // article) becomes its own card, tagged with how many others it absorbed.
         val byId = articles.associateBy { it.id }
-        val primaries = visible.filter { it.dedupGroupId == null || byId[it.dedupGroupId] == null || !visible.any { v -> v.id == it.dedupGroupId } }
+        val visibleIds = visible.mapTo(HashSet(visible.size)) { it.id }
+        val primaries = visible.filter { it.dedupGroupId == null || byId[it.dedupGroupId] == null || it.dedupGroupId !in visibleIds }
         val groupCounts = visible.groupingBy { it.dedupGroupId ?: it.id }.eachCount()
 
         val items = primaries
@@ -112,7 +115,13 @@ class FeedViewModel @Inject constructor(
             .map { FeedItem(it, (groupCounts[it.id] ?: 1) - 1, FilterEngine.isImportant(it, filters)) }
 
         ComputedFeed(items = items, sources = chips, selectedSourceName = sourceName, unreadOnly = onlyUnread)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ComputedFeed(emptyList(), emptyList(), null, false))
+    }
+        // This recomputes the full filter/dedup/sort pass over every stored article on
+        // every single database change — combine()'s default dispatcher is whatever the
+        // collector uses, which for viewModelScope is the main thread, so without this
+        // it runs (and can jank scrolling/navigation animations) on the UI thread.
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ComputedFeed(emptyList(), emptyList(), null, false))
 
     /** Caps how many cards render at once — a long feed makes scrolling sluggish, so
      *  results are paged (PAGE_SIZE per page) instead of dumping everything into one list. */

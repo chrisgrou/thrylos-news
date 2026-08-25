@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import gr.thrylos.news.data.db.entity.ArticleEntity
 import kotlinx.coroutines.flow.Flow
@@ -54,6 +55,16 @@ interface ArticleDao {
 
     @Query("UPDATE articles SET dedupGroupId = :groupId WHERE id = :id")
     suspend fun setDedupGroup(id: String, groupId: String?)
+
+    /** Room's InvalidationTracker fires an observeAll() re-emission after every single
+     *  write to the table — calling setDedupGroup() in a plain loop for dozens of
+     *  articles after each sync meant the feed's whole filter/sort/dedup pipeline
+     *  recomputed dozens of times in a row. Wrapping the batch in one @Transaction
+     *  collapses that into a single re-emission once the batch commits. */
+    @Transaction
+    suspend fun setDedupGroups(updates: List<Pair<String, String?>>) {
+        updates.forEach { (id, groupId) -> setDedupGroup(id, groupId) }
+    }
 
     @Query("SELECT * FROM articles")
     suspend fun getAllOnce(): List<ArticleEntity>

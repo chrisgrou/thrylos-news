@@ -39,6 +39,10 @@ class ArticleRepository @Inject constructor(
 
     suspend fun setDedupGroup(id: String, groupId: String?) = dao.setDedupGroup(id, groupId)
 
+    suspend fun setDedupGroups(updates: List<Pair<String, String?>>) {
+        if (updates.isNotEmpty()) dao.setDedupGroups(updates)
+    }
+
     suspend fun getAllOnce(): List<Article> = dao.getAllOnce().map(ArticleMapper::toDomain)
 
     suspend fun runOfflineCleanup(retentionDays: Int, maxArticles: Int) {

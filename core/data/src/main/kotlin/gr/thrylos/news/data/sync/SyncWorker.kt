@@ -118,9 +118,10 @@ class SyncWorker @AssistedInject constructor(
         }
         if (recent.size < 2) return
         val groups = Dedup.groupDuplicates(recent, windowMs = DEDUP_WINDOW_MS)
-        recent.forEach { article ->
+        val changed = recent.mapNotNull { article ->
             val groupId = groups[article.id]?.takeIf { it != article.id }
-            if (groupId != article.dedupGroupId) articleRepository.setDedupGroup(article.id, groupId)
+            if (groupId != article.dedupGroupId) article.id to groupId else null
         }
+        articleRepository.setDedupGroups(changed)
     }
 }
