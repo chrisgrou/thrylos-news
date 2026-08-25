@@ -1,5 +1,7 @@
 package gr.thrylos.news.feed
 
+import gr.thrylos.news.R
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,9 +38,6 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -52,7 +51,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
@@ -75,7 +76,21 @@ fun FeedScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Thrylos News") },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(R.drawable.olympiacos_logo),
+                            contentDescription = null,
+                            modifier = Modifier.size(36.dp),
+                        )
+                        Text(
+                            "ΤΑ ΝΕΑ\nΤΟΥ ΟΛΥΜΠΙΑΚΟΥ",
+                            style = MaterialTheme.typography.titleSmall,
+                            lineHeight = 15.sp,
+                            modifier = Modifier.padding(start = 10.dp),
+                        )
+                    }
+                },
                 actions = {
                     IconButton(onClick = { viewModel.markAllRead() }) {
                         Icon(Icons.Filled.DoneAll, contentDescription = "Μαρκάρισμα όλων ως διαβασμένα")
@@ -206,20 +221,8 @@ private fun FeedFilterBar(
                 label = { Text(state.selectedSourceName?.let(::stripSourceSuffix) ?: "Όλες οι πηγές") },
                 trailingIcon = { Icon(Icons.Filled.ExpandMore, contentDescription = null) },
             )
-            SingleChoiceSegmentedButtonRow {
-                SegmentedButton(
-                    selected = !state.unreadOnly,
-                    onClick = { onSetUnreadOnly(false) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                    label = { Text("Όλα") },
-                )
-                SegmentedButton(
-                    selected = state.unreadOnly,
-                    onClick = { onSetUnreadOnly(true) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                    label = { Text("Νέα") },
-                )
-            }
+            FilterChip(selected = !state.unreadOnly, onClick = { onSetUnreadOnly(false) }, label = { Text("Όλα") })
+            FilterChip(selected = state.unreadOnly, onClick = { onSetUnreadOnly(true) }, label = { Text("Νέα") })
         }
         val isNormal = lastSyncOutcome == null || lastSyncOutcome == "Ολοκληρώθηκε"
         Text(
