@@ -124,7 +124,7 @@ fun FiltersScreen(
                                 Column(Modifier.weight(1f).padding(end = 12.dp)) {
                                     RuleDescription(row.rule)
                                     Text(
-                                        "→ ${actionVerb(row.rule.action)} ${row.hiddenCount} άρθρα αυτή τη στιγμή" + (row.rule.scopeSourceId?.let { " · μόνο στην πηγή $it" } ?: ""),
+                                        "→ Ταιριάζει με ${row.hiddenCount} άρθρα" + (row.rule.scopeSourceId?.let { " · μόνο στην πηγή $it" } ?: ""),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.padding(top = 4.dp),
@@ -208,13 +208,6 @@ private fun sectionTitleFor(action: FilterAction) = when (action) {
     FilterAction.SHOW_ONLY -> "Εμφάνιση"
     FilterAction.IMPORTANT -> "Σημαντικό"
     FilterAction.HIGHLIGHT -> "Επισήμανση"
-}
-
-private fun actionVerb(action: FilterAction) = when (action) {
-    FilterAction.HIDE -> "κρύβει"
-    FilterAction.SHOW_ONLY -> "αφήνει ορατά μόνο"
-    FilterAction.IMPORTANT -> "μαρκάρει ως σημαντικά"
-    FilterAction.HIGHLIGHT -> "επισημαίνει"
 }
 
 private fun labelFor(field: FilterField) = when (field) {
