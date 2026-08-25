@@ -20,8 +20,11 @@ sealed class ContentBlock {
     @Serializable
     data class Image(val url: String, val caption: String? = null) : ContentBlock()
 
+    /** [sourceUrl] links back to the original post when this quote is actually an
+     *  embedded social post (Twitter/X, Instagram, Facebook widgets all end their
+     *  markup with a link to the post itself) — null for a plain editorial quote. */
     @Serializable
-    data class Quote(val text: String, val attribution: String? = null) : ContentBlock()
+    data class Quote(val text: String, val attribution: String? = null, val sourceUrl: String? = null) : ContentBlock()
 
     @Serializable
     data class ListBlock(val items: List<String>, val ordered: Boolean = false) : ContentBlock()

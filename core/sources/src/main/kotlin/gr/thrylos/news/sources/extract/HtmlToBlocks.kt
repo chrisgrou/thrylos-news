@@ -88,7 +88,9 @@ object HtmlToBlocks {
                         tag == "blockquote" -> {
                             flush()
                             val text = node.text().trim()
-                            if (text.isNotBlank()) out += ContentBlock.Quote(text)
+                            if (text.isNotBlank()) {
+                                out += ContentBlock.Quote(text, sourceUrl = quoteSourceUrl(node, baseUrl))
+                            }
                         }
                         tag == "ul" || tag == "ol" -> {
                             flush()
@@ -132,6 +134,19 @@ object HtmlToBlocks {
             }
         }
         flush()
+    }
+
+    /** Twitter/X and Instagram's official embed widgets both end their markup with a
+     *  link to the actual post (Instagram additionally carries it as a `data-instgrm-
+     *  permalink` attribute on the blockquote itself, which is more reliable than
+     *  guessing from links when present). Falls back to the last absolute link inside
+     *  the quote, which for a Twitter embed is the "— Name (@handle) <a>Date</a>"
+     *  permalink; returns null for a plain editorial quote with no such link. */
+    private fun quoteSourceUrl(el: Element, baseUrl: String): String? {
+        val permalink = el.attr("data-instgrm-permalink").ifBlank { null }
+            ?: el.select("a[href~=^https?://]").lastOrNull()?.attr("href")?.ifBlank { null }
+            ?: return null
+        return UrlNormalizer.resolve(baseUrl, permalink)
     }
 
     private fun videoFrom(el: Element, baseUrl: String): ContentBlock.Video? {
