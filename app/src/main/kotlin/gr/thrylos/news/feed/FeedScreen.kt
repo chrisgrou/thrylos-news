@@ -80,7 +80,7 @@ fun FeedScreen(
                             modifier = Modifier.size(36.dp),
                         )
                         Text(
-                            "ΤΑ ΝΕΑ\nΤΟΥ ΟΛΥΜΠΙΑΚΟΥ",
+                            "Τα νέα του\nΟλυμπιακού",
                             style = MaterialTheme.typography.titleSmall,
                             lineHeight = 15.sp,
                             modifier = Modifier.padding(start = 10.dp),

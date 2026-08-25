@@ -1,7 +1,10 @@
 package gr.thrylos.news.settings.filters
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,6 +33,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -112,7 +119,7 @@ fun FiltersScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                                    Text(describe(row.rule), style = MaterialTheme.typography.titleMedium)
+                                    RuleDescription(row.rule)
                                     Text(
                                         "→ ${actionVerb(row.rule.action)} ${row.hiddenCount} άρθρα αυτή τη στιγμή" + (row.rule.scopeSourceId?.let { " · μόνο στην πηγή $it" } ?: ""),
                                         style = MaterialTheme.typography.bodyMedium,
@@ -133,18 +140,66 @@ fun FiltersScreen(
     }
 }
 
-private fun describe(rule: FilterRule): String {
-    val joiner = if (rule.combinator == FilterCombinator.AND) " ΚΑΙ " else " Ή "
-    return rule.conditions.joinToString(joiner) { describe(it) }
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RuleDescription(rule: FilterRule) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        rule.conditions.forEachIndexed { index, condition ->
+            if (index > 0) {
+                Text(
+                    if (rule.combinator == FilterCombinator.AND) "ΚΑΙ" else "Ή",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp, end = 2.dp),
+                )
+            }
+            ConditionBadge(condition)
+        }
+    }
 }
 
-private fun describe(condition: FilterCondition): String {
+@Composable
+private fun ConditionBadge(condition: FilterCondition) {
+    val (containerColor, labelColor) = fieldColors(condition.field)
     val displayValue = if (condition.field == FilterField.SOURCE && condition.match == FilterMatch.EXACT) {
         stripSourceSuffix(condition.value)
     } else {
         condition.value
     }
-    return "${labelFor(condition.field)} ${labelFor(condition.match)} \"$displayValue\""
+    val strike = condition.match == FilterMatch.NOT_CONTAINS
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.clip(MaterialTheme.shapes.small).background(containerColor),
+    ) {
+        Text(
+            labelFor(condition.field).uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = labelColor,
+            modifier = Modifier.padding(start = 8.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+        )
+        Text(
+            displayValue,
+            style = MaterialTheme.typography.labelSmall.copy(
+                textDecoration = if (strike) TextDecoration.LineThrough else TextDecoration.None,
+            ),
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(start = 0.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
+        )
+    }
+}
+
+/** Distinct badge colors per field so a rule's category is recognizable at a glance. */
+@Composable
+private fun fieldColors(field: FilterField): Pair<Color, Color> = when (field) {
+    FilterField.TITLE -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
+    FilterField.BODY -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+    FilterField.AUTHOR -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+    FilterField.URL -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
+    FilterField.SOURCE -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
 }
 
 private fun sectionTitleFor(action: FilterAction) = when (action) {
@@ -167,11 +222,4 @@ private fun labelFor(field: FilterField) = when (field) {
     FilterField.AUTHOR -> "Συντάκτης"
     FilterField.URL -> "URL"
     FilterField.SOURCE -> "Πηγή"
-}
-
-private fun labelFor(match: FilterMatch) = when (match) {
-    FilterMatch.CONTAINS -> "περιέχει"
-    FilterMatch.NOT_CONTAINS -> "δεν περιέχει"
-    FilterMatch.REGEX -> "ταιριάζει με regex"
-    FilterMatch.EXACT -> "είναι ακριβώς"
 }
