@@ -179,9 +179,9 @@ fun FilterEditorScreen(
                 }
             }
 
-            Button(onClick = { conditions.add(ConditionDraft()) }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+            OutlinedButton(onClick = { conditions.add(ConditionDraft()) }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
                 Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.padding(end = 6.dp))
-                Text("Προσθήκη συνθήκης (${if (combinator == FilterCombinator.AND) "ΚΑΙ" else "Ή"})")
+                Text("Προσθήκη συνθήκης (Ή/ΚΑΙ)")
             }
 
             HorizontalDivider(Modifier.padding(vertical = 16.dp))
