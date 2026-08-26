@@ -10,12 +10,12 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
-import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.lazy.LazyColumn
+import androidx.glance.appwidget.lazy.itemsIndexed
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -40,7 +40,6 @@ import gr.thrylos.news.feed.stripSourceSuffix
 import gr.thrylos.news.model.Article
 import gr.thrylos.news.sources.filter.FilterEngine
 import kotlinx.coroutines.flow.first
-import kotlin.math.max
 
 private val BrandRed = Color(0xFFC6303E)
 private val WidgetBackground = Color(0xFFFFFBF5)
@@ -49,16 +48,15 @@ private val TextSecondary = Color(0xFF7A6A5E)
 private val Divider = Color(0xFFE9E0D5)
 
 private val HEADER_HEIGHT = 32.dp
-private val ROW_HEIGHT = 52.dp
 
 /** Home-screen widget listing the newest articles — resizable, one article per row
  *  (title + a single "πηγή · συντάκτης · χρόνος" line), with an in-widget refresh
- *  button. How many rows fit is derived from the widget's current on-screen size
- *  ([SizeMode.Exact]) rather than being scrollable, so resizing the widget directly
- *  controls how many articles show. */
+ *  button. Rows sit in a LazyColumn that fills whatever space is left under the
+ *  header, so each row's actual height (title can wrap to 2 lines) decides how many
+ *  fit — a fixed per-row height estimate previously either clipped wrapped titles or
+ *  left a wrong-guessed empty gap. Resizing the widget still directly changes how
+ *  many rows are visible before scrolling is needed. */
 class ThrylosGlanceWidget : GlanceAppWidget() {
-
-    override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val entryPoint = EntryPointAccessors.fromApplication(context, WidgetEntryPoint::class.java)
@@ -81,10 +79,6 @@ class ThrylosGlanceWidget : GlanceAppWidget() {
 
 @Composable
 private fun WidgetContent(articles: List<Article>, importantOnly: Boolean) {
-    val size = LocalSize.current
-    val availableHeight = (size.height - HEADER_HEIGHT).coerceAtLeast(0.dp)
-    val itemCount = max(1, (availableHeight.value / ROW_HEIGHT.value).toInt())
-
     Column(
         modifier = GlanceModifier.fillMaxSize().background(WidgetBackground).padding(12.dp),
     ) {
@@ -112,11 +106,14 @@ private fun WidgetContent(articles: List<Article>, importantOnly: Boolean) {
                 modifier = GlanceModifier.padding(top = 8.dp),
             )
         } else {
-            val shown = articles.take(itemCount)
-            shown.forEachIndexed { index, article ->
-                WidgetArticleRow(article)
-                if (index != shown.lastIndex) {
-                    Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(Divider))
+            LazyColumn(modifier = GlanceModifier.fillMaxWidth().defaultWeight()) {
+                itemsIndexed(articles, itemId = { _, article -> article.id.hashCode().toLong() }) { index, article ->
+                    Column(modifier = GlanceModifier.fillMaxWidth()) {
+                        WidgetArticleRow(article)
+                        if (index != articles.lastIndex) {
+                            Spacer(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(Divider))
+                        }
+                    }
                 }
             }
         }
@@ -129,9 +126,8 @@ private fun WidgetArticleRow(article: Article) {
     Column(
         modifier = GlanceModifier
             .fillMaxWidth()
-            .height(ROW_HEIGHT)
             .clickable(actionStartActivity(openArticleIntent(context, article.id)))
-            .padding(vertical = 6.dp),
+            .padding(vertical = 8.dp),
     ) {
         Text(
             text = article.title,
