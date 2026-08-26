@@ -11,6 +11,7 @@ import gr.thrylos.news.data.prefs.AppPreferences
 import gr.thrylos.news.data.repo.ArticleRepository
 import gr.thrylos.news.data.repo.FilterRepository
 import gr.thrylos.news.data.repo.SourceRepository
+import gr.thrylos.news.data.widget.WidgetUpdater
 import gr.thrylos.news.model.Article
 import gr.thrylos.news.sources.dedup.Dedup
 import gr.thrylos.news.sources.filter.FilterEngine
@@ -40,6 +41,7 @@ class SyncWorker @AssistedInject constructor(
     private val appPreferences: AppPreferences,
     private val notificationHelper: NotificationHelper,
     private val coordinator: SourceSyncCoordinator,
+    private val widgetUpdater: WidgetUpdater,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
@@ -94,6 +96,7 @@ class SyncWorker @AssistedInject constructor(
         }
 
         articleRepository.runOfflineCleanup(syncPrefs.offlineRetentionDays, syncPrefs.offlineMaxArticles)
+        widgetUpdater.requestUpdate()
         Result.success()
     }
 

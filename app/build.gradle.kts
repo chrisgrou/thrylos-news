@@ -92,6 +92,8 @@ dependencies {
 
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 
+    implementation("androidx.glance:glance-appwidget:1.1.1")
+
     implementation("com.google.dagger:hilt-android:2.52")
     ksp("com.google.dagger:hilt-android-compiler:2.52")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")

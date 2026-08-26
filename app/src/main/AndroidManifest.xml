@@ -45,6 +45,18 @@
             </intent-filter>
         </activity>
 
+        <receiver
+            android:name=".widget.ThrylosWidgetReceiver"
+            android:exported="false"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/thrylos_widget_info" />
+        </receiver>
+
         <!-- Exposes the downloaded update APK (private app cache) to the system
              package installer via a content:// Uri, since installers can't be
              handed a file:// path directly on API 24+. -->

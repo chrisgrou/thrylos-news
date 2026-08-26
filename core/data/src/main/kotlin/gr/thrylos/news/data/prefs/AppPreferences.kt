@@ -14,6 +14,7 @@ import gr.thrylos.news.model.ReaderTheme
 import gr.thrylos.news.model.RefreshInterval
 import gr.thrylos.news.model.SyncPrefs
 import gr.thrylos.news.model.TextAlign
+import gr.thrylos.news.model.WidgetPrefs
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -58,6 +59,11 @@ private data class NotificationPrefsDto(
     val groupIntoSummary: Boolean = true,
 )
 
+@Serializable
+private data class WidgetPrefsDto(
+    val showOnlyImportant: Boolean = false,
+)
+
 @Singleton
 class AppPreferences @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -67,6 +73,7 @@ class AppPreferences @Inject constructor(
     private val readerKey = stringPreferencesKey("reader_prefs")
     private val syncKey = stringPreferencesKey("sync_prefs")
     private val notificationKey = stringPreferencesKey("notification_prefs")
+    private val widgetKey = stringPreferencesKey("widget_prefs")
     private val appThemeKey = stringPreferencesKey("app_theme_mode")
     private val lastOpenedAtKey = longPreferencesKey("last_opened_at")
     private val lastSyncCompletedAtKey = longPreferencesKey("last_sync_completed_at")
@@ -84,6 +91,11 @@ class AppPreferences @Inject constructor(
 
     val notificationPrefs: Flow<NotificationPrefs> = context.dataStore.data.map { prefs ->
         val dto = prefs[notificationKey]?.let { runCatching { json.decodeFromString<NotificationPrefsDto>(it) }.getOrNull() } ?: NotificationPrefsDto()
+        dto.toDomain()
+    }
+
+    val widgetPrefs: Flow<WidgetPrefs> = context.dataStore.data.map { prefs ->
+        val dto = prefs[widgetKey]?.let { runCatching { json.decodeFromString<WidgetPrefsDto>(it) }.getOrNull() } ?: WidgetPrefsDto()
         dto.toDomain()
     }
 
@@ -150,6 +162,14 @@ class AppPreferences @Inject constructor(
         }
     }
 
+    suspend fun updateWidgetPrefs(update: (WidgetPrefs) -> WidgetPrefs) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[widgetKey]?.let { runCatching { json.decodeFromString<WidgetPrefsDto>(it) }.getOrNull() } ?: WidgetPrefsDto()
+            val next = update(current.toDomain()).toDto()
+            prefs[widgetKey] = json.encodeToString(WidgetPrefsDto.serializer(), next)
+        }
+    }
+
     private fun ReaderPrefsDto.toDomain() = ReaderPrefs(theme, fontFamily, fontScale, lineHeightScale, marginWidth, textAlign, keepScreenOn)
     private fun ReaderPrefs.toDto() = ReaderPrefsDto(theme, fontFamily, fontScale, lineHeightScale, marginWidth, textAlign, keepScreenOn)
 
@@ -164,4 +184,7 @@ class AppPreferences @Inject constructor(
 
     private fun NotificationPrefsDto.toDomain() = NotificationPrefs(enabled, onlySourceIds, onlyKeywords, onlyImportant, groupIntoSummary)
     private fun NotificationPrefs.toDto() = NotificationPrefsDto(enabled, onlySourceIds, onlyKeywords, onlyImportant, groupIntoSummary)
+
+    private fun WidgetPrefsDto.toDomain() = WidgetPrefs(showOnlyImportant)
+    private fun WidgetPrefs.toDto() = WidgetPrefsDto(showOnlyImportant)
 }

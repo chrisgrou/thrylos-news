@@ -74,7 +74,7 @@ fun ArticleCard(item: FeedItem, onClick: () -> Unit) {
                             Spacer(Modifier.width(6.dp))
                         }
                         Text(
-                            text = stripSourceSuffix(article.sourceName).uppercase() + " · " + formatRelative(article.publishedAt ?: article.fetchedAt),
+                            text = stripSourceSuffix(article.sourceName).uppercase() + " · " + formatRelativeTime(article.publishedAt ?: article.fetchedAt),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
@@ -141,7 +141,9 @@ private fun ImportantBadge(modifier: Modifier = Modifier) {
     }
 }
 
-private fun formatRelative(millis: Long): String {
+/** Also used by the home-screen widget, which can't pull in the reader's own
+ *  date-formatting helpers (those live in a Compose screen, not a shared util). */
+fun formatRelativeTime(millis: Long): String {
     val diff = System.currentTimeMillis() - millis
     val minutes = diff / 60_000
     return when {

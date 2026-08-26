@@ -46,6 +46,7 @@ fun SyncSettingsScreen(
 ) {
     val sync by viewModel.syncPrefs.collectAsStateWithLifecycle()
     val notifications by viewModel.notificationPrefs.collectAsStateWithLifecycle()
+    val widgetPrefs by viewModel.widgetPrefs.collectAsStateWithLifecycle()
     val themeMode by themeViewModel.mode.collectAsStateWithLifecycle()
     var editingQuietStart by remember { mutableStateOf(false) }
     var editingQuietEnd by remember { mutableStateOf(false) }
@@ -146,6 +147,29 @@ fun SyncSettingsScreen(
             SettingSwitchRow("Ομαδοποίηση σε μία ειδοποίηση", notifications.groupIntoSummary) {
                 viewModel.updateNotificationPrefs { p -> p.copy(groupIntoSummary = it) }
             }
+
+            SectionTitle("Widget")
+            Row(
+                Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilterChip(
+                    selected = !widgetPrefs.showOnlyImportant,
+                    onClick = { viewModel.updateWidgetPrefs { it.copy(showOnlyImportant = false) } },
+                    label = { Text("Όλα τα άρθρα") },
+                )
+                FilterChip(
+                    selected = widgetPrefs.showOnlyImportant,
+                    onClick = { viewModel.updateWidgetPrefs { it.copy(showOnlyImportant = true) } },
+                    label = { Text("Μόνο σημαντικά") },
+                )
+            }
+            Text(
+                "Ποια άρθρα εμφανίζονται στο widget στην αρχική οθόνη.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
 
             SectionTitle("Offline αποθήκευση")
             Text(
