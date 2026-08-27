@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -211,8 +210,14 @@ private fun ConditionBadge(condition: FilterCondition) {
     val strike = condition.match == FilterMatch.NOT_CONTAINS
     Row(
         verticalAlignment = Alignment.CenterVertically,
+        // Fixed height instead of IntrinsicSize.Min: the label/value Text children
+        // already share identical typography and padding, so their natural heights
+        // always match — a fixed constant sizes the VerticalDivider just as
+        // correctly without forcing Compose to measure this row twice (once for
+        // the intrinsic pass, once for the real layout), which showed up as
+        // scroll jank with many condition badges on screen during a fling.
         modifier = Modifier
-            .height(IntrinsicSize.Min)
+            .height(24.dp)
             .clip(MaterialTheme.shapes.small)
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.small),
     ) {
