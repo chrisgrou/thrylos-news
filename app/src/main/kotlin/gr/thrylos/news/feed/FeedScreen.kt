@@ -44,8 +44,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,7 +55,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -117,21 +114,10 @@ fun FeedScreen(
             }
         },
     ) { padding ->
-        val pullToRefreshState = rememberPullToRefreshState()
         PullToRefreshBox(
             isRefreshing = syncing,
             onRefresh = viewModel::refresh,
-            state = pullToRefreshState,
             modifier = Modifier.fillMaxSize().padding(padding),
-            // Bigger and centered on screen instead of the default small indicator
-            // pinned just under the top bar, which barely showed once pulled.
-            indicator = {
-                PullToRefreshDefaults.Indicator(
-                    state = pullToRefreshState,
-                    isRefreshing = syncing,
-                    modifier = Modifier.align(Alignment.Center).scale(1.6f),
-                )
-            },
         ) {
             Column(Modifier.fillMaxSize()) {
                 FeedFilterBar(
