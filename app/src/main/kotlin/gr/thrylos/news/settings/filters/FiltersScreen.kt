@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -132,7 +133,7 @@ fun FiltersScreen(
 
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp)) {
                     fieldGroups.forEach { (field, groupRows) ->
-                        item(key = "header-$field") {
+                        item(key = "header-$field", contentType = "header") {
                             Text(
                                 labelFor(field),
                                 style = MaterialTheme.typography.labelLarge,
@@ -140,10 +141,15 @@ fun FiltersScreen(
                                 modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 8.dp),
                             )
                         }
-                        items(groupRows, key = { it.rule.id }) { row ->
+                        items(groupRows, key = { it.rule.id }, contentType = { "rule" }) { row ->
                             Card(
                                 onClick = { editingRule = row.rule; showEditor = true },
                                 modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                                // Zero elevation: a non-zero default forces Compose to composite
+                                // this card on an offscreen layer beneath its shadow on every
+                                // frame it's visible — real cost during a fling with several
+                                // cards on screen (same fix already applied to ArticleCard).
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                             ) {
                                 Row(
                                     Modifier.padding(18.dp).fillMaxWidth(),
