@@ -3,6 +3,7 @@ package gr.thrylos.news.settings.filters
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -11,11 +12,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,11 +42,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import gr.thrylos.news.data.repo.FilterRepository
 import gr.thrylos.news.feed.stripSourceSuffix
 import gr.thrylos.news.model.FilterAction
 import gr.thrylos.news.model.FilterCombinator
@@ -141,33 +147,57 @@ fun FiltersScreen(
                             )
                         }
                         items(groupRows, key = { it.rule.id }, contentType = { "rule" }) { row ->
-                            Card(
-                                onClick = { editingRule = row.rule; showEditor = true },
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                                // Zero elevation: a non-zero default forces Compose to composite
-                                // this card on an offscreen layer beneath its shadow on every
-                                // frame it's visible — real cost during a fling with several
-                                // cards on screen (same fix already applied to ArticleCard).
-                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                            ) {
-                                Row(
-                                    Modifier.padding(18.dp).fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
+                            val isBundled = row.rule.id.startsWith(FilterRepository.BUNDLED_ID_PREFIX)
+                            Box(Modifier.fillMaxWidth()) {
+                                Card(
+                                    onClick = { editingRule = row.rule; showEditor = true },
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                                    // Zero elevation: a non-zero default forces Compose to composite
+                                    // this card on an offscreen layer beneath its shadow on every
+                                    // frame it's visible — real cost during a fling with several
+                                    // cards on screen (same fix already applied to ArticleCard).
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                                 ) {
-                                    Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                                        RuleDescription(row.rule)
-                                        Text(
-                                            "→ Ταιριάζει με ${row.hiddenCount} άρθρα" + (row.rule.scopeSourceId?.let { " · μόνο στην πηγή $it" } ?: ""),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.padding(top = 4.dp),
+                                    Row(
+                                        Modifier.padding(18.dp).fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                                            RuleDescription(row.rule)
+                                            Text(
+                                                "→ Ταιριάζει με ${row.hiddenCount} άρθρα" + (row.rule.scopeSourceId?.let { " · μόνο στην πηγή $it" } ?: ""),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(top = 4.dp),
+                                            )
+                                        }
+                                        Switch(
+                                            checked = row.rule.enabled,
+                                            onCheckedChange = { checked -> viewModel.setEnabled(row.rule, checked) },
                                         )
                                     }
-                                    Switch(
-                                        checked = row.rule.enabled,
-                                        onCheckedChange = { checked -> viewModel.setEnabled(row.rule, checked) },
-                                    )
+                                }
+                                // Marks a rule that shipped with the app's "Προτεινόμενα φίλτρα"
+                                // bundle (id prefixed "bundled-") so it reads as distinct from
+                                // one the user wrote themselves.
+                                if (isBundled) {
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(top = 4.dp, end = 4.dp)
+                                            .size(26.dp)
+                                            .clip(RoundedCornerShape(topEnd = 12.dp, bottomStart = 12.dp))
+                                            .background(MaterialTheme.colorScheme.primary),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.PushPin,
+                                            contentDescription = "Προτεινόμενο φίλτρο",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(14.dp),
+                                        )
+                                    }
                                 }
                             }
                         }
