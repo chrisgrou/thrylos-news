@@ -51,6 +51,12 @@ import gr.thrylos.news.model.FilterField
 import gr.thrylos.news.model.FilterMatch
 import gr.thrylos.news.model.FilterRule
 
+/** Same order the field picker in the rule editor lists fields in — used to group
+ *  the rule list by field so it matches that order too. */
+private val FIELD_ORDER = listOf(
+    FilterField.TITLE, FilterField.AUTHOR, FilterField.SOURCE, FilterField.BODY, FilterField.URL, FilterField.ANYWHERE,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FiltersScreen(
@@ -103,6 +109,13 @@ fun FiltersScreen(
                 }
             }
 
+            Text(
+                explanationFor(tabOrder[clampedTab]),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+            )
+
             val tabRows = rows.filter { it.rule.action == tabOrder[clampedTab] }
 
             if (tabRows.isEmpty()) {
@@ -110,30 +123,47 @@ fun FiltersScreen(
                     Text("Δεν υπάρχουν κανόνες σε αυτή την κατηγορία ακόμα.")
                 }
             } else {
+                // Grouped by the rule's first condition's field, in the same order the
+                // field picker in the editor lists them — so all title-based rules sit
+                // together, then author, and so on, instead of one flat mixed list.
+                val fieldGroups = FIELD_ORDER
+                    .map { field -> field to tabRows.filter { it.rule.conditions.firstOrNull()?.field == field } }
+                    .filter { (_, groupRows) -> groupRows.isNotEmpty() }
+
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp)) {
-                    items(tabRows, key = { it.rule.id }) { row ->
-                        Card(
-                            onClick = { editingRule = row.rule; showEditor = true },
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                        ) {
-                            Row(
-                                Modifier.padding(18.dp).fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
+                    fieldGroups.forEach { (field, groupRows) ->
+                        item(key = "header-$field") {
+                            Text(
+                                labelFor(field),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 8.dp),
+                            )
+                        }
+                        items(groupRows, key = { it.rule.id }) { row ->
+                            Card(
+                                onClick = { editingRule = row.rule; showEditor = true },
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                             ) {
-                                Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                                    RuleDescription(row.rule)
-                                    Text(
-                                        "→ Ταιριάζει με ${row.hiddenCount} άρθρα" + (row.rule.scopeSourceId?.let { " · μόνο στην πηγή $it" } ?: ""),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(top = 4.dp),
+                                Row(
+                                    Modifier.padding(18.dp).fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                                        RuleDescription(row.rule)
+                                        Text(
+                                            "→ Ταιριάζει με ${row.hiddenCount} άρθρα" + (row.rule.scopeSourceId?.let { " · μόνο στην πηγή $it" } ?: ""),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(top = 4.dp),
+                                        )
+                                    }
+                                    Switch(
+                                        checked = row.rule.enabled,
+                                        onCheckedChange = { checked -> viewModel.setEnabled(row.rule, checked) },
                                     )
                                 }
-                                Switch(
-                                    checked = row.rule.enabled,
-                                    onCheckedChange = { checked -> viewModel.setEnabled(row.rule, checked) },
-                                )
                             }
                         }
                     }

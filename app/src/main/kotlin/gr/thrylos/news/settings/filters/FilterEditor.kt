@@ -369,7 +369,7 @@ private fun labelFor(action: FilterAction) = when (action) {
     FilterAction.HIGHLIGHT -> "Επισήμανση"
 }
 
-private fun explanationFor(action: FilterAction) = when (action) {
+fun explanationFor(action: FilterAction) = when (action) {
     FilterAction.HIDE -> "Κρύβει τελείως τα άρθρα που ταιριάζουν με τον κανόνα — δεν εμφανίζονται πουθενά στη ροή."
     FilterAction.SHOW_ONLY -> "Λειτουργία εστίασης: αφήνει ορατά ΜΟΝΟ τα άρθρα που ταιριάζουν, και κρύβει όλα τα υπόλοιπα."
     FilterAction.IMPORTANT -> "Μαρκάρει τα άρθρα που ταιριάζουν ως σημαντικά, ώστε να ξεχωρίζουν και να εμφανίζονται πρώτα στη ροή."
