@@ -68,9 +68,21 @@ jobs:
           notes=$(printf 'Build #%s\n\n%s' "$GITHUB_RUN_NUMBER" "$changelog")
 
           gh release delete latest --yes --cleanup-tag -R "${{ github.repository }}" || true
+
+          # Create the "latest" tag as a real ref ourselves and push it *before*
+          # calling `gh release create` (rather than relying on its --target to
+          # implicitly create the tag). Immediately after the delete above,
+          # GitHub's tag deletion hasn't always propagated by the time the next
+          # API call runs, and `gh release create --target` racing that dangling
+          # state was landing the release on a placeholder "untagged-<sha>" ref
+          # as an unpublished draft instead of on "latest" — invisible to the
+          # app's public /releases/tags/latest lookup even though the workflow
+          # step itself reported success.
+          git tag -f latest "${{ github.sha }}"
+          git push origin refs/tags/latest --force
+
           gh release create latest "$apk_name" \
             -R "${{ github.repository }}" \
             --title "Latest build (#${GITHUB_RUN_NUMBER})" \
             --notes "$notes" \
-            --prerelease \
-            --target "${{ github.sha }}"
+            --prerelease
