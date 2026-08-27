@@ -13,6 +13,8 @@ import gr.thrylos.news.data.repo.FilterRepository
 import gr.thrylos.news.data.repo.SourceRepository
 import gr.thrylos.news.data.widget.WidgetUpdater
 import gr.thrylos.news.model.Article
+import gr.thrylos.news.model.ArticleStub
+import gr.thrylos.news.model.ContentBlock
 import gr.thrylos.news.sources.dedup.Dedup
 import gr.thrylos.news.sources.filter.FilterEngine
 import gr.thrylos.news.sources.plugin.SourcePlugin
@@ -30,6 +32,10 @@ import java.util.Calendar
 private const val MAX_NEW_PER_SOURCE = 25
 private const val MAX_CONCURRENT_SOURCES = 3
 private const val DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000L
+
+/** Bounds how many already-known-but-empty articles get retried per source per run —
+ *  see [SyncWorker.reextractEmptyArticles]. */
+private const val MAX_REEXTRACT_PER_SOURCE = 5
 
 @HiltWorker
 class SyncWorker @AssistedInject constructor(
@@ -109,10 +115,37 @@ class SyncWorker @AssistedInject constructor(
         val extracted = stubs.mapNotNull { stub ->
             runCatching { coordinator.extractArticle(plugin, stub) }.getOrNull()
         }
-        if (extracted.isEmpty()) return emptyList()
+        val reextracted = reextractEmptyArticles(plugin)
+        val upserts = extracted + reextracted
+        if (upserts.isNotEmpty()) articleRepository.upsertAll(upserts)
 
-        articleRepository.upsertAll(extracted)
         return extracted.filter { FilterEngine.isVisible(it, filters) }
+    }
+
+    /** Some publishers (Sport24 in particular) briefly publish a "developing story"
+     *  page with a headline but no body text yet, then fill it in within minutes —
+     *  but a URL that's already known is never revisited by [coordinator]'s
+     *  discovery, so an article synced during that empty window stays permanently
+     *  empty. Retries extraction for a bounded number of the most recently fetched
+     *  already-known articles that ended up with no paragraph content, keeping the
+     *  stored read/bookmark/dedup state and only overwriting when the retry actually
+     *  found real content this time (an article that's genuinely just short, or a
+     *  source whose selectors are broken, isn't retried forever — only up to
+     *  [MAX_REEXTRACT_PER_SOURCE] per run). */
+    private suspend fun reextractEmptyArticles(plugin: SourcePlugin): List<Article> {
+        val empty = articleRepository.getAllOnce()
+            .filter { it.sourceId == plugin.id && it.content.none { block -> block is ContentBlock.Paragraph } }
+            .sortedByDescending { it.fetchedAt }
+            .take(MAX_REEXTRACT_PER_SOURCE)
+        if (empty.isEmpty()) return emptyList()
+
+        return empty.mapNotNull { existing ->
+            runCatching {
+                val stub = ArticleStub(plugin.id, existing.url, existing.title)
+                val fresh = coordinator.extractArticle(plugin, stub)
+                fresh.copy(isRead = existing.isRead, isBookmarked = existing.isBookmarked, dedupGroupId = existing.dedupGroupId)
+            }.getOrNull()
+        }.filter { it.content.any { block -> block is ContentBlock.Paragraph } }
     }
 
     private suspend fun recomputeDedupGroups() {
