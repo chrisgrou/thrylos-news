@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.PermMedia
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.CircularProgressIndicator
@@ -81,6 +83,7 @@ fun ReaderScreen(
     var showSettings by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val refetching by viewModel.refetching.collectAsStateWithLifecycle()
 
     val currentId = viewModel.idList.getOrElse(pagerState.currentPage) { viewModel.idList.first() }
     val currentArticle by viewModel.articleFlow(currentId).collectAsStateWithLifecycle()
@@ -223,6 +226,13 @@ fun ReaderScreen(
                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(a.url)))
                 }) {
                     Icon(Icons.Filled.OpenInBrowser, contentDescription = "Άνοιγμα στον browser", tint = colors.text)
+                }
+                IconButton(onClick = { viewModel.refetch(currentId) }, enabled = !refetching) {
+                    if (refetching) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = colors.text)
+                    } else {
+                        Icon(Icons.Filled.Refresh, contentDescription = "Επαναφόρτωση άρθρου", tint = colors.text)
+                    }
                 }
                 if (mediaCount > 0) {
                     IconButton(onClick = { onOpenMedia(currentId, 0) }) {
