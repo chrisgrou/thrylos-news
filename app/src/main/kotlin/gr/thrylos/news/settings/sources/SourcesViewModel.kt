@@ -45,29 +45,4 @@ class SourcesViewModel @Inject constructor(
     fun setGroupEnabled(group: SourceGroupRow, enabled: Boolean) {
         viewModelScope.launch { group.members.forEach { repository.setEnabled(it.id, enabled) } }
     }
-
-    fun removeGroup(group: SourceGroupRow) {
-        viewModelScope.launch { group.members.forEach { repository.remove(it) } }
-    }
-
-    fun moveUp(displayName: String) = reorderGroup(displayName, -1)
-    fun moveDown(displayName: String) = reorderGroup(displayName, +1)
-
-    private fun reorderGroup(displayName: String, direction: Int) {
-        val current = sources.value
-        val rawNames = current.map { it.name }.distinct()
-        // The group key is the raw (unstripped) name, so resolve back to it.
-        val rawName = rawNames.firstOrNull { it.substringBefore(" — ").trim() == displayName } ?: return
-        val index = rawNames.indexOf(rawName)
-        val targetIndex = index + direction
-        if (targetIndex < 0 || targetIndex >= rawNames.size) return
-
-        val reorderedNames = rawNames.toMutableList().apply {
-            val a = this[index]
-            this[index] = this[targetIndex]
-            this[targetIndex] = a
-        }
-        val newIds = reorderedNames.flatMap { name -> current.filter { it.name == name }.map { it.id } }
-        viewModelScope.launch { repository.reorder(newIds) }
-    }
 }

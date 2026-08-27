@@ -80,6 +80,7 @@ fun ThrylosNavGraph(
             SourceProfileScreen(
                 onBack = { navController.popBackStack() },
                 onOpenArticle = { navController.navigate(Routes.reader(it)) },
+                onEditSource = { navController.navigate(Routes.sourceEditor(it)) },
             )
         }
         composable(
@@ -105,7 +106,6 @@ fun ThrylosNavGraph(
             SourcesScreen(
                 onBack = { navController.popBackStack() },
                 onAddSource = { navController.navigate(Routes.sourceEditor()) },
-                onEditSource = { navController.navigate(Routes.sourceEditor(it)) },
                 onOpenSourceProfile = { name -> navController.navigate(Routes.sourceProfile(name)) },
             )
         }

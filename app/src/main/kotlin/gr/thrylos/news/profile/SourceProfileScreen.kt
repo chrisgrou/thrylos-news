@@ -14,6 +14,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -24,6 +27,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -45,12 +49,16 @@ import gr.thrylos.news.feed.stripSourceSuffix
 fun SourceProfileScreen(
     onBack: () -> Unit,
     onOpenArticle: (String) -> Unit,
+    onEditSource: (sourceId: String) -> Unit,
     viewModel: SourceProfileViewModel = hiltViewModel(),
 ) {
     val articles by viewModel.articles.collectAsStateWithLifecycle()
     val authors by viewModel.authors.collectAsStateWithLifecycle()
+    val members by viewModel.members.collectAsStateWithLifecycle()
     var selectedAuthor by remember { mutableStateOf<String?>(null) }
     var authorMenuExpanded by remember { mutableStateOf(false) }
+    var editMenuExpanded by remember { mutableStateOf(false) }
+    var confirmingDelete by remember { mutableStateOf(false) }
 
     val visibleArticles = if (selectedAuthor == null) articles else articles.filter { it.author == selectedAuthor }
 
@@ -59,6 +67,24 @@ fun SourceProfileScreen(
             TopAppBar(
                 title = { Text(stripSourceSuffix(viewModel.sourceName)) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Πίσω") } },
+                actions = {
+                    if (members.isNotEmpty()) {
+                        IconButton(onClick = { if (members.size == 1) onEditSource(members.first().id) else editMenuExpanded = true }) {
+                            Icon(Icons.Filled.Edit, contentDescription = "Επεξεργασία")
+                        }
+                        DropdownMenu(expanded = editMenuExpanded, onDismissRequest = { editMenuExpanded = false }) {
+                            members.forEach { member ->
+                                DropdownMenuItem(
+                                    text = { Text(memberLabel(member.id)) },
+                                    onClick = { editMenuExpanded = false; onEditSource(member.id) },
+                                )
+                            }
+                        }
+                        IconButton(onClick = { confirmingDelete = true }) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Διαγραφή")
+                        }
+                    }
+                },
             )
         },
     ) { padding ->
@@ -124,4 +150,22 @@ fun SourceProfileScreen(
             }
         }
     }
+
+    if (confirmingDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmingDelete = false },
+            title = { Text("Διαγραφή πηγής;") },
+            text = { Text("Η πηγή \"${stripSourceSuffix(viewModel.sourceName)}\" και τα αποθηκευμένα άρθρα της θα διαγραφούν.") },
+            confirmButton = {
+                TextButton(onClick = { confirmingDelete = false; viewModel.deleteSource(); onBack() }) { Text("Διαγραφή") }
+            },
+            dismissButton = { TextButton(onClick = { confirmingDelete = false }) { Text("Άκυρο") } },
+        )
+    }
+}
+
+private fun memberLabel(sourceId: String) = when {
+    "football" in sourceId -> "Ποδόσφαιρο"
+    "basket" in sourceId -> "Μπάσκετ"
+    else -> sourceId
 }

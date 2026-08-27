@@ -1,1 +1,145 @@
-[]
+[
+  {
+    "id": "bundled-204fe0c9-0bbd-48ea-a6f9-615ebf070b0e",
+    "conditions": [{"field": "TITLE", "match": "CONTAINS", "value": "Ομπράντοβιτς"}],
+    "combinator": "AND",
+    "action": "HIDE",
+    "scopeSourceId": null,
+    "enabled": true
+  },
+  {
+    "id": "bundled-1893c066-e944-4e26-ba03-bc14a0688c65",
+    "conditions": [{"field": "TITLE", "match": "CONTAINS", "value": "Γιαννακόπουλος"}],
+    "combinator": "AND",
+    "action": "HIDE",
+    "scopeSourceId": null,
+    "enabled": true
+  },
+  {
+    "id": "bundled-cda05c80-593a-427c-a958-e5edd8e22cf9",
+    "conditions": [{"field": "AUTHOR", "match": "CONTAINS", "value": "ΝΙΚΟΣ ΚΩΤΣΗΣ"}],
+    "combinator": "AND",
+    "action": "IMPORTANT",
+    "scopeSourceId": null,
+    "enabled": true
+  },
+  {
+    "id": "bundled-32b679ba-7845-49ad-8281-481eec12fde8",
+    "conditions": [{"field": "BODY", "match": "CONTAINS", "value": "Galacticos by Interwetten"}],
+    "combinator": "AND",
+    "action": "HIDE",
+    "scopeSourceId": null,
+    "enabled": true
+  },
+  {
+    "id": "bundled-afba9204-cb2d-4ffb-8ca2-48ab1fce6038",
+    "conditions": [
+      {"field": "AUTHOR", "match": "NOT_CONTAINS", "value": "του Σπύρου Γρομητσάρη"},
+      {"field": "SOURCE", "match": "EXACT", "value": "Sportdog"}
+    ],
+    "combinator": "AND",
+    "action": "HIDE",
+    "scopeSourceId": null,
+    "enabled": true
+  },
+  {
+    "id": "bundled-dd50008b-2df6-4af6-a661-f7fbe96e396c",
+    "conditions": [{"field": "AUTHOR", "match": "CONTAINS", "value": "Κώστας Νικολακόπουλος"}],
+    "combinator": "AND",
+    "action": "IMPORTANT",
+    "scopeSourceId": null,
+    "enabled": true
+  },
+  {
+    "id": "bundled-e037f803-9928-4e0c-8283-f1f6636c6543",
+    "conditions": [
+      {"field": "BODY", "match": "CONTAINS", "value": "Κώστας Νικολακόπουλος"},
+      {"field": "SOURCE", "match": "EXACT", "value": "Sport-FM — Ολυμπιακός"}
+    ],
+    "combinator": "AND",
+    "action": "IMPORTANT",
+    "scopeSourceId": null,
+    "enabled": true
+  },
+  {
+    "id": "bundled-ebd2763b-3200-43b0-a60d-8c4b66c00f6d",
+    "conditions": [{"field": "TITLE", "match": "CONTAINS", "value": "Γκαγκάτσης"}],
+    "combinator": "AND",
+    "action": "HIDE",
+    "scopeSourceId": null,
+    "enabled": true
+  },
+  {
+    "id": "bundled-89fef442-7a43-45fb-a415-b614ccf24802",
+    "conditions": [
+      {"field": "TITLE", "match": "CONTAINS", "value": "BACK2ΜΠΑΚ"},
+      {"field": "SOURCE", "match": "EXACT", "value": "Athletiko — Ολυμπιακός"}
+    ],
+    "combinator": "AND",
+    "action": "HIDE",
+    "scopeSourceId": null,
+    "enabled": true
+  },
+  {
+    "id": "bundled-13ec9249-8c07-464f-8ce2-289385321837",
+    "conditions": [{"field": "TITLE", "match": "CONTAINS", "value": "big-4"}],
+    "combinator": "AND",
+    "action": "HIDE",
+    "scopeSourceId": null,
+    "enabled": true
+  },
+  {
+    "id": "bundled-fafb0c10-e00b-4b09-a805-dc574bcd0d1d",
+    "conditions": [{"field": "TITLE", "match": "CONTAINS", "value": "superbet"}],
+    "combinator": "AND",
+    "action": "HIDE",
+    "scopeSourceId": null,
+    "enabled": true
+  },
+  {
+    "id": "bundled-d2733f0b-080f-4682-aec5-fb3e47a0afd3",
+    "conditions": [
+      {"field": "TITLE", "match": "CONTAINS", "value": "Ολυμπιακό και Παναθηναϊκό"},
+      {"field": "TITLE", "match": "CONTAINS", "value": "Παναθηναϊκό και Ολυμπιακό"}
+    ],
+    "combinator": "OR",
+    "action": "HIDE",
+    "scopeSourceId": null,
+    "enabled": true
+  },
+  {
+    "id": "bundled-22a61fc4-cc0c-44e2-89e7-87ee8741e05b",
+    "conditions": [{"field": "ANYWHERE", "match": "CONTAINS", "value": "sdna"}],
+    "combinator": "AND",
+    "action": "HIDE",
+    "scopeSourceId": null,
+    "enabled": true
+  },
+  {
+    "id": "bundled-be129095-0917-4391-bd33-0d9a5b8d2b70",
+    "conditions": [{"field": "TITLE", "match": "CONTAINS", "value": "βαθμολογία UEFA"}],
+    "combinator": "AND",
+    "action": "HIDE",
+    "scopeSourceId": null,
+    "enabled": true
+  },
+  {
+    "id": "bundled-a6542d00-1ef5-4ac9-bc00-3146460db7b8",
+    "conditions": [
+      {"field": "AUTHOR", "match": "NOT_CONTAINS", "value": "Διονύσης Βερβελές"},
+      {"field": "SOURCE", "match": "EXACT", "value": "Athletiko — Ολυμπιακός"}
+    ],
+    "combinator": "AND",
+    "action": "HIDE",
+    "scopeSourceId": null,
+    "enabled": true
+  },
+  {
+    "id": "bundled-7ec80758-db02-4da7-8043-ea648cf75f17",
+    "conditions": [{"field": "TITLE", "match": "CONTAINS", "value": "ranking"}],
+    "combinator": "AND",
+    "action": "HIDE",
+    "scopeSourceId": null,
+    "enabled": true
+  }
+]
