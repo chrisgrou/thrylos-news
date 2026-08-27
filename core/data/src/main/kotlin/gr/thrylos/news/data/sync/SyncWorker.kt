@@ -14,7 +14,6 @@ import gr.thrylos.news.data.repo.SourceRepository
 import gr.thrylos.news.data.widget.WidgetUpdater
 import gr.thrylos.news.model.Article
 import gr.thrylos.news.model.ArticleStub
-import gr.thrylos.news.model.ContentBlock
 import gr.thrylos.news.sources.dedup.Dedup
 import gr.thrylos.news.sources.filter.FilterEngine
 import gr.thrylos.news.sources.plugin.SourcePlugin
@@ -36,6 +35,14 @@ private const val DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000L
 /** Bounds how many already-known-but-empty articles get retried per source per run —
  *  see [SyncWorker.reextractEmptyArticles]. */
 private const val MAX_REEXTRACT_PER_SOURCE = 5
+
+/** Below this many characters of joined body text, an article is treated as an
+ *  incomplete extraction worth retrying — see [SyncWorker.reextractEmptyArticles].
+ *  Deliberately not "zero paragraphs": a page fetched mid-publish can still yield a
+ *  single short paragraph (e.g. just a boilerplate copyright/legal notice, with the
+ *  real body not rendered yet), which reads as "some content" but is really still
+ *  broken. A genuine, fully-extracted article is essentially always longer than this. */
+private const val MIN_BODY_CHARS = 400
 
 @HiltWorker
 class SyncWorker @AssistedInject constructor(
@@ -122,30 +129,31 @@ class SyncWorker @AssistedInject constructor(
         return extracted.filter { FilterEngine.isVisible(it, filters) }
     }
 
-    /** Some publishers (Sport24 in particular) briefly publish a "developing story"
-     *  page with a headline but no body text yet, then fill it in within minutes —
-     *  but a URL that's already known is never revisited by [coordinator]'s
-     *  discovery, so an article synced during that empty window stays permanently
-     *  empty. Retries extraction for a bounded number of the most recently fetched
-     *  already-known articles that ended up with no paragraph content, keeping the
-     *  stored read/bookmark/dedup state and only overwriting when the retry actually
-     *  found real content this time (an article that's genuinely just short, or a
-     *  source whose selectors are broken, isn't retried forever — only up to
-     *  [MAX_REEXTRACT_PER_SOURCE] per run). */
+    /** Some publishers briefly publish a "developing story" page — a headline (or
+     *  even a partial one, mid-render) with no real body yet, sometimes just a
+     *  boilerplate copyright notice where the article should be — then fill it in
+     *  properly within minutes. A URL that's already known is never revisited by
+     *  [coordinator]'s discovery though, so an article synced during that broken
+     *  window stays that way permanently. Retries extraction for a bounded number of
+     *  the most recently fetched already-known articles whose body text is
+     *  suspiciously short, keeping the stored read/bookmark/dedup state and only
+     *  overwriting when the retry actually found substantially more content this
+     *  time (an article that's genuinely just short, or a source whose selectors are
+     *  broken, isn't retried forever — only up to [MAX_REEXTRACT_PER_SOURCE] per run). */
     private suspend fun reextractEmptyArticles(plugin: SourcePlugin): List<Article> {
-        val empty = articleRepository.getAllOnce()
-            .filter { it.sourceId == plugin.id && it.content.none { block -> block is ContentBlock.Paragraph } }
+        val broken = articleRepository.getAllOnce()
+            .filter { it.sourceId == plugin.id && FilterEngine.bodyText(it).trim().length < MIN_BODY_CHARS }
             .sortedByDescending { it.fetchedAt }
             .take(MAX_REEXTRACT_PER_SOURCE)
-        if (empty.isEmpty()) return emptyList()
+        if (broken.isEmpty()) return emptyList()
 
-        return empty.mapNotNull { existing ->
+        return broken.mapNotNull { existing ->
             runCatching {
                 val stub = ArticleStub(plugin.id, existing.url, existing.title)
                 val fresh = coordinator.extractArticle(plugin, stub)
                 fresh.copy(isRead = existing.isRead, isBookmarked = existing.isBookmarked, dedupGroupId = existing.dedupGroupId)
             }.getOrNull()
-        }.filter { it.content.any { block -> block is ContentBlock.Paragraph } }
+        }.filter { FilterEngine.bodyText(it).trim().length >= MIN_BODY_CHARS }
     }
 
     private suspend fun recomputeDedupGroups() {
