@@ -31,7 +31,8 @@ class FiltersViewModel @Inject constructor(
         filterRepository.observeAll(),
         articleRepository.observeAll(),
     ) { rules, articles ->
-        rules.map { FilterRow(it, FilterEngine.countMatches(it, articles)) }
+        val counts = FilterEngine.countMatchesBatch(rules, articles)
+        rules.map { FilterRow(it, counts[it.id] ?: 0) }
     }
         // countMatches re-evaluates every rule against every stored article (and, for a
         // BODY/ANYWHERE rule, rejoins that article's content blocks into one string each

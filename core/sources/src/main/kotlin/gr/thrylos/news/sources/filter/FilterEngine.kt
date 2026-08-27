@@ -23,18 +23,22 @@ object FilterEngine {
         }
     }
 
-    fun matches(rule: FilterRule, article: Article): Boolean {
+    /** [bodyTextOverride], when given, is used instead of recomputing [bodyText] for
+     *  a BODY/ANYWHERE condition — lets a caller checking many rules against the same
+     *  article (e.g. [countMatchesBatch]) join its content blocks only once instead
+     *  of once per rule. */
+    fun matches(rule: FilterRule, article: Article, bodyTextOverride: String? = null): Boolean {
         if (!rule.enabled) return false
         if (rule.scopeSourceId != null && rule.scopeSourceId != article.sourceId) return false
         if (rule.conditions.isEmpty()) return false
 
-        val results = rule.conditions.map { condition -> matchesCondition(condition, article) }
+        val results = rule.conditions.map { condition -> matchesCondition(condition, article, bodyTextOverride) }
         return combine(rule.combinator, results)
     }
 
-    private fun matchesCondition(condition: FilterCondition, article: Article): Boolean = when (condition.field) {
+    private fun matchesCondition(condition: FilterCondition, article: Article, bodyTextOverride: String? = null): Boolean = when (condition.field) {
         FilterField.TITLE -> matchValue(article.title, condition)
-        FilterField.BODY -> matchValue(bodyText(article), condition)
+        FilterField.BODY -> matchValue(bodyTextOverride ?: bodyText(article), condition)
         FilterField.AUTHOR -> matchValue(article.author.orEmpty(), condition)
         FilterField.URL -> matchValue(article.url, condition)
         FilterField.SOURCE -> matchValue(article.sourceName, condition)
@@ -42,7 +46,8 @@ object FilterEngine {
         // useful meaning is "the value appears in none of them", i.e. every field's
         // (already-negated) per-field result must hold, not just one.
         FilterField.ANYWHERE -> {
-            val perField = listOf(article.title, bodyText(article), article.author.orEmpty(), article.url, article.sourceName)
+            val body = bodyTextOverride ?: bodyText(article)
+            val perField = listOf(article.title, body, article.author.orEmpty(), article.url, article.sourceName)
                 .map { matchValue(it, condition) }
             if (condition.match == FilterMatch.NOT_CONTAINS) perField.all { it } else perField.any { it }
         }
@@ -135,4 +140,17 @@ object FilterEngine {
     /** How many of [articles] this single rule would currently hide — used for the "→ κρύβει N άρθρα" preview in Settings. */
     fun countMatches(rule: FilterRule, articles: List<Article>): Int =
         articles.count { matches(rule, it) }
+
+    /** Same as calling [countMatches] once per rule, but each article's body text is
+     *  joined at most once total instead of once per (rule, article) pair — opening
+     *  Ρυθμίσεις → Φίλτρα evaluates every rule against every stored article, and a
+     *  handful of BODY/ANYWHERE rules re-joining every article's content blocks each
+     *  was the actual cost behind that screen's load being visibly slow. */
+    fun countMatchesBatch(rules: List<FilterRule>, articles: List<Article>): Map<String, Int> {
+        val needsBody = rules.any { rule -> rule.conditions.any { it.field == FilterField.BODY || it.field == FilterField.ANYWHERE } }
+        val bodyByArticleId = if (needsBody) articles.associate { it.id to bodyText(it) } else emptyMap()
+        return rules.associate { rule ->
+            rule.id to articles.count { article -> matches(rule, article, bodyByArticleId[article.id]) }
+        }
+    }
 }
