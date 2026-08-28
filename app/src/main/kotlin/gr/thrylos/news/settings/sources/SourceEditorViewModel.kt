@@ -34,7 +34,9 @@ class SourceEditorViewModel @Inject constructor(
     val sourceId: String? = savedStateHandle["sourceId"]
     val isNew: Boolean = sourceId.isNullOrBlank()
 
-    private val _jsonText = MutableStateFlow(newPluginTemplate())
+    private val _jsonText = MutableStateFlow(
+        if (savedStateHandle.get<String>("kind") == "facebook") newFacebookPluginTemplate() else newPluginTemplate(),
+    )
     val jsonText: StateFlow<String> = _jsonText.asStateFlow()
 
     private val _saveErrors = MutableStateFlow<List<String>>(emptyList())

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import gr.thrylos.news.data.repo.SourceRepository
 import gr.thrylos.news.data.repo.SourceWithPlugin
+import gr.thrylos.news.sources.plugin.SourceKind
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -20,6 +21,7 @@ data class SourceGroupRow(
     val members: List<SourceWithPlugin>,
     val enabled: Boolean,
     val isBundled: Boolean,
+    val kind: SourceKind,
 )
 
 @HiltViewModel
@@ -38,6 +40,7 @@ class SourcesViewModel @Inject constructor(
                 members = members,
                 enabled = members.all { it.enabled },
                 isBundled = members.any { it.isBundled },
+                kind = members.firstNotNullOfOrNull { it.plugin?.kind } ?: SourceKind.SITE,
             )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

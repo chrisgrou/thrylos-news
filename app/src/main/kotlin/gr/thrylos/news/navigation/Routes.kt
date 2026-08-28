@@ -11,7 +11,7 @@ object Routes {
     const val AUTHOR_PROFILE = "profile/author/{author}"
     const val SETTINGS = "settings"
     const val SETTINGS_SOURCES = "settings/sources"
-    const val SETTINGS_SOURCE_EDITOR = "settings/sources/editor?sourceId={sourceId}"
+    const val SETTINGS_SOURCE_EDITOR = "settings/sources/editor?sourceId={sourceId}&kind={kind}"
     const val SETTINGS_FILTERS = "settings/filters"
     const val SETTINGS_SYNC = "settings/sync"
     const val SETTINGS_BACKUP = "settings/backup"
@@ -21,6 +21,11 @@ object Routes {
     fun mediaViewer(articleId: String, index: Int) = "media/$articleId/$index"
     fun sourceProfile(sourceName: String) = "profile/source/${Uri.encode(sourceName)}"
     fun authorProfile(author: String) = "profile/author/${Uri.encode(author)}"
-    fun sourceEditor(sourceId: String? = null) =
-        if (sourceId != null) "settings/sources/editor?sourceId=$sourceId" else "settings/sources/editor"
+    fun sourceEditor(sourceId: String? = null, kind: String? = null): String {
+        val params = listOfNotNull(
+            sourceId?.let { "sourceId=$it" },
+            kind?.let { "kind=$it" },
+        )
+        return if (params.isEmpty()) "settings/sources/editor" else "settings/sources/editor?${params.joinToString("&")}"
+    }
 }

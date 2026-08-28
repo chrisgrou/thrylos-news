@@ -114,13 +114,16 @@ fun ThrylosNavGraph(
         composable(Routes.SETTINGS_SOURCES) {
             SourcesScreen(
                 onBack = { navController.popBackStack() },
-                onAddSource = { navController.navigate(Routes.sourceEditor()) },
+                onAddSource = { kind -> navController.navigate(Routes.sourceEditor(kind = kind)) },
                 onOpenSourceProfile = { name -> navController.navigate(Routes.sourceProfile(name)) },
             )
         }
         composable(
             Routes.SETTINGS_SOURCE_EDITOR,
-            arguments = listOf(navArgument("sourceId") { type = NavType.StringType; nullable = true; defaultValue = null }),
+            arguments = listOf(
+                navArgument("sourceId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("kind") { type = NavType.StringType; nullable = true; defaultValue = null },
+            ),
         ) {
             SourceEditorScreen(onBack = { navController.popBackStack() })
         }

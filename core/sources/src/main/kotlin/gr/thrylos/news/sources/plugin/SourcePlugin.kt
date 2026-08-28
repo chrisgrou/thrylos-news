@@ -18,6 +18,14 @@ enum class FallbackMode {
     @SerialName("none") NONE,
 }
 
+/** Purely cosmetic — which icon a source gets in the sources list. Doesn't affect
+ *  discovery/extraction at all; a Facebook page is scraped the same html-list way
+ *  as any other site, just usually pointed at mbasic.facebook.com. */
+enum class SourceKind {
+    @SerialName("site") SITE,
+    @SerialName("facebook") FACEBOOK,
+}
+
 @Serializable
 data class Discovery(
     val type: DiscoveryType,
@@ -67,6 +75,7 @@ data class SourcePlugin(
     val name: String,
     val homepage: String,
     val enabled: Boolean = true,
+    val kind: SourceKind = SourceKind.SITE,
     val discovery: Discovery,
     val listSelectors: ListSelectors? = null,
     val article: ArticleSelectors,
