@@ -11,6 +11,8 @@ import java.time.format.TextStyle
 import java.time.temporal.ChronoField
 import java.util.Locale
 
+private val GREEK: Locale = Locale.Builder().setLanguage("el").setRegion("GR").build()
+
 /** Real RSS feeds routinely bend the RFC-822 spec [DateTimeFormatter.RFC_1123_DATE_TIME]
  *  enforces strictly — a single-digit day ("5 Aug" instead of "05 Aug"), a lowercase
  *  month, or stray extra whitespace are all common and otherwise silently drop the
@@ -45,7 +47,12 @@ object DateParsing {
     fun parse(text: String, pattern: String? = null, zone: ZoneId = ZoneId.systemDefault()): Long? {
         val trimmed = text.trim().replace(Regex("\\s+"), " ")
         val formatters = buildList {
-            if (pattern != null) runCatching { DateTimeFormatter.ofPattern(pattern) }.getOrNull()?.let { add(it) }
+            // Every bundled source is a Greek-language site, so a custom pattern is
+            // always parsing Greek text — matters for patterns with textual month/day
+            // names ("Παρασκευή, 28 Αυγούστου"), which the JVM's default locale (not
+            // necessarily Greek, e.g. in CI or on a non-Greek device) would fail to
+            // recognize even though the pattern itself is otherwise correct.
+            if (pattern != null) runCatching { DateTimeFormatter.ofPattern(pattern, GREEK) }.getOrNull()?.let { add(it) }
             add(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
             add(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ"))
             add(DateTimeFormatter.RFC_1123_DATE_TIME)

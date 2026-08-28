@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "gavros",
+  "name": "Gavros.gr",
+  "homepage": "https://www.gavros.gr",
+  "enabled": true,
+  "discovery": {
+    "type": "html-list",
+    "url": "https://www.gavros.gr/timeline/",
+    "maxItems": 30
+  },
+  "listSelectors": {
+    "item": "div.item",
+    "link": "h1 a@href",
+    "title": "h1 a",
+    "image": "img.img-fluid@src"
+  },
+  "article": {
+    "title": "article.text h1",
+    "date": "article.text div.meta",
+    "dateFormat": "EEEE, d MMMM yyyy - HH:mm",
+    "leadImage": "meta[property=og:image]@content",
+    "content": "article.text",
+    "remove": ["h1", "figure", ".meta", ".google_news", ".tags", ".main_banner", ".extra_articles", ".parsed", "script", "style"]
+  },
+  "urlRules": {
+    "stripQueryParams": ["utm_source", "utm_medium", "utm_campaign", "fbclid"]
+  },
+  "fallback": "readability"
+}

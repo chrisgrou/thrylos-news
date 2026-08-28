@@ -56,9 +56,13 @@ class ArticleExtractor(private val http: HttpFetcher = HttpFetcher()) {
         val title = doc.textOf(article.title) ?: stub.title.ifBlank { error("Δεν βρέθηκε τίτλος") }
         val author = doc.textOf(article.author)
         val leadImage = article.leadImage?.let { doc.textOf(it) }?.let { UrlNormalizer.resolve(stub.url, it) }
+        // Read before content conversion, which mutates the live doc in place (removes
+        // ad/junk elements matched by article.remove) — a date selector scoped inside
+        // the content container (e.g. a ".meta" div also targeted by a remove rule)
+        // would otherwise already be gone by the time it's read.
+        val publishedAt = doc.textOf(article.date)?.let { DateParsing.parse(it, article.dateFormat) } ?: stub.publishedAt
         val contentEl = doc.elementOf(article.content) ?: error("Δεν βρέθηκε το content selector '${article.content}'")
         val blocks = HtmlToBlocks.convert(contentEl, article, stub.url)
-        val publishedAt = doc.textOf(article.date)?.let { DateParsing.parse(it, article.dateFormat) } ?: stub.publishedAt
 
         return Article(
             id = Ids.forArticle(canonicalUrl),
