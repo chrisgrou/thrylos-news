@@ -32,7 +32,16 @@ fun ThrylosNavGraph(
 
     LaunchedEffect(pendingArticleId) {
         if (pendingArticleId != null) {
-            navController.navigate(Routes.reader(pendingArticleId))
+            // Explicitly clears back to Feed first: after the process was killed in the
+            // background and gets recreated by the notification tap, NavHost's saved-state
+            // restoration can put back whatever reader screen was open before it died —
+            // landing on top of that restored stack isn't enough to guarantee the tapped
+            // article is what's actually visible, so reset the stack outright instead of
+            // just pushing on top of whatever might already be there.
+            navController.navigate(Routes.reader(pendingArticleId)) {
+                popUpTo(Routes.FEED)
+                launchSingleTop = true
+            }
             onPendingArticleConsumed()
         }
     }
