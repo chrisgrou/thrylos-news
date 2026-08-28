@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "redaroume",
+  "name": "Redaroume.gr",
+  "homepage": "https://redaroume.gr",
+  "enabled": true,
+  "discovery": {
+    "type": "html-list",
+    "url": "https://redaroume.gr/category/teleytaia-nea/",
+    "maxItems": 30
+  },
+  "listSelectors": {
+    "item": "li.post-item",
+    "link": "h2.post-title a@href",
+    "title": "h2.post-title a",
+    "image": "img.wp-post-image@src"
+  },
+  "article": {
+    "title": "h1.entry-title",
+    "author": "meta[name=author]@content",
+    "date": "meta[property=article:published_time]@content",
+    "leadImage": "meta[property=og:image]@content",
+    "content": "div.entry-content",
+    "remove": [".post-bottom-tags", ".post-tags-modern", "script", "style"]
+  },
+  "urlRules": {
+    "stripQueryParams": ["utm_source", "utm_medium", "utm_campaign", "fbclid"]
+  },
+  "fallback": "readability"
+}
