@@ -40,7 +40,7 @@ data class FeedItem(
     val isNew: Boolean = false,
 )
 
-private const val PAGE_SIZE = 20
+private const val PAGE_SIZE = 10
 
 data class FeedUiState(
     val items: List<FeedItem> = emptyList(),
