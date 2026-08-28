@@ -69,6 +69,13 @@ class NotificationHelper @Inject constructor(
                 .setGroup(GROUP_KEY)
                 .setGroupSummary(true)
                 .setAutoCancel(true)
+                // Without its own content intent, tapping the collapsed group summary
+                // (rather than one of the individual article notifications underneath
+                // it) delivered no intent extras at all — the app just came to the
+                // foreground showing whatever was already open, never the tapped
+                // notification's article. Opens the feed instead, since a summary
+                // represents several articles, not one specific one.
+                .setContentIntent(feedPendingIntent())
                 .build()
             runCatching { manager.notify(SUMMARY_NOTIFICATION_ID, summary) }
         }
@@ -84,6 +91,17 @@ class NotificationHelper @Inject constructor(
         return PendingIntent.getActivity(
             context,
             articleId.hashCode(),
+            launchIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    private fun feedPendingIntent(): PendingIntent? {
+        val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return null
+        launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        return PendingIntent.getActivity(
+            context,
+            SUMMARY_NOTIFICATION_ID,
             launchIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
