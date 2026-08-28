@@ -110,6 +110,19 @@ fun SyncSettingsScreen(
             SettingSwitchRow("Επισήμανση νέων άρθρων", sync.highlightNewSinceRefresh) {
                 viewModel.updateSyncPrefs { p -> p.copy(highlightNewSinceRefresh = it) }
             }
+            Text("Άρθρα ανά σελίδα", modifier = Modifier.padding(top = 4.dp))
+            Row(
+                Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf(10, 20, 30, 50).forEach { size ->
+                    FilterChip(
+                        selected = sync.feedPageSize == size,
+                        onClick = { viewModel.updateSyncPrefs { p -> p.copy(feedPageSize = size) } },
+                        label = { Text("$size") },
+                    )
+                }
+            }
             SettingSwitchRow("Ανανέωση μόνο σε Wi-Fi", sync.syncOnlyOnWifi) {
                 viewModel.updateSyncPrefs { p -> p.copy(syncOnlyOnWifi = it) }
             }

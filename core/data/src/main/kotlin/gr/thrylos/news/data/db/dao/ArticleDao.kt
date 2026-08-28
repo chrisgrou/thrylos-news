@@ -47,8 +47,12 @@ interface ArticleDao {
     @Query("UPDATE articles SET isRead = :isRead WHERE id = :id")
     suspend fun setRead(id: String, isRead: Boolean)
 
-    @Query("UPDATE articles SET isRead = 1 WHERE isRead = 0")
-    suspend fun markAllRead()
+    /** Same single-transaction rationale as [setDedupGroups]: marking several articles
+     *  read in a plain loop would trigger an observeAll() re-emission per article. */
+    @Transaction
+    suspend fun setReadBatch(ids: List<String>) {
+        ids.forEach { id -> setRead(id, true) }
+    }
 
     @Query("UPDATE articles SET isBookmarked = :isBookmarked WHERE id = :id")
     suspend fun setBookmarked(id: String, isBookmarked: Boolean)

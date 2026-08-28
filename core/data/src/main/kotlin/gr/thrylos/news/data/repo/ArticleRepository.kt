@@ -33,7 +33,9 @@ class ArticleRepository @Inject constructor(
 
     suspend fun setRead(id: String, isRead: Boolean) = dao.setRead(id, isRead)
 
-    suspend fun markAllRead() = dao.markAllRead()
+    suspend fun setReadBatch(ids: List<String>) {
+        if (ids.isNotEmpty()) dao.setReadBatch(ids)
+    }
 
     suspend fun setBookmarked(id: String, isBookmarked: Boolean) = dao.setBookmarked(id, isBookmarked)
 

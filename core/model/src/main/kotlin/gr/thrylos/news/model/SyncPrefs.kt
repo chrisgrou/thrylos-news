@@ -17,6 +17,8 @@ data class SyncPrefs(
     /** Shows a "Νέα άρθρα" divider in the feed above articles fetched since the
      *  app was last opened. */
     val highlightNewSinceRefresh: Boolean = true,
+    /** How many articles the feed shows per page. */
+    val feedPageSize: Int = 10,
 ) {
     /** Handles overnight windows where start > end (e.g. 23:00 → 07:00). */
     fun isQuietAt(minuteOfDay: Int): Boolean {

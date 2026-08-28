@@ -40,8 +40,6 @@ data class FeedItem(
     val isNew: Boolean = false,
 )
 
-private const val PAGE_SIZE = 10
-
 data class FeedUiState(
     val items: List<FeedItem> = emptyList(),
     val sources: List<SourceChip> = emptyList(),
@@ -86,11 +84,12 @@ class FeedViewModel @Inject constructor(
     private val sourcesFlow = sourceRepository.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /** (highlight enabled, boundary timestamp — null until [NewArticlesBoundary] initializes). */
-    private val highlightConfig: Flow<Pair<Boolean, Long?>> = combine(
+    /** (highlight enabled, boundary timestamp — null until [NewArticlesBoundary] initializes,
+     *  configured articles-per-page). */
+    private val highlightConfig: Flow<Triple<Boolean, Long?, Int>> = combine(
         appPreferences.syncPrefs,
         newArticlesBoundary.threshold,
-    ) { prefs, threshold -> prefs.highlightNewSinceRefresh to threshold }
+    ) { prefs, threshold -> Triple(prefs.highlightNewSinceRefresh, threshold, prefs.feedPageSize) }
 
     private val dedupedFeed: StateFlow<DedupedFeed> = combine(
         articleRepository.observeAll(),
@@ -146,17 +145,17 @@ class FeedViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ComputedFeed(emptyList(), emptyList(), null, false))
 
     /** Caps how many cards render at once — a long feed makes scrolling sluggish, so
-     *  results are paged (PAGE_SIZE per page) instead of dumping everything into one list. */
-    val uiState: StateFlow<FeedUiState> = combine(computedFeed, page, highlightConfig) { computed, requestedPage, (highlightEnabled, threshold) ->
+     *  results are paged (configurable page size, see [gr.thrylos.news.model.SyncPrefs.feedPageSize]). */
+    val uiState: StateFlow<FeedUiState> = combine(computedFeed, page, highlightConfig) { computed, requestedPage, (highlightEnabled, threshold, pageSize) ->
         val items = if (highlightEnabled && threshold != null) {
             computed.items.map { it.copy(isNew = it.article.fetchedAt > threshold) }
         } else {
             computed.items
         }
-        val pageCount = maxOf(1, (items.size + PAGE_SIZE - 1) / PAGE_SIZE)
+        val pageCount = maxOf(1, (items.size + pageSize - 1) / pageSize)
         val clampedPage = requestedPage.coerceIn(0, pageCount - 1)
         FeedUiState(
-            items = items.drop(clampedPage * PAGE_SIZE).take(PAGE_SIZE),
+            items = items.drop(clampedPage * pageSize).take(pageSize),
             sources = computed.sources,
             selectedSourceName = computed.selectedSourceName,
             unreadOnly = computed.unreadOnly,
@@ -169,12 +168,10 @@ class FeedViewModel @Inject constructor(
     val isSyncing: StateFlow<Boolean> = syncScheduler.observeSyncing()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    /** Whether any article anywhere is unread — used to disable "mark all as read"
-     *  when there's nothing for it to do (markAllRead() affects every article, not
-     *  just the currently filtered/paged ones). */
-    val hasUnread: StateFlow<Boolean> = articleRepository.observeAll()
-        .map { articles -> articles.any { !it.isRead } }
-        .flowOn(Dispatchers.Default)
+    /** Whether the currently visible (filtered, current tab, current page) articles
+     *  include anything unread — markAllRead() only acts on those, not the whole DB. */
+    val hasUnread: StateFlow<Boolean> = uiState
+        .map { state -> state.items.any { !it.article.isRead } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val lastSyncAt: StateFlow<Long?> = appPreferences.lastSyncCompletedAt
@@ -185,8 +182,12 @@ class FeedViewModel @Inject constructor(
 
     fun refresh() = syncScheduler.syncNow()
 
+    /** Marks only what's actually on screen right now (current tab, filters, source
+     *  selection, and page) as read — not every unread article in the database,
+     *  including ones on other pages or hidden by the current filters. */
     fun markAllRead() {
-        viewModelScope.launch { articleRepository.markAllRead() }
+        val ids = uiState.value.items.map { it.article.id }
+        viewModelScope.launch { articleRepository.setReadBatch(ids) }
     }
 
     fun markRead(id: String) {

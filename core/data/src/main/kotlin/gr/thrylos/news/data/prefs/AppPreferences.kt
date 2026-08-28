@@ -48,6 +48,7 @@ private data class SyncPrefsDto(
     val quietHoursStartMinute: Int = 23 * 60,
     val quietHoursEndMinute: Int = 7 * 60,
     val highlightNewSinceRefresh: Boolean = true,
+    val feedPageSize: Int = 10,
 )
 
 @Serializable
@@ -176,10 +177,12 @@ class AppPreferences @Inject constructor(
     private fun SyncPrefsDto.toDomain() = SyncPrefs(
         refreshInterval, syncOnlyOnWifi, downloadImagesOnlyOnWifi, offlineRetentionDays, offlineMaxArticles,
         prefetchImagesForOffline, quietHoursEnabled, quietHoursStartMinute, quietHoursEndMinute, highlightNewSinceRefresh,
+        feedPageSize,
     )
     private fun SyncPrefs.toDto() = SyncPrefsDto(
         refreshInterval, syncOnlyOnWifi, downloadImagesOnlyOnWifi, offlineRetentionDays, offlineMaxArticles,
         prefetchImagesForOffline, quietHoursEnabled, quietHoursStartMinute, quietHoursEndMinute, highlightNewSinceRefresh,
+        feedPageSize,
     )
 
     private fun NotificationPrefsDto.toDomain() = NotificationPrefs(enabled, onlySourceIds, onlyKeywords, onlyImportant, groupIntoSummary)
