@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "rednews",
+  "name": "RedNews.gr",
+  "homepage": "https://www.rednews.gr",
+  "enabled": true,
+  "discovery": {
+    "type": "html-list",
+    "url": "https://www.rednews.gr/latest-news/",
+    "maxItems": 40
+  },
+  "listSelectors": {
+    "item": "div.list-box",
+    "link": "h3.entry-title a.p-url@href",
+    "title": "h3.entry-title a.p-url",
+    "image": "img.featured-img@src",
+    "date": "time.date.published@datetime"
+  },
+  "article": {
+    "title": "h1.s-title",
+    "author": "a.meta-author-url",
+    "date": "meta[property=article:published_time]@content",
+    "leadImage": "meta[property=og:image]@content",
+    "content": "div.entry-content",
+    "remove": [".rbtoc", ".code-block", "script", "style", "iframe"]
+  },
+  "urlRules": {
+    "stripQueryParams": ["utm_source", "utm_medium", "utm_campaign", "fbclid"]
+  },
+  "fallback": "readability"
+}

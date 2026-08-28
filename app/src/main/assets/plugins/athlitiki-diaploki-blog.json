@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "athlitiki-diaploki-blog",
+  "name": "Αθλητική Διαπλοκή (Blog)",
+  "homepage": "https://athlitiki-diaploki.blogspot.com/",
+  "enabled": true,
+  "discovery": {
+    "type": "rss",
+    "url": "https://athlitiki-diaploki.blogspot.com/feeds/posts/default?alt=rss",
+    "maxItems": 30
+  },
+  "article": {
+    "title": ".post-title",
+    "author": ".post-author .fn",
+    "date": "abbr.published@title",
+    "leadImage": ".post-body img@src",
+    "content": ".post-body",
+    "remove": [".blogger-post-footer", ".post-footer", "script", "style", "iframe", ".related-posts", "#comments"]
+  },
+  "urlRules": {
+    "stripQueryParams": ["m", "showComment"]
+  },
+  "fallback": "readability"
+}
