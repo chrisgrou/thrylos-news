@@ -86,6 +86,16 @@ fun MatchesSettingsScreen(
                     onCheckedChange = { checked -> viewModel.update { it.copy(football = checked) } },
                 )
             }
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("Μπάσκετ", modifier = Modifier.padding(end = 12.dp))
+                Switch(
+                    checked = prefs.basketball,
+                    onCheckedChange = { checked -> viewModel.update { it.copy(basketball = checked) } },
+                )
+            }
 
             Text(
                 "Ανανέωση προγράμματος",

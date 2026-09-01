@@ -5,8 +5,12 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import gr.thrylos.news.data.prefs.AppPreferences
 import gr.thrylos.news.model.Match
+import gr.thrylos.news.model.MatchesPrefs
 import gr.thrylos.news.sources.matches.SofascoreMatchesFetcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,9 +19,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-/** Olympiacos FC's numeric id on Sofascore — from the team URL
- *  (".../football/team/olympiacos-fc/3245"). The only team/sport wired up so far. */
-private const val OLYMPIACOS_FOOTBALL_TEAM_ID = "3245"
+/** Sofascore team ids, from each team's URL (".../football/team/olympiacos-fc/3245",
+ *  ".../basketball/team/olympiacos-bc/3501"). One entry per sport wired up so far. */
+private val SPORT_TEAM_IDS: List<Pair<String, (MatchesPrefs) -> Boolean>> = listOf(
+    "3245" to { prefs: MatchesPrefs -> prefs.football },
+    "3501" to { prefs: MatchesPrefs -> prefs.basketball },
+)
 
 private const val PAGE_SIZE = 10
 
@@ -28,6 +35,8 @@ sealed class MatchesUiState {
         val page: Int,
         val pageCount: Int,
         val fetchedAt: Long,
+        val sports: List<String>,
+        val selectedSport: String?,
     ) : MatchesUiState()
     data class Error(val message: String) : MatchesUiState()
     data object SportsDisabled : MatchesUiState()
@@ -46,6 +55,7 @@ class MatchesViewModel @Inject constructor(
     private var fetchedAt: Long = 0L
     private var page = 0
     private var loaded = false
+    private var selectedSport: String? = null
 
     /** Called once when the screen first opens. Fixtures barely change within a day,
      *  so this reuses whatever's cached until [gr.thrylos.news.model.MatchesPrefs.refreshIntervalHours]
@@ -61,10 +71,17 @@ class MatchesViewModel @Inject constructor(
         publishSuccess()
     }
 
+    fun selectSport(sport: String?) {
+        selectedSport = sport
+        page = 0
+        publishSuccess()
+    }
+
     fun refresh(force: Boolean = true) {
         viewModelScope.launch {
             val prefs = appPreferences.matchesPrefs.first()
-            if (!prefs.football) {
+            val enabledTeamIds = SPORT_TEAM_IDS.filter { (_, enabled) -> enabled(prefs) }.map { it.first }
+            if (enabledTeamIds.isEmpty()) {
                 _state.value = MatchesUiState.SportsDisabled
                 return@launch
             }
@@ -84,7 +101,11 @@ class MatchesViewModel @Inject constructor(
 
             if (_state.value !is MatchesUiState.Success) _state.value = MatchesUiState.Loading
             runCatching {
-                withContext(Dispatchers.IO) { fetcher.fetchUpcoming(OLYMPIACOS_FOOTBALL_TEAM_ID) }
+                withContext(Dispatchers.IO) {
+                    coroutineScope {
+                        enabledTeamIds.map { teamId -> async { fetcher.fetchUpcoming(teamId) } }.awaitAll()
+                    }.flatten().sortedBy { it.kickoffAt }
+                }
             }.onSuccess { matches ->
                 appPreferences.cacheMatches(matches)
                 allMatches = matches
@@ -103,14 +124,19 @@ class MatchesViewModel @Inject constructor(
     }
 
     private fun publishSuccess() {
-        val pageCount = maxOf(1, (allMatches.size + PAGE_SIZE - 1) / PAGE_SIZE)
+        val sports = allMatches.map { it.sport }.distinct()
+        if (selectedSport != null && selectedSport !in sports) selectedSport = null
+        val filtered = selectedSport?.let { sport -> allMatches.filter { it.sport == sport } } ?: allMatches
+        val pageCount = maxOf(1, (filtered.size + PAGE_SIZE - 1) / PAGE_SIZE)
         val clampedPage = page.coerceIn(0, pageCount - 1)
         page = clampedPage
         _state.value = MatchesUiState.Success(
-            pageMatches = allMatches.drop(clampedPage * PAGE_SIZE).take(PAGE_SIZE),
+            pageMatches = filtered.drop(clampedPage * PAGE_SIZE).take(PAGE_SIZE),
             page = clampedPage,
             pageCount = pageCount,
             fetchedAt = fetchedAt,
+            sports = sports,
+            selectedSport = selectedSport,
         )
     }
 }

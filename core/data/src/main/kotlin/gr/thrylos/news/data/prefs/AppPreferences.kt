@@ -70,6 +70,7 @@ private data class WidgetPrefsDto(
 @Serializable
 private data class MatchesPrefsDto(
     val football: Boolean = true,
+    val basketball: Boolean = true,
     val refreshIntervalHours: Int = 24,
 )
 
@@ -239,6 +240,6 @@ class AppPreferences @Inject constructor(
     private fun WidgetPrefsDto.toDomain() = WidgetPrefs(showOnlyImportant)
     private fun WidgetPrefs.toDto() = WidgetPrefsDto(showOnlyImportant)
 
-    private fun MatchesPrefsDto.toDomain() = MatchesPrefs(football, refreshIntervalHours)
-    private fun MatchesPrefs.toDto() = MatchesPrefsDto(football, refreshIntervalHours)
+    private fun MatchesPrefsDto.toDomain() = MatchesPrefs(football, basketball, refreshIntervalHours)
+    private fun MatchesPrefs.toDto() = MatchesPrefsDto(football, basketball, refreshIntervalHours)
 }

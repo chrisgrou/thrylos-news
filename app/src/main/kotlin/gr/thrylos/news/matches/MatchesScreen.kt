@@ -3,6 +3,7 @@ package gr.thrylos.news.matches
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,20 +22,29 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SportsBasketball
 import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,23 +71,14 @@ fun MatchesScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var showSportPicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { viewModel.loadIfNeeded() }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Column {
-                        Text("Πρόγραμμα αγώνων")
-                        (state as? MatchesUiState.Success)?.let {
-                            Text(
-                                "Ενημερώθηκε: ${formatUpdatedAt(it.fetchedAt)}",
-                                style = MaterialTheme.typography.labelSmall,
-                            )
-                        }
-                    }
-                },
+                title = { Text("Πρόγραμμα αγώνων") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Πίσω") } },
                 actions = {
                     if (state is MatchesUiState.Loading) {
@@ -112,15 +113,31 @@ fun MatchesScreen(
             }
 
             is MatchesUiState.Success -> Column(Modifier.fillMaxSize().padding(padding)) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.Start,
+                ) {
+                    FilterChip(
+                        selected = s.selectedSport != null,
+                        onClick = { showSportPicker = true },
+                        label = { Text(s.selectedSport?.let { sportName(it) } ?: "Όλα τα αθλήματα") },
+                        trailingIcon = { Icon(Icons.Filled.ExpandMore, contentDescription = null) },
+                    )
+                }
                 if (s.pageMatches.isEmpty()) {
                     Text("Δεν βρέθηκαν προσεχείς αγώνες.", modifier = Modifier.padding(16.dp))
                 } else {
-                    LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 8.dp)) {
+                    LazyColumn(
+                        Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
                         val groups = s.pageMatches.groupByConsecutiveDate()
                         groups.forEach { (dateLabel, matches) ->
-                            item(key = "header-$dateLabel") { DateHeader(dateLabel) }
-                            items(matches, key = { it.id }) { match ->
-                                MatchRow(match, onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(match.matchUrl))) })
+                            item(key = "group-$dateLabel-${matches.first().id}") {
+                                DateGroup(dateLabel, matches) { match ->
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(match.matchUrl)))
+                                }
                             }
                         }
                     }
@@ -141,6 +158,34 @@ fun MatchesScreen(
                     }
                 }
             }
+        }
+    }
+
+    if (showSportPicker) {
+        ModalBottomSheet(onDismissRequest = { showSportPicker = false }) {
+            SportPickerSheet(
+                sports = (state as? MatchesUiState.Success)?.sports ?: emptyList(),
+                onSelect = { sport ->
+                    viewModel.selectSport(sport)
+                    showSportPicker = false
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun SportPickerSheet(sports: List<String>, onSelect: (String?) -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        ListItem(
+            headlineContent = { Text("Όλα τα αθλήματα") },
+            modifier = Modifier.fillMaxWidth().clickable { onSelect(null) },
+        )
+        sports.forEach { sport ->
+            ListItem(
+                headlineContent = { Text(sportName(sport)) },
+                modifier = Modifier.fillMaxWidth().clickable { onSelect(sport) },
+            )
         }
     }
 }
@@ -171,13 +216,24 @@ private fun dateLabelFor(millis: Long): String {
 private fun Calendar.isSameDay(other: Calendar) =
     get(Calendar.YEAR) == other.get(Calendar.YEAR) && get(Calendar.DAY_OF_YEAR) == other.get(Calendar.DAY_OF_YEAR)
 
+/** A date's matches as one visually-grouped, outlined block — a plain pill header with
+ *  borderless rows underneath didn't read as "these matches belong together", so each
+ *  date run is now its own bordered card with a filled header strip. */
 @Composable
-private fun DateHeader(label: String) {
-    Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Box(
-            Modifier.clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 12.dp, vertical = 4.dp),
-        ) {
+private fun DateGroup(label: String, matches: List<Match>, onClick: (Match) -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface),
+    ) {
+        Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 12.dp, vertical = 6.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        matches.forEachIndexed { index, match ->
+            if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            MatchRow(match, onClick = { onClick(match) })
         }
     }
 }
@@ -242,7 +298,7 @@ private fun CenterColumn(match: Match) {
             else -> Text(formatKickoff(match.kickoffAt), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
         }
         Icon(
-            Icons.Filled.SportsSoccer,
+            sportIcon(match.sport),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
             modifier = Modifier.size(14.dp).padding(top = 2.dp),
@@ -259,26 +315,30 @@ private fun LiveBadge() {
     }
 }
 
-/** Human label for a sport+gender pair — the app currently only ships football, but
- *  this keeps each match self-describing as more sports get added later. */
+/** Human label for a sport, no gender — used standalone in the sport filter. */
+private fun sportName(sport: String): String = when (sport) {
+    "football" -> "Ποδόσφαιρο"
+    "basketball" -> "Μπάσκετ"
+    "volleyball" -> "Βόλεϊ"
+    "handball" -> "Χάντμπολ"
+    else -> sport.replaceFirstChar { it.uppercase() }
+}
+
+/** Human label for a sport+gender pair — this keeps each match self-describing as
+ *  more sports get added later. */
 private fun sportLabel(sport: String, gender: String): String {
-    val sportName = when (sport) {
-        "football" -> "Ποδόσφαιρο"
-        "basketball" -> "Μπάσκετ"
-        "volleyball" -> "Βόλεϊ"
-        "handball" -> "Χάντμπολ"
-        else -> sport.replaceFirstChar { it.uppercase() }
-    }
     val genderLabel = when (gender) {
         "M" -> "Ανδρών"
         "F" -> "Γυναικών"
         else -> null
     }
-    return if (genderLabel != null) "$sportName $genderLabel" else sportName
+    return if (genderLabel != null) "${sportName(sport)} $genderLabel" else sportName(sport)
+}
+
+private fun sportIcon(sport: String) = when (sport) {
+    "basketball" -> Icons.Filled.SportsBasketball
+    else -> Icons.Filled.SportsSoccer
 }
 
 private fun formatKickoff(millis: Long): String =
-    SimpleDateFormat("HH:mm", Locale("el", "GR")).format(Date(millis))
-
-private fun formatUpdatedAt(millis: Long): String =
     SimpleDateFormat("HH:mm", Locale("el", "GR")).format(Date(millis))

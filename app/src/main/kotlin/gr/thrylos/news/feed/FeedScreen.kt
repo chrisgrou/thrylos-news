@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DoneAll
@@ -31,7 +32,6 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
@@ -227,7 +227,7 @@ private fun FeedFilterBar(
             )
             UnreadOnlyToggle(unreadOnly = state.unreadOnly, onSetUnreadOnly = onSetUnreadOnly)
             IconButton(onClick = onOpenMatches, modifier = Modifier.size(FilterBarHeight)) {
-                Icon(Icons.Filled.SportsSoccer, contentDescription = "Πρόγραμμα αγώνων")
+                Icon(Icons.Filled.CalendarMonth, contentDescription = "Πρόγραμμα αγώνων")
             }
             if (state.pageCount > 1) {
                 CompactPager(state = state, onSetPage = onSetPage)
