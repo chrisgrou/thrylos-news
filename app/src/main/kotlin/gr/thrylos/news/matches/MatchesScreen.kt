@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,7 +50,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -64,6 +67,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -129,8 +133,27 @@ fun MatchesScreen(
                 if (s.pageMatches.isEmpty()) {
                     Text("Δεν βρέθηκαν προσεχείς αγώνες.", modifier = Modifier.padding(16.dp))
                 } else {
+                    val density = LocalDensity.current
+                    var dragTotal by remember { mutableStateOf(0f) }
                     LazyColumn(
-                        Modifier.weight(1f),
+                        Modifier.weight(1f).pointerInput(s.page, s.pageCount) {
+                            val threshold = with(density) { 56.dp.toPx() }
+                            detectHorizontalDragGestures(
+                                onDragStart = { dragTotal = 0f },
+                                onHorizontalDrag = { change, dragAmount ->
+                                    dragTotal += dragAmount
+                                    change.consume()
+                                },
+                                onDragEnd = {
+                                    if (abs(dragTotal) >= threshold) {
+                                        // Swipe left (negative drag) advances, like the → chevron.
+                                        viewModel.setPage(s.page + if (dragTotal < 0) 1 else -1)
+                                    }
+                                    dragTotal = 0f
+                                },
+                                onDragCancel = { dragTotal = 0f },
+                            )
+                        },
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
