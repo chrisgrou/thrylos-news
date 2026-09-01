@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import gr.thrylos.news.model.AppThemeMode
+import gr.thrylos.news.model.DEFAULT_ENABLED_TEAM_IDS
 import gr.thrylos.news.model.Match
 import gr.thrylos.news.model.MatchesPrefs
 import gr.thrylos.news.model.NotificationPrefs
@@ -69,8 +70,7 @@ private data class WidgetPrefsDto(
 
 @Serializable
 private data class MatchesPrefsDto(
-    val football: Boolean = true,
-    val basketball: Boolean = true,
+    val enabledTeamIds: Set<String> = DEFAULT_ENABLED_TEAM_IDS,
     val refreshIntervalHours: Int = 24,
     val pageSize: Int = 5,
 )
@@ -241,6 +241,6 @@ class AppPreferences @Inject constructor(
     private fun WidgetPrefsDto.toDomain() = WidgetPrefs(showOnlyImportant)
     private fun WidgetPrefs.toDto() = WidgetPrefsDto(showOnlyImportant)
 
-    private fun MatchesPrefsDto.toDomain() = MatchesPrefs(football, basketball, refreshIntervalHours, pageSize)
-    private fun MatchesPrefs.toDto() = MatchesPrefsDto(football, basketball, refreshIntervalHours, pageSize)
+    private fun MatchesPrefsDto.toDomain() = MatchesPrefs(enabledTeamIds, refreshIntervalHours, pageSize)
+    private fun MatchesPrefs.toDto() = MatchesPrefsDto(enabledTeamIds, refreshIntervalHours, pageSize)
 }

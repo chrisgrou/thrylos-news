@@ -19,13 +19,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-/** Sofascore team ids, from each team's URL (".../football/team/olympiacos-fc/3245",
- *  ".../basketball/team/olympiacos-bc/3501"). One entry per sport wired up so far. */
-private val SPORT_TEAM_IDS: List<Pair<String, (MatchesPrefs) -> Boolean>> = listOf(
-    "3245" to { prefs: MatchesPrefs -> prefs.football },
-    "3501" to { prefs: MatchesPrefs -> prefs.basketball },
-)
-
 sealed class MatchesUiState {
     data object Loading : MatchesUiState()
     data class Success(
@@ -80,7 +73,7 @@ class MatchesViewModel @Inject constructor(
         viewModelScope.launch {
             val prefs = appPreferences.matchesPrefs.first()
             pageSize = prefs.pageSize
-            val enabledTeamIds = SPORT_TEAM_IDS.filter { (_, enabled) -> enabled(prefs) }.map { it.first }
+            val enabledTeamIds = prefs.enabledTeamIds.toList()
             if (enabledTeamIds.isEmpty()) {
                 _state.value = MatchesUiState.SportsDisabled
                 return@launch

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -67,7 +68,9 @@ fun MatchesSettingsScreen(
             )
         },
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
+        Column(
+            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+        ) {
             Text(
                 "Αθλήματα",
                 style = MaterialTheme.typography.titleSmall,
@@ -79,25 +82,23 @@ fun MatchesSettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp),
             )
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text("Ποδόσφαιρο", modifier = Modifier.padding(end = 12.dp))
-                Switch(
-                    checked = prefs.football,
-                    onCheckedChange = { checked -> viewModel.update { it.copy(football = checked) } },
-                )
-            }
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text("Μπάσκετ", modifier = Modifier.padding(end = 12.dp))
-                Switch(
-                    checked = prefs.basketball,
-                    onCheckedChange = { checked -> viewModel.update { it.copy(basketball = checked) } },
-                )
+            OLYMPIACOS_TEAMS.forEach { team ->
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(team.label, modifier = Modifier.padding(end = 12.dp))
+                    Switch(
+                        checked = team.id in prefs.enabledTeamIds,
+                        onCheckedChange = { checked ->
+                            viewModel.update { current ->
+                                current.copy(
+                                    enabledTeamIds = if (checked) current.enabledTeamIds + team.id else current.enabledTeamIds - team.id,
+                                )
+                            }
+                        },
+                    )
+                }
             }
 
             Text(

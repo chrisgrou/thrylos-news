@@ -25,9 +25,12 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Pool
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SportsBasketball
+import androidx.compose.material.icons.filled.SportsHandball
 import androidx.compose.material.icons.filled.SportsSoccer
+import androidx.compose.material.icons.filled.SportsVolleyball
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -347,11 +350,15 @@ private fun sportName(sport: String): String = when (sport) {
     "basketball" -> "Μπάσκετ"
     "volleyball" -> "Βόλεϊ"
     "handball" -> "Χάντμπολ"
+    "waterpolo", "water_polo", "water-polo" -> "Πόλο"
     else -> sport.replaceFirstChar { it.uppercase() }
 }
 
 private fun sportIcon(sport: String) = when (sport) {
     "basketball" -> Icons.Filled.SportsBasketball
+    "volleyball" -> Icons.Filled.SportsVolleyball
+    "handball" -> Icons.Filled.SportsHandball
+    "waterpolo", "water_polo", "water-polo" -> Icons.Filled.Pool
     else -> Icons.Filled.SportsSoccer
 }
 
