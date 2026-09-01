@@ -19,9 +19,16 @@ import javax.inject.Inject
  *  (".../football/team/olympiacos-fc/3245"). The only team/sport wired up so far. */
 private const val OLYMPIACOS_FOOTBALL_TEAM_ID = "3245"
 
+private const val PAGE_SIZE = 10
+
 sealed class MatchesUiState {
     data object Loading : MatchesUiState()
-    data class Success(val matches: List<Match>, val fetchedAt: Long) : MatchesUiState()
+    data class Success(
+        val pageMatches: List<Match>,
+        val page: Int,
+        val pageCount: Int,
+        val fetchedAt: Long,
+    ) : MatchesUiState()
     data class Error(val message: String) : MatchesUiState()
     data object SportsDisabled : MatchesUiState()
 }
@@ -35,15 +42,23 @@ class MatchesViewModel @Inject constructor(
     private val _state = MutableStateFlow<MatchesUiState>(MatchesUiState.Loading)
     val state: StateFlow<MatchesUiState> = _state.asStateFlow()
 
+    private var allMatches: List<Match> = emptyList()
+    private var fetchedAt: Long = 0L
+    private var page = 0
     private var loaded = false
 
-    /** Called on every overlay open. Fixtures barely change within a day, so this
-     *  reuses whatever's cached until [MatchesPrefs.refreshIntervalHours] has passed —
-     *  only [refresh] with force=true (the overlay's manual button) always re-fetches. */
+    /** Called once when the screen first opens. Fixtures barely change within a day,
+     *  so this reuses whatever's cached until [gr.thrylos.news.model.MatchesPrefs.refreshIntervalHours]
+     *  has passed — only [refresh] with force=true (the manual button) always re-fetches. */
     fun loadIfNeeded() {
         if (loaded) return
         loaded = true
         refresh(force = false)
+    }
+
+    fun setPage(index: Int) {
+        page = index.coerceAtLeast(0)
+        publishSuccess()
     }
 
     fun refresh(force: Boolean = true) {
@@ -57,9 +72,12 @@ class MatchesViewModel @Inject constructor(
             if (!force) {
                 val cached = appPreferences.cachedMatches()
                 if (cached != null) {
-                    val (fetchedAt, matches) = cached
-                    _state.value = MatchesUiState.Success(matches, fetchedAt)
-                    val ageMs = System.currentTimeMillis() - fetchedAt
+                    val (cachedAt, matches) = cached
+                    allMatches = matches
+                    fetchedAt = cachedAt
+                    page = 0
+                    publishSuccess()
+                    val ageMs = System.currentTimeMillis() - cachedAt
                     if (ageMs < prefs.refreshIntervalHours * 60 * 60 * 1000L) return@launch
                 }
             }
@@ -69,7 +87,10 @@ class MatchesViewModel @Inject constructor(
                 withContext(Dispatchers.IO) { fetcher.fetchUpcoming(OLYMPIACOS_FOOTBALL_TEAM_ID) }
             }.onSuccess { matches ->
                 appPreferences.cacheMatches(matches)
-                _state.value = MatchesUiState.Success(matches, System.currentTimeMillis())
+                allMatches = matches
+                fetchedAt = System.currentTimeMillis()
+                page = 0
+                publishSuccess()
             }.onFailure { e ->
                 // Keep showing a stale cached list rather than replacing it with an
                 // error if we already had one on screen — only surface the error when
@@ -79,5 +100,17 @@ class MatchesViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    private fun publishSuccess() {
+        val pageCount = maxOf(1, (allMatches.size + PAGE_SIZE - 1) / PAGE_SIZE)
+        val clampedPage = page.coerceIn(0, pageCount - 1)
+        page = clampedPage
+        _state.value = MatchesUiState.Success(
+            pageMatches = allMatches.drop(clampedPage * PAGE_SIZE).take(PAGE_SIZE),
+            page = clampedPage,
+            pageCount = pageCount,
+            fetchedAt = fetchedAt,
+        )
     }
 }

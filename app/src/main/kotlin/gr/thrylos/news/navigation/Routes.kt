@@ -17,6 +17,7 @@ object Routes {
     const val SETTINGS_BACKUP = "settings/backup"
     const val SETTINGS_UPDATE_HISTORY = "settings/update-history"
     const val SETTINGS_MATCHES = "settings/matches"
+    const val MATCHES = "matches"
 
     fun reader(articleId: String) = "reader/$articleId"
     fun mediaViewer(articleId: String, index: Int) = "media/$articleId/$index"

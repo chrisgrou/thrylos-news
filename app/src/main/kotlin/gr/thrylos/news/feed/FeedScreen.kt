@@ -61,7 +61,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import gr.thrylos.news.matches.MatchesOverlay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,6 +69,7 @@ fun FeedScreen(
     onOpenBookmarks: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenSourceProfile: (sourceName: String) -> Unit,
+    onOpenMatches: () -> Unit,
     viewModel: FeedViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -78,7 +78,6 @@ fun FeedScreen(
     val lastSyncOutcome by viewModel.lastSyncOutcome.collectAsStateWithLifecycle()
     val hasUnread by viewModel.hasUnread.collectAsStateWithLifecycle()
     var showSourcePicker by remember { mutableStateOf(false) }
-    var showMatches by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -130,7 +129,7 @@ fun FeedScreen(
                     onOpenSourcePicker = { showSourcePicker = true },
                     onSetUnreadOnly = viewModel::setUnreadOnly,
                     onSetPage = viewModel::setPage,
-                    onOpenMatches = { showMatches = true },
+                    onOpenMatches = onOpenMatches,
                 )
 
                 if (state.isEmpty) {
@@ -198,12 +197,6 @@ fun FeedScreen(
                     onOpenSourceProfile(name)
                 },
             )
-        }
-    }
-
-    if (showMatches) {
-        ModalBottomSheet(onDismissRequest = { showMatches = false }) {
-            MatchesOverlay()
         }
     }
 }

@@ -30,7 +30,7 @@ private data class EventDto(
 private data class StatusDto(val type: String)
 
 @Serializable
-private data class TeamDto(val name: String)
+private data class TeamDto(val id: Long, val name: String, val gender: String = "")
 
 @Serializable
 private data class ScoreDto(val current: Int? = null)
@@ -77,9 +77,12 @@ class SofascoreMatchesFetcher(
         return Match(
             id = id.toString(),
             sport = sport,
+            gender = homeTeam.gender,
             competition = tournament.name,
             homeTeam = homeTeam.name,
+            homeTeamLogoUrl = "$baseUrl/api/v1/team/${homeTeam.id}/image",
             awayTeam = awayTeam.name,
+            awayTeamLogoUrl = "$baseUrl/api/v1/team/${awayTeam.id}/image",
             homeScore = homeScore.current,
             awayScore = awayScore.current,
             status = when (status.type) {

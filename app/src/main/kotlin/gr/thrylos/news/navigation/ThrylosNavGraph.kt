@@ -11,6 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import gr.thrylos.news.feed.BookmarksScreen
 import gr.thrylos.news.feed.FeedScreen
+import gr.thrylos.news.matches.MatchesScreen
 import gr.thrylos.news.matches.MatchesSettingsScreen
 import gr.thrylos.news.profile.AuthorProfileScreen
 import gr.thrylos.news.profile.SourceProfileScreen
@@ -54,7 +55,11 @@ fun ThrylosNavGraph(
                 onOpenBookmarks = { navController.navigate(Routes.BOOKMARKS) },
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onOpenSourceProfile = { name -> navController.navigate(Routes.sourceProfile(name)) },
+                onOpenMatches = { navController.navigate(Routes.MATCHES) },
             )
+        }
+        composable(Routes.MATCHES) {
+            MatchesScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.BOOKMARKS) {
             BookmarksScreen(
