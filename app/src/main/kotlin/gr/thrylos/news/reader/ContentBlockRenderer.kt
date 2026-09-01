@@ -1,5 +1,8 @@
 package gr.thrylos.news.reader
 
+import android.annotation.SuppressLint
+import android.webkit.WebChromeClient
+import android.webkit.WebView
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -8,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,6 +24,10 @@ import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +45,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import gr.thrylos.news.model.ContentBlock
 import gr.thrylos.news.model.ReaderPrefs
@@ -158,17 +167,29 @@ fun ContentBlockView(block: ContentBlock, prefs: ReaderPrefs, colors: ReaderColo
         }
 
         is ContentBlock.Video -> Column(Modifier.padding(bottom = 14.dp)) {
-            Box(
-                Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(12.dp))
-                    .let { if (onMediaClick != null) it.clickable(onClick = onMediaClick) else it },
-                contentAlignment = Alignment.Center,
-            ) {
-                if (block.thumbnailUrl != null) {
-                    AsyncImage(model = block.thumbnailUrl, contentDescription = block.caption, modifier = Modifier.fillMaxWidth().height(200.dp))
-                } else {
-                    Box(Modifier.fillMaxWidth().height(200.dp).background(colors.secondaryText.copy(alpha = 0.15f)))
+            // Plays inline, right here in the article, instead of handing off to the
+            // external YouTube app/browser — tapping the thumbnail swaps it for a
+            // WebView loading the embed. Deliberately only while this composable stays
+            // in composition: leaving the article (back, or navigating elsewhere)
+            // disposes it, which stops playback outright (see InlineVideoPlayer).
+            var isPlaying by remember(block) { mutableStateOf(false) }
+            if (isPlaying) {
+                InlineVideoPlayer(
+                    url = block.url,
+                    modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(12.dp)),
+                )
+            } else {
+                Box(
+                    Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(12.dp)).clickable { isPlaying = true },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (block.thumbnailUrl != null) {
+                        AsyncImage(model = block.thumbnailUrl, contentDescription = block.caption, modifier = Modifier.fillMaxWidth().height(200.dp))
+                    } else {
+                        Box(Modifier.fillMaxWidth().height(200.dp).background(colors.secondaryText.copy(alpha = 0.15f)))
+                    }
+                    Icon(Icons.Filled.PlayCircle, contentDescription = "Αναπαραγωγή video", tint = Color.White, modifier = Modifier.padding(4.dp))
                 }
-                Icon(Icons.Filled.PlayCircle, contentDescription = "Video", tint = Color.White, modifier = Modifier.padding(4.dp))
             }
             val caption = block.caption
             if (caption != null) {
@@ -180,6 +201,55 @@ fun ContentBlockView(block: ContentBlock, prefs: ReaderPrefs, colors: ReaderColo
             }
         }
     }
+}
+
+/** Hosts whose [ContentBlock.Video.url] is itself a player *page* (an iframe's `src`,
+ *  e.g. youtube.com/embed/... or player.vimeo.com/video/...) rather than a direct
+ *  media file — these need an `<iframe>` wrapper. Anything else is assumed to be a
+ *  direct file URL (from a `<video>` tag) and gets a plain HTML5 `<video>` instead. */
+private val IFRAME_EMBED_HOSTS = listOf(
+    "youtube.com", "youtube-nocookie.com", "youtu.be", "vimeo.com", "dailymotion.com", "facebook.com",
+)
+
+/** Inline playback for a [ContentBlock.Video], right inside the article — no
+ *  ExoPlayer/media-session wiring, just a WebView loading a minimal HTML page that
+ *  embeds the video full-bleed. Stops for good (rather than merely pausing) once this
+ *  leaves composition, since a detached WebView has no business still playing audio:
+ *  the [AndroidView] `onRelease` callback blanks the page before destroying it. */
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+private fun InlineVideoPlayer(url: String, modifier: Modifier = Modifier) {
+    AndroidView(
+        modifier = modifier,
+        factory = { context ->
+            WebView(context).apply {
+                settings.javaScriptEnabled = true
+                settings.domStorageEnabled = true
+                settings.mediaPlaybackRequiresUserGesture = false
+                webChromeClient = WebChromeClient()
+                loadDataWithBaseURL("https://www.youtube.com", videoEmbedHtml(url), "text/html", "utf-8", null)
+            }
+        },
+        onRelease = { webView ->
+            webView.loadUrl("about:blank")
+            webView.destroy()
+        },
+    )
+}
+
+private fun videoEmbedHtml(url: String): String {
+    val isIframeEmbed = IFRAME_EMBED_HOSTS.any { url.contains(it, ignoreCase = true) }
+    val body = if (isIframeEmbed) {
+        """<iframe src="$url" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>"""
+    } else {
+        """<video src="$url" controls autoplay playsinline></video>"""
+    }
+    return """
+        <!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>html,body{margin:0;padding:0;background:#000;height:100%}
+        iframe,video{position:fixed;top:0;left:0;width:100%;height:100%;border:0}</style>
+        </head><body>$body</body></html>
+    """.trimIndent()
 }
 
 /** Extraction strips out real `<a href>` links (only their visible text survives, e.g.
