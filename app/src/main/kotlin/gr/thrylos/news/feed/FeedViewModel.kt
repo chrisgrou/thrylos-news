@@ -84,6 +84,14 @@ class FeedViewModel @Inject constructor(
     private val unreadOnly = MutableStateFlow(false)
     private val page = MutableStateFlow(0)
 
+    /** What the user perceives has to change the instant they act, not once a DB
+     *  write round-trips through Room's invalidation tracker and this whole
+     *  filter/dedup/sort pipeline re-runs — that gap is exactly what made "mark all
+     *  as read" feel laggy despite the write itself being fast. Ids added here render
+     *  as read (and, under "Νέα", disappear) immediately; the real [setRead]/
+     *  [setReadBatch] write still happens, it just isn't what the UI waits on. */
+    private val optimisticReadIds = MutableStateFlow<Set<String>>(emptySet())
+
     /** Article rows are effectively immutable once synced — only isRead/isBookmarked/
      *  dedupGroupId change afterward via targeted UPDATEs, never contentJson, except
      *  when a broken article is re-extracted (which does bump fetchedAt). So keying on
@@ -111,7 +119,8 @@ class FeedViewModel @Inject constructor(
         filterRepository.observeAll(),
         sourcesFlow,
         selectedSourceName,
-    ) { articles, filters, sources, sourceName ->
+        optimisticReadIds,
+    ) { articles, filters, sources, sourceName, optimisticIds ->
         val chips = sources.groupBy { it.name }.map { (name, group) -> SourceChip(name, group.map { it.id }.toSet()) }
         val selectedIds = chips.firstOrNull { it.name == sourceName }?.memberSourceIds
 
@@ -152,10 +161,16 @@ class FeedViewModel @Inject constructor(
             .sortedWith(
                 // Important articles are pinned to the top only while unread — once
                 // read, they drop back into normal chronological order.
-                compareByDescending<Article> { importantById[it.id] == true && !it.isRead }
+                compareByDescending<Article> { importantById[it.id] == true && it.id !in optimisticIds && !it.isRead }
                     .thenByDescending { it.publishedAt ?: it.fetchedAt },
             )
-            .map { FeedItem(it, (groupCounts[it.id] ?: 1) - 1, importantById[it.id] == true) }
+            .map { article ->
+                // Reflects an in-flight optimistic mark-as-read immediately, even
+                // though the DB row (and thus this Article, straight from Room) may
+                // not have caught up to it yet.
+                val effective = if (!article.isRead && article.id in optimisticIds) article.copy(isRead = true) else article
+                FeedItem(effective, (groupCounts[article.id] ?: 1) - 1, importantById[article.id] == true)
+            }
 
         DedupedFeed(items = items, sources = chips, selectedSourceName = sourceName)
     }
@@ -223,10 +238,12 @@ class FeedViewModel @Inject constructor(
      *  including ones on other pages or hidden by the current filters. */
     fun markAllRead() {
         val ids = uiState.value.items.map { it.article.id }
+        optimisticReadIds.value = optimisticReadIds.value + ids
         viewModelScope.launch { articleRepository.setReadBatch(ids) }
     }
 
     fun markRead(id: String) {
+        optimisticReadIds.value = optimisticReadIds.value + id
         viewModelScope.launch { articleRepository.setRead(id, true) }
     }
 
@@ -246,6 +263,7 @@ class FeedViewModel @Inject constructor(
 
     fun openArticle(id: String) {
         cursor.setContext(uiState.value.items.map { it.article.id })
+        optimisticReadIds.value = optimisticReadIds.value + id
         viewModelScope.launch { articleRepository.setRead(id, true) }
     }
 }
