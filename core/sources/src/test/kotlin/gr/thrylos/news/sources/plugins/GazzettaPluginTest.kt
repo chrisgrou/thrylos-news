@@ -42,10 +42,21 @@ class GazzettaPluginTest {
 
         val stubs = HtmlListDiscovery().discover(plugin, HttpFetcher())
 
-        assertEquals(25, stubs.size, "there are 25 article.is-flex.mb-32 teasers on the page, capped by maxItems")
+        // 25 regular (article.is-flex.mb-32) + 5 columnist/"blogger" (article.list-
+        // article--blogger) teasers — a real "Ο Κ. Νικολακόπουλος γράφει στο blog
+        // του..." piece was reported completely missing from the app because that
+        // second class was never matched, so its article was never even discovered,
+        // let alone synced (a filter/importance question never came up — it wasn't
+        // there to filter). maxItems bumped 25 -> 30 to fit both kinds without either
+        // displacing the other.
+        assertEquals(30, stubs.size, "expected 25 regular + 5 blogger teasers on the page, capped by maxItems")
         val target = stubs.firstOrNull { "2563531" in it.url }
         assertTrue(target != null, "expected to find the Mæhle article, got: ${stubs.map { it.url }}")
         assertEquals("Πλησιάζει στο Λιμάνι ο Μέλε, όπως μεταδίδουν στη Δανία", target!!.title)
+
+        val bloggerTarget = stubs.firstOrNull { "2563441" in it.url }
+        assertTrue(bloggerTarget != null, "expected to find a 'blogger' teaser, got: ${stubs.map { it.url }}")
+        assertEquals("Ο ΠΑΟΚ μετά τον Κωνσταντέλια", bloggerTarget!!.title)
     }
 
     @Test
@@ -131,5 +142,28 @@ class GazzettaPluginTest {
         assertFalse(allText.contains("BEST OF"), "leaked the 'BEST OF INTERNET' recommended-content widget")
         assertFalse(allText.contains(article.title), "duplicated the headline into the body")
         assertFalse(allText.contains("Νότης Χάλαρης"), "duplicated the byline into the body")
+    }
+
+    /** The article page itself (once actually discovered — see the "blogger teaser"
+     *  case in the discovery test) uses the regular div.content.is-relative template,
+     *  so this is really just closing the loop: with discovery fixed, this columnist
+     *  piece is picked up, its author selector resolves correctly ("Κώστας
+     *  Νικολακόπουλος", matching an existing enabled ΣΥΝΤΑΚΤΗΣ "Σημαντικό" filter
+     *  rule), and extraction doesn't need the Readability fallback. */
+    @Test
+    fun `extracts a real gazzetta blogger article cleanly`() {
+        server.enqueue(MockResponse().setBody(Fixtures.read("gazzetta-blogger-article.html")))
+        val plugin = shippedPlugin()
+        val url = server.url("/football/superleague/2565701/olympiakos-telika-i-mpenfika-irthe-deyteri-gia-ton-poyerta").toString()
+
+        val article = ArticleExtractor(HttpFetcher()).extract(plugin, ArticleStub(plugin.id, url, "(stub)"))
+
+        assertFalse(article.usedFallbackExtraction)
+        assertEquals("Ολυμπιακός: Τελικά η Μπενφίκα ήρθε δεύτερη για τον Πουέρτα!", article.title)
+        assertEquals("Κώστας Νικολακόπουλος", article.author)
+        assertTrue(article.leadImageUrl!!.contains("puerta_afixi.jpg"), "unexpected lead image: ${article.leadImageUrl}")
+
+        val paragraphs = article.content.filterIsInstance<ContentBlock.Paragraph>()
+        assertTrue(paragraphs.isNotEmpty(), "expected the article body")
     }
 }

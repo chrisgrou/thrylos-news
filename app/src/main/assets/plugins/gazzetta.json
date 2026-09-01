@@ -7,10 +7,10 @@
   "discovery": {
     "type": "html-list",
     "url": "https://www.gazzetta.gr/teams/olympiakos",
-    "maxItems": 25
+    "maxItems": 30
   },
   "listSelectors": {
-    "item": "article.is-flex.mb-32",
+    "item": "article.is-flex.mb-32, article.list-article--blogger",
     "link": "h3 a@href",
     "title": "h3 a",
     "image": "img@src"
