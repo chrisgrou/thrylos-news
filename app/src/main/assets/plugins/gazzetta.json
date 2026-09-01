@@ -17,11 +17,14 @@
   },
   "article": {
     "title": "h1.h1",
-    "author": "span.authoring__author",
+    "author": ".authoring__author",
     "date": "time.authoring__time@datetime",
     "leadImage": "meta[property=og:image]@content",
-    "content": "div.content.is-relative",
-    "remove": [".summary-list", ".content__lead", ".in_read_dfp", ".sharing"]
+    "content": "div.content.is-relative, div.node--type-special-article",
+    "remove": [
+      ".summary-list", ".content__lead", ".in_read_dfp", ".sharing",
+      ".breadcrumbs", ".headline", ".author-with-sponsor", ".fade-to-white", "#dynamicBolmDiv"
+    ]
   },
   "urlRules": {
     "stripQueryParams": ["utm_source", "utm_medium", "utm_campaign", "fbclid"]

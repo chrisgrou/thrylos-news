@@ -83,4 +83,53 @@ class GazzettaPluginTest {
         val occurrences = Regex(Regex.escape("Οι ομάδες που έχει παίξει")).findAll(allText).count()
         assertEquals(1, occurrences, "summary-list duplicate not stripped")
     }
+
+    /** gazzetta.gr turns out to have (at least) two distinct article templates: regular
+     *  team-page articles use `div.content.is-relative` for the whole body in one
+     *  container, but its long-form "specials" features (this fixture, a real
+     *  gazzetta.gr/specials/... page) build the body from several independent
+     *  Drupal "paragraph" blocks with no shared body-only wrapper — the closest common
+     *  ancestor is the whole `div.node--type-special-article`, header/hero/byline
+     *  included. Reported as "the article cuts off partway through" — the old
+     *  `div.content.is-relative` selector didn't match this template at all, so
+     *  extraction silently fell back to Readability, which stopped short of the
+     *  later paragraph/image/quote blocks. */
+    @Test
+    fun `extracts a real gazzetta specials article past the old truncation point`() {
+        server.enqueue(MockResponse().setBody(Fixtures.read("gazzetta-specials-article.html")))
+        val plugin = shippedPlugin()
+        val url = server.url("/specials/2565625/o-gordito-poy-egine-poyerta-i-amfisbitisi-kai-ta-dakrya-eftiaxan-ti-metagrafi").toString()
+
+        val article = ArticleExtractor(HttpFetcher()).extract(plugin, ArticleStub(plugin.id, url, "(stub)"))
+
+        assertFalse(article.usedFallbackExtraction, "div.node--type-special-article should now match directly, no Readability fallback needed")
+        assertEquals(
+            "Ο «Gordito» που έγινε Πουέρτα: Η αμφισβήτηση και τα δάκρυα έφτιαξαν τη μεταγραφή-ρεκόρ του Ολυμπιακού",
+            article.title,
+        )
+        assertEquals("Νότης Χάλαρης", article.author, "author markup here is <a class=authoring__author>, not <span>")
+        assertTrue(article.leadImageUrl!!.contains("puerta_osfp_article.jpg"), "unexpected lead image: ${article.leadImageUrl}")
+
+        val allText = article.content.joinToString(" ") { block ->
+            when (block) {
+                is ContentBlock.Paragraph -> block.text
+                is ContentBlock.Heading -> block.text
+                is ContentBlock.Quote -> block.text
+                is ContentBlock.ListBlock -> block.items.joinToString(" ")
+                is ContentBlock.Image -> block.caption.orEmpty()
+                is ContentBlock.Video -> block.caption.orEmpty()
+            }
+        }
+        assertTrue(
+            allText.contains("άρχισε τη δική του πορεία"),
+            "missing text right at the old truncation point",
+        )
+        assertTrue(
+            allText.contains("Είχε μία σφαίρα στο πόδι για τέσσερα χρόνια"),
+            "missing the pull-quote heading from a later paragraph block, past the old cutoff",
+        )
+        assertFalse(allText.contains("BEST OF"), "leaked the 'BEST OF INTERNET' recommended-content widget")
+        assertFalse(allText.contains(article.title), "duplicated the headline into the body")
+        assertFalse(allText.contains("Νότης Χάλαρης"), "duplicated the byline into the body")
+    }
 }
