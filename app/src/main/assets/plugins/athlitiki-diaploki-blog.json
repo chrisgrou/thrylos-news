@@ -15,7 +15,7 @@
     "date": "abbr.published@title",
     "leadImage": ".post-body img@src",
     "content": ".post-body",
-    "remove": [".blogger-post-footer", ".post-footer", "script", "style", "iframe", ".related-posts", "#comments"]
+    "remove": [".blogger-post-footer", ".post-footer", "script", "style", ".related-posts", "#comments"]
   },
   "urlRules": {
     "stripQueryParams": ["m", "showComment"]

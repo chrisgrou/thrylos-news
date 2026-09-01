@@ -19,7 +19,6 @@
     "remove": [
       ".content-box",
       ".inarticleDFPbanner",
-      ".wrap-video-container",
       "[id^=sas_]",
       "[id^=div-gpt-ad]",
       "svg",

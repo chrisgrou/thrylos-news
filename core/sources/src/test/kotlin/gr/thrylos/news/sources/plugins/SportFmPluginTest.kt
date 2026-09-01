@@ -60,13 +60,26 @@ class SportFmPluginTest {
         assertFalse(text.contains("Google News"), "leaked the 'follow us' promo paragraph")
 
         // The real page wraps the whole body in one <p> with <br><br>-separated
-        // paragraphs (plus stray ad/video divs mid-<p>, which Jsoup's HTML5 parser
-        // implicitly closes the <p> in front of) — real paragraph breaks, not a
-        // single run-on block of text.
+        // paragraphs (plus a stray embedded-video div mid-<p>, which Jsoup's HTML5
+        // parser implicitly closes the <p> in front of) — real paragraph breaks, not
+        // a single run-on block of text.
         assertTrue(paragraphs.size > 1, "expected multiple paragraphs, got one run-on block: $text")
         assertTrue(
             paragraphs.any { it.text.startsWith("Όπως αναφέρει το δημοσίευμα") },
             "expected a distinct paragraph starting at the second <br><br>-separated run",
+        )
+
+        // .wrap-video-container used to be in the plugin's own `remove` list — added
+        // when this plugin was first built, apparently mistaking the article's own
+        // embedded YouTube report clip for an ad wrapper, which silently dropped every
+        // embedded video on this source. It must survive extraction as a real block.
+        // (The fixture's iframe src is a synthetic youtube.com/embed/... URL — Blink's
+        // "Save as MHTML" rewrites every inline-captured iframe src to an inert
+        // cid:... reference, same as the Redaroume video fixture, so the real captured
+        // value can't be used to exercise the domain-based video-embed detection.)
+        assertTrue(
+            article.content.any { it is ContentBlock.Video },
+            "expected the embedded YouTube video to survive extraction as a ContentBlock.Video",
         )
     }
 }

@@ -22,7 +22,7 @@
     "date": "meta[property=article:published_time]@content",
     "leadImage": "meta[property=og:image]@content",
     "content": "div.entry-content",
-    "remove": [".rbtoc", ".code-block", "script", "style", "iframe"]
+    "remove": [".rbtoc", ".code-block", "script", "style"]
   },
   "urlRules": {
     "stripQueryParams": ["utm_source", "utm_medium", "utm_campaign", "fbclid"]
