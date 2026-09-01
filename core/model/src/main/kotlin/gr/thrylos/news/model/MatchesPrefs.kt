@@ -9,4 +9,8 @@ data class MatchesPrefs(
      *  a long interval — a cached result is served in between, with a manual refresh
      *  button in the overlay for whenever a fresher one is wanted right away. */
     val refreshIntervalHours: Int = 24,
+    /** How many matches (across however many date-groups they fall into) show per
+     *  page — screen heights vary a lot across devices, so this is user-adjustable
+     *  rather than a fixed guess at what fits without scrolling. */
+    val pageSize: Int = 5,
 )

@@ -26,11 +26,6 @@ private val SPORT_TEAM_IDS: List<Pair<String, (MatchesPrefs) -> Boolean>> = list
     "3501" to { prefs: MatchesPrefs -> prefs.basketball },
 )
 
-/** Fewer per page than the article feed's — each match row is short but the bordered
- *  date-group cards around them add up fast, and a shorter page scrolls less (ideally
- *  not at all on most screens) instead of feeling like a long list to fling through. */
-private const val PAGE_SIZE = 5
-
 sealed class MatchesUiState {
     data object Loading : MatchesUiState()
     data class Success(
@@ -59,6 +54,7 @@ class MatchesViewModel @Inject constructor(
     private var page = 0
     private var loaded = false
     private var selectedSport: String? = null
+    private var pageSize = MatchesPrefs().pageSize
 
     /** Called once when the screen first opens. Fixtures barely change within a day,
      *  so this reuses whatever's cached until [gr.thrylos.news.model.MatchesPrefs.refreshIntervalHours]
@@ -83,6 +79,7 @@ class MatchesViewModel @Inject constructor(
     fun refresh(force: Boolean = true) {
         viewModelScope.launch {
             val prefs = appPreferences.matchesPrefs.first()
+            pageSize = prefs.pageSize
             val enabledTeamIds = SPORT_TEAM_IDS.filter { (_, enabled) -> enabled(prefs) }.map { it.first }
             if (enabledTeamIds.isEmpty()) {
                 _state.value = MatchesUiState.SportsDisabled
@@ -130,11 +127,11 @@ class MatchesViewModel @Inject constructor(
         val sports = allMatches.map { it.sport }.distinct()
         if (selectedSport != null && selectedSport !in sports) selectedSport = null
         val filtered = selectedSport?.let { sport -> allMatches.filter { it.sport == sport } } ?: allMatches
-        val pageCount = maxOf(1, (filtered.size + PAGE_SIZE - 1) / PAGE_SIZE)
+        val pageCount = maxOf(1, (filtered.size + pageSize - 1) / pageSize)
         val clampedPage = page.coerceIn(0, pageCount - 1)
         page = clampedPage
         _state.value = MatchesUiState.Success(
-            pageMatches = filtered.drop(clampedPage * PAGE_SIZE).take(PAGE_SIZE),
+            pageMatches = filtered.drop(clampedPage * pageSize).take(pageSize),
             page = clampedPage,
             pageCount = pageCount,
             fetchedAt = fetchedAt,

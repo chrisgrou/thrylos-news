@@ -54,6 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -270,7 +271,7 @@ private fun TeamColumn(name: String, logoUrl: String, alignment: Alignment.Horiz
 @Composable
 private fun CenterColumn(match: Match) {
     Column(
-        Modifier.padding(horizontal = 8.dp).width(76.dp),
+        Modifier.padding(horizontal = 6.dp).width(96.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         when (match.status) {
@@ -298,10 +299,10 @@ private fun CenterColumn(match: Match) {
         )
         Text(
             match.competition,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, lineHeight = 11.sp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 2.dp),
         )
