@@ -199,6 +199,7 @@ fun ReaderScreen(
                                     block = block,
                                     prefs = prefs,
                                     colors = colors,
+                                    articleUrl = a.url,
                                     onMediaClick = mediaIndexByContentIndex[index]?.let { mediaIndex -> { onOpenMedia(id, mediaIndex) } },
                                 )
                             }

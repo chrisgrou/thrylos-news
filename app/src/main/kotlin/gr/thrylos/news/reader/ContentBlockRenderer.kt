@@ -56,7 +56,13 @@ import gr.thrylos.news.theme.ReaderColors
 import gr.thrylos.news.theme.fontFamilyFor
 
 @Composable
-fun ContentBlockView(block: ContentBlock, prefs: ReaderPrefs, colors: ReaderColors, onMediaClick: (() -> Unit)? = null) {
+fun ContentBlockView(
+    block: ContentBlock,
+    prefs: ReaderPrefs,
+    colors: ReaderColors,
+    articleUrl: String,
+    onMediaClick: (() -> Unit)? = null,
+) {
     val fontFamily = fontFamilyFor(prefs.fontFamily)
     val bodySize = (READER_BASE_BODY_SP * prefs.fontScale).sp
     val align = if (prefs.textAlign == TextAlign.JUSTIFY) ComposeTextAlign.Justify else ComposeTextAlign.Start
@@ -176,6 +182,7 @@ fun ContentBlockView(block: ContentBlock, prefs: ReaderPrefs, colors: ReaderColo
             if (isPlaying) {
                 InlineVideoPlayer(
                     url = block.url,
+                    pageUrl = articleUrl,
                     modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(12.dp)),
                 )
             } else {
@@ -205,21 +212,31 @@ fun ContentBlockView(block: ContentBlock, prefs: ReaderPrefs, colors: ReaderColo
 
 /** Hosts whose [ContentBlock.Video.url] is itself a player *page* (an iframe's `src`,
  *  e.g. youtube.com/embed/... or player.vimeo.com/video/...) rather than a direct
- *  media file — these get loaded as-is, the URL already being a complete embeddable
- *  page. Anything else is assumed to be a direct file URL (from a `<video>` tag) and
- *  needs wrapping in a plain HTML5 `<video>` to render at all. */
+ *  media file — these need an `<iframe>` wrapper (see [InlineVideoPlayer]). Anything
+ *  else is assumed to be a direct file URL (from a `<video>` tag) and gets a plain
+ *  HTML5 `<video>` instead. */
 private val IFRAME_EMBED_HOSTS = listOf(
     "youtube.com", "youtube-nocookie.com", "youtu.be", "vimeo.com", "dailymotion.com", "facebook.com",
 )
 
 /** Inline playback for a [ContentBlock.Video], right inside the article — no
- *  ExoPlayer/media-session wiring, just a WebView. Stops for good (rather than merely
- *  pausing) once this leaves composition, since a detached WebView has no business
- *  still playing audio: the [AndroidView] `onRelease` callback blanks the page before
- *  destroying it. */
+ *  ExoPlayer/media-session wiring, just a WebView loading a minimal HTML page that
+ *  embeds the video full-bleed. Stops for good (rather than merely pausing) once this
+ *  leaves composition, since a detached WebView has no business still playing audio:
+ *  the [AndroidView] `onRelease` callback blanks the page before destroying it.
+ *
+ *  [pageUrl] — the *article's own* URL — is used as the WebView's base/origin rather
+ *  than a synthetic one: loading the player page directly (no wrapper) failed with a
+ *  real YouTube "video unavailable", and wrapping it under a fabricated
+ *  "https://www.youtube.com" origin failed with a real YouTube "player configuration
+ *  error" — both real, on-device failures against actual videos. The one context a
+ *  given video is verified to embed correctly in is the article's own page, since
+ *  that's where it was captured from, so reproducing that origin is the closest thing
+ *  to a guarantee available here without knowing the exact origin the video's owner
+ *  actually allow-listed. */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun InlineVideoPlayer(url: String, modifier: Modifier = Modifier) {
+private fun InlineVideoPlayer(url: String, pageUrl: String, modifier: Modifier = Modifier) {
     AndroidView(
         modifier = modifier,
         factory = { context ->
@@ -228,18 +245,8 @@ private fun InlineVideoPlayer(url: String, modifier: Modifier = Modifier) {
                 settings.domStorageEnabled = true
                 settings.mediaPlaybackRequiresUserGesture = false
                 webChromeClient = WebChromeClient()
-                if (IFRAME_EMBED_HOSTS.any { url.contains(it, ignoreCase = true) }) {
-                    // The URL is already a full player page (e.g.
-                    // youtube.com/embed/VIDEO_ID) — loading it directly as the
-                    // WebView's own page, rather than nesting it inside another
-                    // <iframe> on a synthetic host, is what YouTube's own embed
-                    // origin/referrer checks actually expect; wrapping it caused a
-                    // real "video unavailable" error even for a perfectly playable
-                    // video.
-                    loadUrl(url)
-                } else {
-                    loadDataWithBaseURL(url, directVideoHtml(url), "text/html", "utf-8", null)
-                }
+                val isIframeEmbed = IFRAME_EMBED_HOSTS.any { url.contains(it, ignoreCase = true) }
+                loadDataWithBaseURL(pageUrl, videoEmbedHtml(url, isIframeEmbed), "text/html", "utf-8", null)
             }
         },
         onRelease = { webView ->
@@ -249,12 +256,19 @@ private fun InlineVideoPlayer(url: String, modifier: Modifier = Modifier) {
     )
 }
 
-private fun directVideoHtml(url: String): String = """
-    <!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>html,body{margin:0;padding:0;background:#000;height:100%}
-    video{position:fixed;top:0;left:0;width:100%;height:100%;border:0}</style>
-    </head><body><video src="$url" controls autoplay playsinline></video></body></html>
-""".trimIndent()
+private fun videoEmbedHtml(url: String, isIframeEmbed: Boolean): String {
+    val body = if (isIframeEmbed) {
+        """<iframe src="$url" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>"""
+    } else {
+        """<video src="$url" controls autoplay playsinline></video>"""
+    }
+    return """
+        <!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>html,body{margin:0;padding:0;background:#000;height:100%}
+        iframe,video{position:fixed;top:0;left:0;width:100%;height:100%;border:0}</style>
+        </head><body>$body</body></html>
+    """.trimIndent()
+}
 
 /** Extraction strips out real `<a href>` links (only their visible text survives, e.g.
  *  a tweet's "pic.twitter.com/xxx" media link becomes plain text), so bare URLs read
