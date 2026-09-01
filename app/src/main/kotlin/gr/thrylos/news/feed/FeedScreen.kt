@@ -29,9 +29,12 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
@@ -78,6 +81,7 @@ fun FeedScreen(
     val lastSyncOutcome by viewModel.lastSyncOutcome.collectAsStateWithLifecycle()
     val hasUnread by viewModel.hasUnread.collectAsStateWithLifecycle()
     var showSourcePicker by remember { mutableStateOf(false) }
+    var showOverflowMenu by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -101,11 +105,31 @@ fun FeedScreen(
                     IconButton(onClick = { viewModel.markAllRead() }, enabled = hasUnread) {
                         Icon(Icons.Filled.DoneAll, contentDescription = "Μαρκάρισμα όλων ως διαβασμένα")
                     }
-                    IconButton(onClick = onOpenBookmarks) {
-                        Icon(Icons.Filled.Bookmarks, contentDescription = "Bookmarks")
+                    IconButton(onClick = onOpenMatches) {
+                        Icon(Icons.Filled.CalendarMonth, contentDescription = "Πρόγραμμα αγώνων")
                     }
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Ρυθμίσεις")
+                    Box {
+                        IconButton(onClick = { showOverflowMenu = true }) {
+                            Icon(Icons.Filled.MoreVert, contentDescription = "Περισσότερα")
+                        }
+                        DropdownMenu(expanded = showOverflowMenu, onDismissRequest = { showOverflowMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Bookmarks") },
+                                leadingIcon = { Icon(Icons.Filled.Bookmarks, contentDescription = null) },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    onOpenBookmarks()
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Ρυθμίσεις") },
+                                leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    onOpenSettings()
+                                },
+                            )
+                        }
                     }
                 },
             )
@@ -129,7 +153,6 @@ fun FeedScreen(
                     onOpenSourcePicker = { showSourcePicker = true },
                     onSetUnreadOnly = viewModel::setUnreadOnly,
                     onSetPage = viewModel::setPage,
-                    onOpenMatches = onOpenMatches,
                 )
 
                 if (state.isEmpty) {
@@ -210,7 +233,6 @@ private fun FeedFilterBar(
     onOpenSourcePicker: () -> Unit,
     onSetUnreadOnly: (Boolean) -> Unit,
     onSetPage: (Int) -> Unit,
-    onOpenMatches: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp)) {
         Row(
@@ -226,9 +248,6 @@ private fun FeedFilterBar(
                 modifier = Modifier.height(FilterBarHeight),
             )
             UnreadOnlyToggle(unreadOnly = state.unreadOnly, onSetUnreadOnly = onSetUnreadOnly)
-            IconButton(onClick = onOpenMatches, modifier = Modifier.size(FilterBarHeight)) {
-                Icon(Icons.Filled.CalendarMonth, contentDescription = "Πρόγραμμα αγώνων")
-            }
             if (state.pageCount > 1) {
                 CompactPager(state = state, onSetPage = onSetPage)
             }

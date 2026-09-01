@@ -10,6 +10,7 @@ import gr.thrylos.news.data.repo.FilterRepository
 import gr.thrylos.news.data.repo.SourceRepository
 import gr.thrylos.news.data.sync.SyncScheduler
 import gr.thrylos.news.model.Article
+import gr.thrylos.news.model.FilterRule
 import gr.thrylos.news.sources.filter.FilterEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -66,6 +67,8 @@ private data class ComputedFeed(
     val unreadOnly: Boolean,
 )
 
+private data class FilterResult(val visible: Boolean, val important: Boolean)
+
 @HiltViewModel
 class FeedViewModel @Inject constructor(
     private val articleRepository: ArticleRepository,
@@ -80,6 +83,18 @@ class FeedViewModel @Inject constructor(
     private val selectedSourceName = MutableStateFlow<String?>(null)
     private val unreadOnly = MutableStateFlow(false)
     private val page = MutableStateFlow(0)
+
+    /** Article rows are effectively immutable once synced — only isRead/isBookmarked/
+     *  dedupGroupId change afterward via targeted UPDATEs, never contentJson, except
+     *  when a broken article is re-extracted (which does bump fetchedAt). So keying on
+     *  (id, fetchedAt) and rebuilding this map fresh each pass (reusing old entries,
+     *  dropping ones for articles no longer present) skips re-decoding/re-joining a
+     *  BODY/ANYWHERE rule's text for every already-seen article on every recomputation
+     *  — including the several that fire back-to-back right after a sync starts, which
+     *  was real, repeated cost behind both the sluggish-on-open feed and choppy
+     *  scrolling while a sync is still catching up in the background. */
+    private var filterResultCache: Map<String, FilterResult> = emptyMap()
+    private var filterResultCacheFilters: List<FilterRule>? = null
 
     private val sourcesFlow = sourceRepository.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -102,19 +117,28 @@ class FeedViewModel @Inject constructor(
 
         // A BODY/ANYWHERE filter rule needs an article's full joined body text, which —
         // for an article read back from Room — means decoding its stored content JSON.
-        // Computing that once per article here (instead of once per isVisible/isImportant
-        // call, each of which used to rejoin it from scratch) is what actually keeps a
-        // cold start with hundreds of previously-synced articles from visibly stalling:
-        // decoding is otherwise the single most expensive thing this pass does.
+        // Only recompute (id, fetchedAt) pairs not already in the cache from the last
+        // pass; a real filter-rule edit invalidates the whole thing (new filters
+        // instance), everything else (isRead toggles, a sync writing more articles)
+        // reuses what's already known.
+        if (filters !== filterResultCacheFilters) filterResultCache = emptyMap()
+        filterResultCacheFilters = filters
         val needsBody = FilterEngine.rulesNeedBody(filters)
         val importantById = HashMap<String, Boolean>(articles.size)
+        val newCache = HashMap<String, FilterResult>(articles.size)
         val visible = articles.filter { article ->
             if (selectedIds != null && article.sourceId !in selectedIds) return@filter false
-            val body = if (needsBody) FilterEngine.bodyText(article) else null
-            if (!FilterEngine.isVisible(article, filters, body)) return@filter false
-            importantById[article.id] = FilterEngine.isImportant(article, filters, body)
+            val cacheKey = "${article.id}:${article.fetchedAt}"
+            val result = filterResultCache[cacheKey] ?: run {
+                val body = if (needsBody) FilterEngine.bodyText(article) else null
+                FilterResult(FilterEngine.isVisible(article, filters, body), FilterEngine.isImportant(article, filters, body))
+            }
+            newCache[cacheKey] = result
+            if (!result.visible) return@filter false
+            importantById[article.id] = result.important
             true
         }
+        filterResultCache = newCache
 
         // Collapse dedup groups: an article whose dedupGroupId points at another
         // article is a duplicate — only the group's primary (or an ungrouped
