@@ -100,9 +100,21 @@ class FeedViewModel @Inject constructor(
         val chips = sources.groupBy { it.name }.map { (name, group) -> SourceChip(name, group.map { it.id }.toSet()) }
         val selectedIds = chips.firstOrNull { it.name == sourceName }?.memberSourceIds
 
-        val visible = articles
-            .filter { FilterEngine.isVisible(it, filters) }
-            .filter { selectedIds == null || it.sourceId in selectedIds }
+        // A BODY/ANYWHERE filter rule needs an article's full joined body text, which —
+        // for an article read back from Room — means decoding its stored content JSON.
+        // Computing that once per article here (instead of once per isVisible/isImportant
+        // call, each of which used to rejoin it from scratch) is what actually keeps a
+        // cold start with hundreds of previously-synced articles from visibly stalling:
+        // decoding is otherwise the single most expensive thing this pass does.
+        val needsBody = FilterEngine.rulesNeedBody(filters)
+        val importantById = HashMap<String, Boolean>(articles.size)
+        val visible = articles.filter { article ->
+            if (selectedIds != null && article.sourceId !in selectedIds) return@filter false
+            val body = if (needsBody) FilterEngine.bodyText(article) else null
+            if (!FilterEngine.isVisible(article, filters, body)) return@filter false
+            importantById[article.id] = FilterEngine.isImportant(article, filters, body)
+            true
+        }
 
         // Collapse dedup groups: an article whose dedupGroupId points at another
         // article is a duplicate — only the group's primary (or an ungrouped
@@ -116,10 +128,10 @@ class FeedViewModel @Inject constructor(
             .sortedWith(
                 // Important articles are pinned to the top only while unread — once
                 // read, they drop back into normal chronological order.
-                compareByDescending<Article> { FilterEngine.isImportant(it, filters) && !it.isRead }
+                compareByDescending<Article> { importantById[it.id] == true && !it.isRead }
                     .thenByDescending { it.publishedAt ?: it.fetchedAt },
             )
-            .map { FeedItem(it, (groupCounts[it.id] ?: 1) - 1, FilterEngine.isImportant(it, filters)) }
+            .map { FeedItem(it, (groupCounts[it.id] ?: 1) - 1, importantById[it.id] == true) }
 
         DedupedFeed(items = items, sources = chips, selectedSourceName = sourceName)
     }

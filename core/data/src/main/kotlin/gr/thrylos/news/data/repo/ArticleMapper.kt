@@ -38,6 +38,27 @@ object ArticleMapper {
         return decoded
     }
 
+    /** Defers the actual JSON decode until something (the reader, a BODY/ANYWHERE
+     *  filter rule) really reads an article's content — the feed list itself only
+     *  ever touches title/source/image/time. Without this, mapping a whole page of
+     *  stored rows into [Article] decoded every article's full body content JSON
+     *  unconditionally, every time, which is real cost on a cold start with hundreds
+     *  of previously-synced articles and was the actual reason old articles took
+     *  seconds to appear instead of showing instantly. [equals]/[hashCode] compare
+     *  the raw JSON instead of the decoded list, so callers that just compare two
+     *  Articles for change (StateFlow's conflation, Compose's remember(key)) never
+     *  force a decode either. */
+    private class LazyContentBlocks(
+        private val rawJson: String,
+        private val supplier: () -> List<ContentBlock>,
+    ) : AbstractList<ContentBlock>() {
+        private val decoded by lazy(LazyThreadSafetyMode.PUBLICATION) { supplier() }
+        override val size: Int get() = decoded.size
+        override fun get(index: Int): ContentBlock = decoded[index]
+        override fun equals(other: Any?): Boolean = other is LazyContentBlocks && other.rawJson == rawJson
+        override fun hashCode(): Int = rawJson.hashCode()
+    }
+
     fun toEntity(article: Article): ArticleEntity = ArticleEntity(
         id = article.id,
         sourceId = article.sourceId,
@@ -65,7 +86,7 @@ object ArticleMapper {
         publishedAt = entity.publishedAt,
         fetchedAt = entity.fetchedAt,
         leadImageUrl = entity.leadImageUrl,
-        content = decodeContent(entity),
+        content = LazyContentBlocks(entity.contentJson) { decodeContent(entity) },
         usedFallbackExtraction = entity.usedFallbackExtraction,
         isRead = entity.isRead,
         isBookmarked = entity.isBookmarked,

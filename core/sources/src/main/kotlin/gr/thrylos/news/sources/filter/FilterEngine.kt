@@ -116,23 +116,28 @@ object FilterEngine {
         }
     }
 
-    fun isHidden(article: Article, rules: List<FilterRule>): Boolean =
-        rules.any { it.action == FilterAction.HIDE && matches(it, article) }
+    /** True if any rule has a BODY/ANYWHERE condition — lets a caller about to check
+     *  many articles skip computing [bodyText] altogether when nothing needs it. */
+    fun rulesNeedBody(rules: List<FilterRule>): Boolean =
+        rules.any { rule -> rule.conditions.any { it.field == FilterField.BODY || it.field == FilterField.ANYWHERE } }
+
+    fun isHidden(article: Article, rules: List<FilterRule>, bodyTextOverride: String? = null): Boolean =
+        rules.any { it.action == FilterAction.HIDE && matches(it, article, bodyTextOverride) }
 
     /**
      * The real visibility check: an article is hidden by an explicit HIDE rule, or —
      * when at least one SHOW_ONLY ("Εμφάνιση") rule is enabled — by not matching any
      * of them. HIDE always wins over SHOW_ONLY if both would otherwise apply.
      */
-    fun isVisible(article: Article, rules: List<FilterRule>): Boolean {
-        if (isHidden(article, rules)) return false
+    fun isVisible(article: Article, rules: List<FilterRule>, bodyTextOverride: String? = null): Boolean {
+        if (isHidden(article, rules, bodyTextOverride)) return false
         val showOnlyRules = rules.filter { it.action == FilterAction.SHOW_ONLY && it.enabled }
-        if (showOnlyRules.isNotEmpty() && showOnlyRules.none { matches(it, article) }) return false
+        if (showOnlyRules.isNotEmpty() && showOnlyRules.none { matches(it, article, bodyTextOverride) }) return false
         return true
     }
 
-    fun isImportant(article: Article, rules: List<FilterRule>): Boolean =
-        rules.any { it.action == FilterAction.IMPORTANT && matches(it, article) }
+    fun isImportant(article: Article, rules: List<FilterRule>, bodyTextOverride: String? = null): Boolean =
+        rules.any { it.action == FilterAction.IMPORTANT && matches(it, article, bodyTextOverride) }
 
     fun isHighlighted(article: Article, rules: List<FilterRule>): Boolean =
         rules.any { it.action == FilterAction.HIGHLIGHT && matches(it, article) }
