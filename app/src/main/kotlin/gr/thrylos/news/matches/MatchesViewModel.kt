@@ -96,7 +96,16 @@ class MatchesViewModel @Inject constructor(
             runCatching {
                 withContext(Dispatchers.IO) {
                     coroutineScope {
-                        enabledTeamIds.map { teamId -> async { fetcher.fetchUpcoming(teamId) } }.awaitAll()
+                        // One team's request failing (e.g. a youth/reserve squad
+                        // with no fixtures yet, or a transient error) must not lose
+                        // every other team's matches — awaitAll() alone propagates
+                        // the first failure and cancels the rest, which combined
+                        // with the "keep the stale list on failure" handling below
+                        // meant a single bad team silently blocked every team's
+                        // matches from ever updating again.
+                        enabledTeamIds.map { teamId ->
+                            async { runCatching { fetcher.fetchUpcoming(teamId) }.getOrElse { emptyList() } }
+                        }.awaitAll()
                     }.flatten().sortedBy { it.kickoffAt }
                 }
             }.onSuccess { matches ->
