@@ -41,6 +41,7 @@ fun SettingsScreen(
     onOpenSync: () -> Unit,
     onOpenBackup: () -> Unit,
     onOpenUpdateHistory: () -> Unit,
+    onOpenMatches: () -> Unit,
     updateViewModel: UpdateViewModel = hiltViewModel(),
 ) {
     val updateState by updateViewModel.state.collectAsStateWithLifecycle()
@@ -58,6 +59,7 @@ fun SettingsScreen(
             SettingsRow("Φίλτρα", "Απόκρυψη ή προβολή άρθρων βάσει λέξεων-κλειδιών ή συντάκτη", onOpenFilters)
             SettingsRow("Εφαρμογή", "Εμφάνιση, ανανέωση, ειδοποιήσεις, αποθηκευτικός χώρος", onOpenSync)
             SettingsRow("Δεδομένα", "Αντίγραφο ασφαλείας, προτεινόμενα φίλτρα, ιστορικό άρθρων", onOpenBackup)
+            SettingsRow("Πρόγραμμα αγώνων", "Αθλήματα και συχνότητα ανανέωσης", onOpenMatches)
             ListItem(
                 headlineContent = { Text("Έλεγχος για ενημερώσεις") },
                 supportingContent = {

@@ -11,6 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import gr.thrylos.news.feed.BookmarksScreen
 import gr.thrylos.news.feed.FeedScreen
+import gr.thrylos.news.matches.MatchesSettingsScreen
 import gr.thrylos.news.profile.AuthorProfileScreen
 import gr.thrylos.news.profile.SourceProfileScreen
 import gr.thrylos.news.reader.ReaderScreen
@@ -109,7 +110,11 @@ fun ThrylosNavGraph(
                 onOpenSync = { navController.navigate(Routes.SETTINGS_SYNC) },
                 onOpenBackup = { navController.navigate(Routes.SETTINGS_BACKUP) },
                 onOpenUpdateHistory = { navController.navigate(Routes.SETTINGS_UPDATE_HISTORY) },
+                onOpenMatches = { navController.navigate(Routes.SETTINGS_MATCHES) },
             )
+        }
+        composable(Routes.SETTINGS_MATCHES) {
+            MatchesSettingsScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.SETTINGS_SOURCES) {
             SourcesScreen(

@@ -7,6 +7,8 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import gr.thrylos.news.model.AppThemeMode
+import gr.thrylos.news.model.Match
+import gr.thrylos.news.model.MatchesPrefs
 import gr.thrylos.news.model.NotificationPrefs
 import gr.thrylos.news.model.ReaderFontFamily
 import gr.thrylos.news.model.ReaderPrefs
@@ -65,6 +67,18 @@ private data class WidgetPrefsDto(
     val showOnlyImportant: Boolean = false,
 )
 
+@Serializable
+private data class MatchesPrefsDto(
+    val football: Boolean = true,
+    val refreshIntervalHours: Int = 24,
+)
+
+@Serializable
+private data class MatchesCacheDto(
+    val fetchedAt: Long,
+    val matches: List<Match>,
+)
+
 @Singleton
 class AppPreferences @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -75,6 +89,8 @@ class AppPreferences @Inject constructor(
     private val syncKey = stringPreferencesKey("sync_prefs")
     private val notificationKey = stringPreferencesKey("notification_prefs")
     private val widgetKey = stringPreferencesKey("widget_prefs")
+    private val matchesKey = stringPreferencesKey("matches_prefs")
+    private val matchesCacheKey = stringPreferencesKey("matches_cache")
     private val appThemeKey = stringPreferencesKey("app_theme_mode")
     private val lastOpenedAtKey = longPreferencesKey("last_opened_at")
     private val lastSyncCompletedAtKey = longPreferencesKey("last_sync_completed_at")
@@ -97,6 +113,11 @@ class AppPreferences @Inject constructor(
 
     val widgetPrefs: Flow<WidgetPrefs> = context.dataStore.data.map { prefs ->
         val dto = prefs[widgetKey]?.let { runCatching { json.decodeFromString<WidgetPrefsDto>(it) }.getOrNull() } ?: WidgetPrefsDto()
+        dto.toDomain()
+    }
+
+    val matchesPrefs: Flow<MatchesPrefs> = context.dataStore.data.map { prefs ->
+        val dto = prefs[matchesKey]?.let { runCatching { json.decodeFromString<MatchesPrefsDto>(it) }.getOrNull() } ?: MatchesPrefsDto()
         dto.toDomain()
     }
 
@@ -171,6 +192,33 @@ class AppPreferences @Inject constructor(
         }
     }
 
+    suspend fun updateMatchesPrefs(update: (MatchesPrefs) -> MatchesPrefs) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[matchesKey]?.let { runCatching { json.decodeFromString<MatchesPrefsDto>(it) }.getOrNull() } ?: MatchesPrefsDto()
+            val next = update(current.toDomain()).toDto()
+            prefs[matchesKey] = json.encodeToString(MatchesPrefsDto.serializer(), next)
+        }
+    }
+
+    /** The last successfully fetched match list, with when it was fetched — fixtures
+     *  barely change within a day, so the overlay reuses this instead of always
+     *  hitting Sofascore, refreshing only once [MatchesPrefs.refreshIntervalHours] has
+     *  passed or the user explicitly taps refresh. */
+    suspend fun cachedMatches(): Pair<Long, List<Match>>? {
+        val raw = context.dataStore.data.first()[matchesCacheKey] ?: return null
+        val dto = runCatching { json.decodeFromString<MatchesCacheDto>(raw) }.getOrNull() ?: return null
+        return dto.fetchedAt to dto.matches
+    }
+
+    suspend fun cacheMatches(matches: List<Match>) {
+        context.dataStore.edit { prefs ->
+            prefs[matchesCacheKey] = json.encodeToString(
+                MatchesCacheDto.serializer(),
+                MatchesCacheDto(fetchedAt = System.currentTimeMillis(), matches = matches),
+            )
+        }
+    }
+
     private fun ReaderPrefsDto.toDomain() = ReaderPrefs(theme, fontFamily, fontScale, lineHeightScale, marginWidth, textAlign, keepScreenOn)
     private fun ReaderPrefs.toDto() = ReaderPrefsDto(theme, fontFamily, fontScale, lineHeightScale, marginWidth, textAlign, keepScreenOn)
 
@@ -190,4 +238,7 @@ class AppPreferences @Inject constructor(
 
     private fun WidgetPrefsDto.toDomain() = WidgetPrefs(showOnlyImportant)
     private fun WidgetPrefs.toDto() = WidgetPrefsDto(showOnlyImportant)
+
+    private fun MatchesPrefsDto.toDomain() = MatchesPrefs(football, refreshIntervalHours)
+    private fun MatchesPrefs.toDto() = MatchesPrefsDto(football, refreshIntervalHours)
 }

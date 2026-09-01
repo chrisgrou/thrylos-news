@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
@@ -60,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import gr.thrylos.news.matches.MatchesOverlay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,6 +78,7 @@ fun FeedScreen(
     val lastSyncOutcome by viewModel.lastSyncOutcome.collectAsStateWithLifecycle()
     val hasUnread by viewModel.hasUnread.collectAsStateWithLifecycle()
     var showSourcePicker by remember { mutableStateOf(false) }
+    var showMatches by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -127,6 +130,7 @@ fun FeedScreen(
                     onOpenSourcePicker = { showSourcePicker = true },
                     onSetUnreadOnly = viewModel::setUnreadOnly,
                     onSetPage = viewModel::setPage,
+                    onOpenMatches = { showMatches = true },
                 )
 
                 if (state.isEmpty) {
@@ -196,6 +200,12 @@ fun FeedScreen(
             )
         }
     }
+
+    if (showMatches) {
+        ModalBottomSheet(onDismissRequest = { showMatches = false }) {
+            MatchesOverlay()
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -207,6 +217,7 @@ private fun FeedFilterBar(
     onOpenSourcePicker: () -> Unit,
     onSetUnreadOnly: (Boolean) -> Unit,
     onSetPage: (Int) -> Unit,
+    onOpenMatches: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp)) {
         Row(
@@ -222,6 +233,9 @@ private fun FeedFilterBar(
                 modifier = Modifier.height(FilterBarHeight),
             )
             UnreadOnlyToggle(unreadOnly = state.unreadOnly, onSetUnreadOnly = onSetUnreadOnly)
+            IconButton(onClick = onOpenMatches, modifier = Modifier.size(FilterBarHeight)) {
+                Icon(Icons.Filled.SportsSoccer, contentDescription = "Πρόγραμμα αγώνων")
+            }
             if (state.pageCount > 1) {
                 CompactPager(state = state, onSetPage = onSetPage)
             }
