@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -240,33 +241,25 @@ private fun DateGroup(label: String, matches: List<Match>, onClick: (Match) -> U
 
 @Composable
 private fun MatchRow(match: Match, onClick: () -> Unit) {
-    Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp)) {
-        Text(
-            sportLabel(match.sport, match.gender) + " · " + match.competition,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-        )
-        Row(
-            Modifier.fillMaxWidth().padding(top = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TeamColumn(match.homeTeam, match.homeTeamLogoUrl, Modifier.weight(1f))
-            CenterColumn(match)
-            TeamColumn(match.awayTeam, match.awayTeamLogoUrl, Modifier.weight(1f))
-        }
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TeamColumn(match.homeTeam, match.homeTeamLogoUrl, Alignment.Start, Modifier.weight(1f))
+        CenterColumn(match)
+        TeamColumn(match.awayTeam, match.awayTeamLogoUrl, Alignment.End, Modifier.weight(1f))
     }
 }
 
 @Composable
-private fun TeamColumn(name: String, logoUrl: String, modifier: Modifier) {
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        AsyncImage(model = logoUrl, contentDescription = name, modifier = Modifier.size(36.dp))
+private fun TeamColumn(name: String, logoUrl: String, alignment: Alignment.Horizontal, modifier: Modifier) {
+    Column(modifier, horizontalAlignment = alignment) {
+        AsyncImage(model = logoUrl, contentDescription = name, modifier = Modifier.size(34.dp))
         Text(
             name,
             style = MaterialTheme.typography.bodySmall,
-            textAlign = TextAlign.Center,
+            textAlign = if (alignment == Alignment.Start) TextAlign.Start else TextAlign.End,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 4.dp),
@@ -277,7 +270,7 @@ private fun TeamColumn(name: String, logoUrl: String, modifier: Modifier) {
 @Composable
 private fun CenterColumn(match: Match) {
     Column(
-        Modifier.padding(horizontal = 8.dp),
+        Modifier.padding(horizontal = 8.dp).width(76.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         when (match.status) {
@@ -303,6 +296,15 @@ private fun CenterColumn(match: Match) {
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
             modifier = Modifier.size(14.dp).padding(top = 2.dp),
         )
+        Text(
+            match.competition,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 2.dp),
+        )
     }
 }
 
@@ -322,17 +324,6 @@ private fun sportName(sport: String): String = when (sport) {
     "volleyball" -> "Βόλεϊ"
     "handball" -> "Χάντμπολ"
     else -> sport.replaceFirstChar { it.uppercase() }
-}
-
-/** Human label for a sport+gender pair — this keeps each match self-describing as
- *  more sports get added later. */
-private fun sportLabel(sport: String, gender: String): String {
-    val genderLabel = when (gender) {
-        "M" -> "Ανδρών"
-        "F" -> "Γυναικών"
-        else -> null
-    }
-    return if (genderLabel != null) "${sportName(sport)} $genderLabel" else sportName(sport)
 }
 
 private fun sportIcon(sport: String) = when (sport) {

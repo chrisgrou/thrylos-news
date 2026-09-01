@@ -26,7 +26,10 @@ private val SPORT_TEAM_IDS: List<Pair<String, (MatchesPrefs) -> Boolean>> = list
     "3501" to { prefs: MatchesPrefs -> prefs.basketball },
 )
 
-private const val PAGE_SIZE = 10
+/** Fewer per page than the article feed's — each match row is short but the bordered
+ *  date-group cards around them add up fast, and a shorter page scrolls less (ideally
+ *  not at all on most screens) instead of feeling like a long list to fling through. */
+private const val PAGE_SIZE = 5
 
 sealed class MatchesUiState {
     data object Loading : MatchesUiState()
