@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -80,6 +81,7 @@ fun FeedScreen(
     val lastSyncAt by viewModel.lastSyncAt.collectAsStateWithLifecycle()
     val lastSyncOutcome by viewModel.lastSyncOutcome.collectAsStateWithLifecycle()
     val hasUnread by viewModel.hasUnread.collectAsStateWithLifecycle()
+    val hasMatchSoon by viewModel.hasMatchSoon.collectAsStateWithLifecycle()
     var showSourcePicker by remember { mutableStateOf(false) }
     var showOverflowMenu by remember { mutableStateOf(false) }
 
@@ -105,8 +107,20 @@ fun FeedScreen(
                     IconButton(onClick = { viewModel.markAllRead() }, enabled = hasUnread) {
                         Icon(Icons.Filled.DoneAll, contentDescription = "Μαρκάρισμα όλων ως διαβασμένα")
                     }
-                    IconButton(onClick = onOpenMatches) {
-                        Icon(Icons.Filled.CalendarMonth, contentDescription = "Πρόγραμμα αγώνων")
+                    Box {
+                        IconButton(onClick = onOpenMatches) {
+                            Icon(Icons.Filled.CalendarMonth, contentDescription = "Πρόγραμμα αγώνων")
+                        }
+                        if (hasMatchSoon) {
+                            Box(
+                                Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(top = 8.dp, end = 8.dp)
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary),
+                            )
+                        }
                     }
                     Box {
                         IconButton(onClick = { showOverflowMenu = true }) {

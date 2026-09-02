@@ -11,8 +11,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -124,14 +127,16 @@ fun MatchesScreen(
             is MatchesUiState.Success -> Column(Modifier.fillMaxSize().padding(padding)) {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.Start,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     FilterChip(
-                        selected = s.selectedSport != null,
+                        selected = s.selectedTeamId != null,
                         onClick = { showSportPicker = true },
-                        label = { Text(s.selectedSport?.let { sportName(it) } ?: "Όλα τα αθλήματα") },
+                        label = { Text(s.selectedTeamId?.let { teamLabel(it) } ?: "Όλα τα αθλήματα") },
                         trailingIcon = { Icon(Icons.Filled.ExpandMore, contentDescription = null) },
                     )
+                    HomeAwayToggle(selected = s.homeAwayFilter, onSelect = viewModel::selectHomeAway)
                 }
                 if (s.pageMatches.isEmpty()) {
                     Text("Δεν βρέθηκαν προσεχείς αγώνες.", modifier = Modifier.padding(16.dp))
@@ -191,10 +196,10 @@ fun MatchesScreen(
 
     if (showSportPicker) {
         ModalBottomSheet(onDismissRequest = { showSportPicker = false }) {
-            SportPickerSheet(
-                sports = (state as? MatchesUiState.Success)?.sports ?: emptyList(),
-                onSelect = { sport ->
-                    viewModel.selectSport(sport)
+            TeamPickerSheet(
+                teamIds = (state as? MatchesUiState.Success)?.teamIds ?: emptyList(),
+                onSelect = { teamId ->
+                    viewModel.selectTeam(teamId)
                     showSportPicker = false
                 },
             )
@@ -203,18 +208,52 @@ fun MatchesScreen(
 }
 
 @Composable
-private fun SportPickerSheet(sports: List<String>, onSelect: (String?) -> Unit) {
+private fun TeamPickerSheet(teamIds: List<String>, onSelect: (String?) -> Unit) {
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         ListItem(
             headlineContent = { Text("Όλα τα αθλήματα") },
             modifier = Modifier.fillMaxWidth().clickable { onSelect(null) },
         )
-        sports.forEach { sport ->
+        teamIds.forEach { teamId ->
             ListItem(
-                headlineContent = { Text(sportName(sport)) },
-                modifier = Modifier.fillMaxWidth().clickable { onSelect(sport) },
+                headlineContent = { Text(teamLabel(teamId)) },
+                modifier = Modifier.fillMaxWidth().clickable { onSelect(teamId) },
             )
         }
+    }
+}
+
+/** Human label for one of our own tracked Sofascore team ids — falls back to the raw
+ *  id itself for a team id not in [OLYMPIACOS_TEAMS] (shouldn't normally happen, since
+ *  matches are only ever fetched for ids from that same registry). */
+private fun teamLabel(teamId: String): String = OLYMPIACOS_TEAMS.firstOrNull { it.id == teamId }?.label ?: teamId
+
+/** "Όλα / Εντός / Εκτός" — a single control with three joined segments, matching the
+ *  Όλα/Νέα toggle's style on the feed screen. */
+@Composable
+private fun HomeAwayToggle(selected: HomeAwayFilter, onSelect: (HomeAwayFilter) -> Unit) {
+    val shape = RoundedCornerShape(8.dp)
+    Row(
+        Modifier.height(32.dp).clip(shape).border(1.dp, MaterialTheme.colorScheme.outline, shape),
+    ) {
+        HomeAwaySegment("Όλα", selected == HomeAwayFilter.ALL) { onSelect(HomeAwayFilter.ALL) }
+        HomeAwaySegment("Εντός", selected == HomeAwayFilter.HOME) { onSelect(HomeAwayFilter.HOME) }
+        HomeAwaySegment("Εκτός", selected == HomeAwayFilter.AWAY) { onSelect(HomeAwayFilter.AWAY) }
+    }
+}
+
+@Composable
+private fun RowScope.HomeAwaySegment(label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier.fillMaxHeight().background(if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface)
+            .clickable(onClick = onClick).padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -246,18 +285,24 @@ private fun Calendar.isSameDay(other: Calendar) =
 
 /** A date's matches as one visually-grouped, outlined block — a plain pill header with
  *  borderless rows underneath didn't read as "these matches belong together", so each
- *  date run is now its own bordered card with a filled header strip. */
+ *  date run is now its own bordered card with a filled header strip. Σήμερα/Αύριο
+ *  groups get the app's accent color instead of the neutral one, so a match coming up
+ *  very soon stands out from the rest of the list at a glance. */
 @Composable
 private fun DateGroup(label: String, matches: List<Match>, onClick: (Match) -> Unit) {
+    val isSoon = label == "Σήμερα" || label == "Αύριο"
+    val borderColor = if (isSoon) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+    val headerColor = if (isSoon) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+    val headerTextColor = if (isSoon) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
     Column(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+            .border(if (isSoon) 1.5.dp else 1.dp, borderColor, RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surface),
     ) {
-        Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 12.dp, vertical = 6.dp)) {
-            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Box(Modifier.fillMaxWidth().background(headerColor).padding(horizontal = 12.dp, vertical = 6.dp)) {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = headerTextColor)
         }
         matches.forEachIndexed { index, match ->
             if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -342,16 +387,6 @@ private fun LiveBadge() {
     ) {
         Text("LIVE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onErrorContainer)
     }
-}
-
-/** Human label for a sport, no gender — used standalone in the sport filter. */
-private fun sportName(sport: String): String = when (sport) {
-    "football" -> "Ποδόσφαιρο"
-    "basketball" -> "Μπάσκετ"
-    "volleyball" -> "Βόλεϊ"
-    "handball" -> "Χάντμπολ"
-    "waterpolo", "water_polo", "water-polo" -> "Πόλο"
-    else -> sport.replaceFirstChar { it.uppercase() }
 }
 
 private fun sportIcon(sport: String) = when (sport) {

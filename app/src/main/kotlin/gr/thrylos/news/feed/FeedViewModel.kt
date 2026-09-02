@@ -11,6 +11,7 @@ import gr.thrylos.news.data.repo.SourceRepository
 import gr.thrylos.news.data.sync.SyncScheduler
 import gr.thrylos.news.model.Article
 import gr.thrylos.news.model.FilterRule
+import gr.thrylos.news.model.MatchStatus
 import gr.thrylos.news.sources.filter.FilterEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -231,6 +232,15 @@ class FeedViewModel @Inject constructor(
     val lastSyncOutcome: StateFlow<String?> = appPreferences.lastSyncOutcome
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    /** True when the last cached Πρόγραμμα αγώνων snapshot has a match today or
+     *  tomorrow that hasn't finished yet — drives the colored dot on the feed's
+     *  calendar icon. Reuses whatever MatchesViewModel last cached rather than
+     *  fetching anything itself; can lag behind "reality" by however stale that
+     *  cache is, same as the matches screen itself. */
+    val hasMatchSoon: StateFlow<Boolean> = appPreferences.cachedMatchesFlow
+        .map { matches -> matches.any { it.status != MatchStatus.FINISHED && isTodayOrTomorrow(it.kickoffAt) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     fun refresh() = syncScheduler.syncNow()
 
     /** Marks only what's actually on screen right now (current tab, filters, source
@@ -266,4 +276,13 @@ class FeedViewModel @Inject constructor(
         optimisticReadIds.value = optimisticReadIds.value + id
         viewModelScope.launch { articleRepository.setRead(id, true) }
     }
+}
+
+private fun isTodayOrTomorrow(millis: Long): Boolean {
+    val target = java.util.Calendar.getInstance().apply { timeInMillis = millis }
+    val today = java.util.Calendar.getInstance()
+    val tomorrow = java.util.Calendar.getInstance().apply { add(java.util.Calendar.DAY_OF_YEAR, 1) }
+    fun sameDay(a: java.util.Calendar, b: java.util.Calendar) =
+        a.get(java.util.Calendar.YEAR) == b.get(java.util.Calendar.YEAR) && a.get(java.util.Calendar.DAY_OF_YEAR) == b.get(java.util.Calendar.DAY_OF_YEAR)
+    return sameDay(target, today) || sameDay(target, tomorrow)
 }

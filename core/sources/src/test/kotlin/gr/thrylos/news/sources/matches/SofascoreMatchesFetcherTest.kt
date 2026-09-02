@@ -47,6 +47,8 @@ class SofascoreMatchesFetcherTest {
         assertEquals(MatchStatus.NOT_STARTED, first.status)
         assertEquals(1788112800_000L, first.kickoffAt)
         assertTrue(first.matchUrl.contains("16559910"), "unexpected match url: ${first.matchUrl}")
+        assertEquals("3245", first.teamId)
+        assertTrue(!first.isHome, "Olympiacos FC (the queried team) is the away side in this fixture")
         // sorted soonest-first
         assertTrue(matches.zipWithNext().all { (a, b) -> a.kickoffAt <= b.kickoffAt })
     }

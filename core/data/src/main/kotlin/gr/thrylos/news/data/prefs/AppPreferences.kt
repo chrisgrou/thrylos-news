@@ -212,6 +212,14 @@ class AppPreferences @Inject constructor(
         return dto.fetchedAt to dto.matches
     }
 
+    /** Same cached snapshot as [cachedMatches], but reactive — lets the feed screen's
+     *  "Πρόγραμμα αγώνων" icon show a same-day/tomorrow indicator without polling. */
+    val cachedMatchesFlow: Flow<List<Match>> = context.dataStore.data.map { prefs ->
+        val raw = prefs[matchesCacheKey] ?: return@map emptyList()
+        val dto = runCatching { json.decodeFromString<MatchesCacheDto>(raw) }.getOrNull() ?: return@map emptyList()
+        dto.matches
+    }
+
     suspend fun cacheMatches(matches: List<Match>) {
         context.dataStore.edit { prefs ->
             prefs[matchesCacheKey] = json.encodeToString(

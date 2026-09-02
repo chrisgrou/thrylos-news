@@ -19,6 +19,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
+/** "Ποδόσφαιρο" alone can't tell Olympiacos FC's first team apart from its B' team or
+ *  U19 side — Sofascore reports the same sport slug for all three — so filtering is by
+ *  [Match.teamId] (one of our own tracked Sofascore team ids) instead of by sport. */
+enum class HomeAwayFilter { ALL, HOME, AWAY }
+
 sealed class MatchesUiState {
     data object Loading : MatchesUiState()
     data class Success(
@@ -26,8 +31,9 @@ sealed class MatchesUiState {
         val page: Int,
         val pageCount: Int,
         val fetchedAt: Long,
-        val sports: List<String>,
-        val selectedSport: String?,
+        val teamIds: List<String>,
+        val selectedTeamId: String?,
+        val homeAwayFilter: HomeAwayFilter,
     ) : MatchesUiState()
     data class Error(val message: String) : MatchesUiState()
     data object SportsDisabled : MatchesUiState()
@@ -46,7 +52,8 @@ class MatchesViewModel @Inject constructor(
     private var fetchedAt: Long = 0L
     private var page = 0
     private var loaded = false
-    private var selectedSport: String? = null
+    private var selectedTeamId: String? = null
+    private var homeAwayFilter = HomeAwayFilter.ALL
     private var pageSize = MatchesPrefs().pageSize
 
     /** Called once when the screen first opens. Fixtures barely change within a day,
@@ -63,8 +70,14 @@ class MatchesViewModel @Inject constructor(
         publishSuccess()
     }
 
-    fun selectSport(sport: String?) {
-        selectedSport = sport
+    fun selectTeam(teamId: String?) {
+        selectedTeamId = teamId
+        page = 0
+        publishSuccess()
+    }
+
+    fun selectHomeAway(filter: HomeAwayFilter) {
+        homeAwayFilter = filter
         page = 0
         publishSuccess()
     }
@@ -126,9 +139,17 @@ class MatchesViewModel @Inject constructor(
     }
 
     private fun publishSuccess() {
-        val sports = allMatches.map { it.sport }.distinct()
-        if (selectedSport != null && selectedSport !in sports) selectedSport = null
-        val filtered = selectedSport?.let { sport -> allMatches.filter { it.sport == sport } } ?: allMatches
+        val teamIds = allMatches.map { it.teamId }.distinct()
+        if (selectedTeamId != null && selectedTeamId !in teamIds) selectedTeamId = null
+        val filtered = allMatches
+            .filter { selectedTeamId == null || it.teamId == selectedTeamId }
+            .filter {
+                when (homeAwayFilter) {
+                    HomeAwayFilter.ALL -> true
+                    HomeAwayFilter.HOME -> it.isHome
+                    HomeAwayFilter.AWAY -> !it.isHome
+                }
+            }
         val pageCount = maxOf(1, (filtered.size + pageSize - 1) / pageSize)
         val clampedPage = page.coerceIn(0, pageCount - 1)
         page = clampedPage
@@ -137,8 +158,9 @@ class MatchesViewModel @Inject constructor(
             page = clampedPage,
             pageCount = pageCount,
             fetchedAt = fetchedAt,
-            sports = sports,
-            selectedSport = selectedSport,
+            teamIds = teamIds,
+            selectedTeamId = selectedTeamId,
+            homeAwayFilter = homeAwayFilter,
         )
     }
 }

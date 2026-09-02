@@ -27,4 +27,11 @@ data class Match(
     val status: MatchStatus,
     val kickoffAt: Long,
     val matchUrl: String,
+    /** The Sofascore team id this fixture was fetched for — [sport] alone can't tell
+     *  apart e.g. Olympiacos FC's first team from its B' team or U19 side, since
+     *  Sofascore reports the same "football" sport slug for all of them. Lets the UI
+     *  filter by team, not just by sport. */
+    val teamId: String,
+    /** Whether [teamId]'s team is playing at home in this fixture. */
+    val isHome: Boolean,
 )

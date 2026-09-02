@@ -63,11 +63,11 @@ class SofascoreMatchesFetcher(
         val body = http.fetchText("$baseUrl/api/v1/team/$teamId/events/next/0")
         val response = json.decodeFromString(EventsResponse.serializer(), body)
         return response.events
-            .map { it.toMatch() }
+            .map { it.toMatch(teamId) }
             .sortedBy { it.kickoffAt }
     }
 
-    private fun EventDto.toMatch(): Match {
+    private fun EventDto.toMatch(queriedTeamId: String): Match {
         val sport = tournament.category.sport.slug
         val matchUrl = if (slug != null && customId != null) {
             "https://www.sofascore.com/$sport/match/$slug/$customId#id:$id"
@@ -93,6 +93,8 @@ class SofascoreMatchesFetcher(
             },
             kickoffAt = startTimestamp * 1000,
             matchUrl = matchUrl,
+            teamId = queriedTeamId,
+            isHome = homeTeam.id.toString() == queriedTeamId,
         )
     }
 }
