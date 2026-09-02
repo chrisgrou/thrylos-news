@@ -28,6 +28,10 @@ sealed class MatchesUiState {
     data object Loading : MatchesUiState()
     data class Success(
         val pageMatches: List<Match>,
+        /** Same filtering as [pageMatches] (team + home/away) but not paginated — the
+         *  calendar view needs to see every match across the whole fetched window at
+         *  once to place them on the right day, not just the current page's worth. */
+        val filteredMatches: List<Match>,
         val page: Int,
         val pageCount: Int,
         val fetchedAt: Long,
@@ -155,6 +159,7 @@ class MatchesViewModel @Inject constructor(
         page = clampedPage
         _state.value = MatchesUiState.Success(
             pageMatches = filtered.drop(clampedPage * pageSize).take(pageSize),
+            filteredMatches = filtered,
             page = clampedPage,
             pageCount = pageCount,
             fetchedAt = fetchedAt,

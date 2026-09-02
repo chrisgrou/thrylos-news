@@ -6,6 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +27,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandMore
@@ -34,6 +37,7 @@ import androidx.compose.material.icons.filled.SportsBasketball
 import androidx.compose.material.icons.filled.SportsHandball
 import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material.icons.filled.SportsVolleyball
+import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -75,6 +79,8 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 
+private enum class MatchesViewMode { LIST, CALENDAR }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MatchesScreen(
@@ -84,6 +90,7 @@ fun MatchesScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var showSportPicker by remember { mutableStateOf(false) }
+    var viewMode by remember { mutableStateOf(MatchesViewMode.LIST) }
 
     LaunchedEffect(Unit) { viewModel.loadIfNeeded() }
 
@@ -93,6 +100,12 @@ fun MatchesScreen(
                 title = { Text("Πρόγραμμα αγώνων") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Πίσω") } },
                 actions = {
+                    IconButton(onClick = { viewMode = if (viewMode == MatchesViewMode.LIST) MatchesViewMode.CALENDAR else MatchesViewMode.LIST }) {
+                        Icon(
+                            if (viewMode == MatchesViewMode.LIST) Icons.Filled.CalendarMonth else Icons.Filled.ViewAgenda,
+                            contentDescription = if (viewMode == MatchesViewMode.LIST) "Προβολή ημερολογίου" else "Προβολή λίστας",
+                        )
+                    }
                     if (state is MatchesUiState.Loading) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp).padding(end = 12.dp), strokeWidth = 2.dp)
                     } else {
@@ -138,7 +151,13 @@ fun MatchesScreen(
                     )
                     HomeAwayToggle(selected = s.homeAwayFilter, onSelect = viewModel::selectHomeAway)
                 }
-                if (s.pageMatches.isEmpty()) {
+                if (viewMode == MatchesViewMode.CALENDAR) {
+                    CalendarView(
+                        matches = s.filteredMatches,
+                        onOpenMatch = { match -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(match.matchUrl))) },
+                        modifier = Modifier.weight(1f),
+                    )
+                } else if (s.pageMatches.isEmpty()) {
                     Text("Δεν βρέθηκαν προσεχείς αγώνες.", modifier = Modifier.padding(16.dp))
                 } else {
                     val density = LocalDensity.current
@@ -256,6 +275,171 @@ private fun RowScope.HomeAwaySegment(label: String, selected: Boolean, onClick: 
         )
     }
 }
+
+/** Month-grid view, closer to what Sofascore's own "Ημερολόγιο" tab looks like than
+ *  building a full native replica would justify right now: a day cell shows the
+ *  opponent's crest, a small sport icon, and an outlined-vs-filled background for
+ *  home/away — tapping a day reveals that day's matches below in the same bordered
+ *  card style as the list view, rather than trying to cram full match rows into a
+ *  ~48dp cell. */
+@Composable
+private fun CalendarView(matches: List<Match>, onOpenMatch: (Match) -> Unit, modifier: Modifier = Modifier) {
+    var monthCursor by remember { mutableStateOf(Calendar.getInstance().apply { set(Calendar.DAY_OF_MONTH, 1) }) }
+    var selectedDayKey by remember { mutableStateOf<String?>(null) }
+
+    val matchesByDay = remember(matches) { matches.groupBy { dayKey(it.kickoffAt) } }
+
+    Column(modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+        Row(
+            Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = {
+                monthCursor = (monthCursor.clone() as Calendar).apply { add(Calendar.MONTH, -1) }
+                selectedDayKey = null
+            }) { Icon(Icons.Filled.ChevronLeft, contentDescription = "Προηγούμενος μήνας") }
+            Text(
+                SimpleDateFormat("LLLL yyyy", Locale("el", "GR")).format(monthCursor.time)
+                    .replaceFirstChar { it.uppercase() },
+                style = MaterialTheme.typography.titleMedium,
+            )
+            IconButton(onClick = {
+                monthCursor = (monthCursor.clone() as Calendar).apply { add(Calendar.MONTH, 1) }
+                selectedDayKey = null
+            }) { Icon(Icons.Filled.ChevronRight, contentDescription = "Επόμενος μήνας") }
+        }
+
+        Row(Modifier.fillMaxWidth()) {
+            listOf("Δε", "Τρ", "Τε", "Πε", "Πα", "Σα", "Κυ").forEach { label ->
+                Text(
+                    label,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        val today = Calendar.getInstance()
+        val firstOfMonth = (monthCursor.clone() as Calendar).apply { set(Calendar.DAY_OF_MONTH, 1) }
+        // Calendar.DAY_OF_WEEK is SUNDAY=1..SATURDAY=7; shifted so MONDAY lands at 0.
+        val leadingBlanks = (firstOfMonth.get(Calendar.DAY_OF_WEEK) + 5) % 7
+        val daysInMonth = firstOfMonth.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val cells = List(leadingBlanks) { null } + (1..daysInMonth).toList()
+
+        cells.chunked(7).forEach { week ->
+            Row(Modifier.fillMaxWidth()) {
+                week.forEach { day ->
+                    Box(Modifier.weight(1f).padding(2.dp)) {
+                        if (day == null) {
+                            Box(Modifier.fillMaxWidth().height(52.dp))
+                        } else {
+                            val cellCal = (firstOfMonth.clone() as Calendar).apply { set(Calendar.DAY_OF_MONTH, day) }
+                            val key = dayKey(cellCal.timeInMillis)
+                            val dayMatches = matchesByDay[key].orEmpty()
+                            DayCell(
+                                day = day,
+                                isToday = cellCal.isSameDay(today),
+                                matches = dayMatches,
+                                selected = key == selectedDayKey,
+                                onClick = { if (dayMatches.isNotEmpty()) selectedDayKey = if (key == selectedDayKey) null else key },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Row(
+            Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            LegendSwatch(filled = false, label = "Γηπεδούχος")
+            LegendSwatch(filled = true, label = "Εκτός έδρας")
+        }
+
+        val selectedMatches = selectedDayKey?.let { matchesByDay[it] }.orEmpty()
+        if (selectedMatches.isNotEmpty()) {
+            Box(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 16.dp)) {
+                DateGroup(dateLabelFor(selectedMatches.first().kickoffAt), selectedMatches, onOpenMatch)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DayCell(day: Int, isToday: Boolean, matches: List<Match>, selected: Boolean, onClick: () -> Unit) {
+    val hasMatch = matches.isNotEmpty()
+    val primary = matches.firstOrNull()
+    val isAway = primary?.isHome == false
+    val shape = RoundedCornerShape(8.dp)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .clip(shape)
+            .let {
+                when {
+                    selected -> it.background(MaterialTheme.colorScheme.primary)
+                    isAway -> it.background(MaterialTheme.colorScheme.secondaryContainer)
+                    hasMatch -> it.border(1.dp, MaterialTheme.colorScheme.primary, shape)
+                    else -> it
+                }
+            }
+            .let { if (hasMatch) it.clickable(onClick = onClick) else it }
+            .padding(2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            day.toString(),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
+            color = when {
+                selected -> MaterialTheme.colorScheme.onPrimary
+                isAway -> MaterialTheme.colorScheme.onSecondaryContainer
+                else -> MaterialTheme.colorScheme.onSurface
+            },
+        )
+        if (primary != null) {
+            AsyncImage(
+                model = if (primary.isHome) primary.awayTeamLogoUrl else primary.homeTeamLogoUrl,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp).padding(top = 1.dp),
+            )
+            Icon(
+                sportIcon(primary.sport),
+                contentDescription = null,
+                tint = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(10.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LegendSwatch(filled: Boolean, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier
+                .size(14.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .let {
+                    if (filled) it.background(MaterialTheme.colorScheme.secondaryContainer)
+                    else it.border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
+                },
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 4.dp),
+        )
+    }
+}
+
+private fun dayKey(millis: Long): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(millis))
 
 /** Groups already-sorted matches into consecutive same-date runs, preserving order —
  *  a plain groupBy would merge non-adjacent runs of the same date together. */
