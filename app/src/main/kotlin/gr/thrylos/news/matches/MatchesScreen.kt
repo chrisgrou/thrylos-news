@@ -289,25 +289,47 @@ private fun CalendarView(matches: List<Match>, onOpenMatch: (Match) -> Unit, mod
 
     val matchesByDay = remember(matches) { matches.groupBy { dayKey(it.kickoffAt) } }
 
-    Column(modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+    fun changeMonth(delta: Int) {
+        monthCursor = (monthCursor.clone() as Calendar).apply { add(Calendar.MONTH, delta) }
+        selectedDayKey = null
+    }
+
+    val density = LocalDensity.current
+    var dragTotal by remember { mutableStateOf(0f) }
+    Column(
+        modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .pointerInput(Unit) {
+                val threshold = with(density) { 64.dp.toPx() }
+                detectHorizontalDragGestures(
+                    onDragStart = { dragTotal = 0f },
+                    onHorizontalDrag = { change, dragAmount ->
+                        dragTotal += dragAmount
+                        change.consume()
+                    },
+                    onDragEnd = {
+                        // Swipe left (negative drag) advances, like the → chevron.
+                        if (abs(dragTotal) >= threshold) changeMonth(if (dragTotal < 0) 1 else -1)
+                        dragTotal = 0f
+                    },
+                    onDragCancel = { dragTotal = 0f },
+                )
+            }
+            .padding(horizontal = 16.dp),
+    ) {
         Row(
             Modifier.fillMaxWidth().padding(vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = {
-                monthCursor = (monthCursor.clone() as Calendar).apply { add(Calendar.MONTH, -1) }
-                selectedDayKey = null
-            }) { Icon(Icons.Filled.ChevronLeft, contentDescription = "Προηγούμενος μήνας") }
+            IconButton(onClick = { changeMonth(-1) }) { Icon(Icons.Filled.ChevronLeft, contentDescription = "Προηγούμενος μήνας") }
             Text(
                 SimpleDateFormat("LLLL yyyy", Locale("el", "GR")).format(monthCursor.time)
                     .replaceFirstChar { it.uppercase() },
                 style = MaterialTheme.typography.titleMedium,
             )
-            IconButton(onClick = {
-                monthCursor = (monthCursor.clone() as Calendar).apply { add(Calendar.MONTH, 1) }
-                selectedDayKey = null
-            }) { Icon(Icons.Filled.ChevronRight, contentDescription = "Επόμενος μήνας") }
+            IconButton(onClick = { changeMonth(1) }) { Icon(Icons.Filled.ChevronRight, contentDescription = "Επόμενος μήνας") }
         }
 
         Row(Modifier.fillMaxWidth()) {
@@ -327,7 +349,12 @@ private fun CalendarView(matches: List<Match>, onOpenMatch: (Match) -> Unit, mod
         // Calendar.DAY_OF_WEEK is SUNDAY=1..SATURDAY=7; shifted so MONDAY lands at 0.
         val leadingBlanks = (firstOfMonth.get(Calendar.DAY_OF_WEEK) + 5) % 7
         val daysInMonth = firstOfMonth.getActualMaximum(Calendar.DAY_OF_MONTH)
-        val cells = List(leadingBlanks) { null } + (1..daysInMonth).toList()
+        // Trailing blanks too, not just leading ones — without them the last week's
+        // row (often fewer than 7 real days) had each of its cells stretch to fill
+        // the whole row width via weight(1f), instead of staying a normal 1/7-width
+        // cell aligned under its actual weekday column.
+        val trailingBlanks = (7 - (leadingBlanks + daysInMonth) % 7) % 7
+        val cells = List(leadingBlanks) { null } + (1..daysInMonth).toList() + List(trailingBlanks) { null }
 
         cells.chunked(7).forEach { week ->
             Row(Modifier.fillMaxWidth()) {
