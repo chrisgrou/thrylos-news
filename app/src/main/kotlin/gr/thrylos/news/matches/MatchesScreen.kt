@@ -37,7 +37,7 @@ import androidx.compose.material.icons.filled.SportsBasketball
 import androidx.compose.material.icons.filled.SportsHandball
 import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material.icons.filled.SportsVolleyball
-import androidx.compose.material.icons.filled.ViewAgenda
+import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -60,6 +60,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -109,7 +110,7 @@ fun MatchesScreen(
                     }
                     IconButton(onClick = { viewMode = if (viewMode == MatchesViewMode.LIST) MatchesViewMode.CALENDAR else MatchesViewMode.LIST }) {
                         Icon(
-                            if (viewMode == MatchesViewMode.LIST) Icons.Filled.CalendarMonth else Icons.Filled.ViewAgenda,
+                            if (viewMode == MatchesViewMode.LIST) Icons.Filled.CalendarMonth else Icons.Filled.ViewList,
                             contentDescription = if (viewMode == MatchesViewMode.LIST) "Προβολή ημερολογίου" else "Προβολή λίστας",
                         )
                     }
@@ -285,7 +286,7 @@ private fun RowScope.HomeAwaySegment(label: String, selected: Boolean, onClick: 
 @Composable
 private fun CalendarView(matches: List<Match>, onOpenMatch: (Match) -> Unit, modifier: Modifier = Modifier) {
     var monthCursor by remember { mutableStateOf(Calendar.getInstance().apply { set(Calendar.DAY_OF_MONTH, 1) }) }
-    var selectedDayKey by remember { mutableStateOf<String?>(null) }
+    var selectedDayKey by remember { mutableStateOf<String?>(dayKey(System.currentTimeMillis())) }
 
     val matchesByDay = remember(matches) { matches.groupBy { dayKey(it.kickoffAt) } }
 
@@ -318,73 +319,84 @@ private fun CalendarView(matches: List<Match>, onOpenMatch: (Match) -> Unit, mod
             }
             .padding(horizontal = 16.dp),
     ) {
-        Row(
-            Modifier.fillMaxWidth().padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
+                .padding(horizontal = 8.dp, vertical = 4.dp),
         ) {
-            IconButton(onClick = { changeMonth(-1) }) { Icon(Icons.Filled.ChevronLeft, contentDescription = "Προηγούμενος μήνας") }
-            Text(
-                SimpleDateFormat("LLLL yyyy", Locale("el", "GR")).format(monthCursor.time)
-                    .replaceFirstChar { it.uppercase() },
-                style = MaterialTheme.typography.titleMedium,
-            )
-            IconButton(onClick = { changeMonth(1) }) { Icon(Icons.Filled.ChevronRight, contentDescription = "Επόμενος μήνας") }
-        }
-
-        Row(Modifier.fillMaxWidth()) {
-            listOf("Δε", "Τρ", "Τε", "Πε", "Πα", "Σα", "Κυ").forEach { label ->
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = { changeMonth(-1) }) { Icon(Icons.Filled.ChevronLeft, contentDescription = "Προηγούμενος μήνας") }
                 Text(
-                    label,
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    SimpleDateFormat("LLLL yyyy", Locale("el", "GR")).format(monthCursor.time)
+                        .replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.titleMedium,
                 )
+                IconButton(onClick = { changeMonth(1) }) { Icon(Icons.Filled.ChevronRight, contentDescription = "Επόμενος μήνας") }
             }
-        }
 
-        val today = Calendar.getInstance()
-        val firstOfMonth = (monthCursor.clone() as Calendar).apply { set(Calendar.DAY_OF_MONTH, 1) }
-        // Calendar.DAY_OF_WEEK is SUNDAY=1..SATURDAY=7; shifted so MONDAY lands at 0.
-        val leadingBlanks = (firstOfMonth.get(Calendar.DAY_OF_WEEK) + 5) % 7
-        val daysInMonth = firstOfMonth.getActualMaximum(Calendar.DAY_OF_MONTH)
-        // Trailing blanks too, not just leading ones — without them the last week's
-        // row (often fewer than 7 real days) had each of its cells stretch to fill
-        // the whole row width via weight(1f), instead of staying a normal 1/7-width
-        // cell aligned under its actual weekday column.
-        val trailingBlanks = (7 - (leadingBlanks + daysInMonth) % 7) % 7
-        val cells = List(leadingBlanks) { null } + (1..daysInMonth).toList() + List(trailingBlanks) { null }
-
-        cells.chunked(7).forEach { week ->
             Row(Modifier.fillMaxWidth()) {
-                week.forEach { day ->
-                    Box(Modifier.weight(1f).padding(2.dp)) {
-                        if (day == null) {
-                            Box(Modifier.fillMaxWidth().height(52.dp))
-                        } else {
-                            val cellCal = (firstOfMonth.clone() as Calendar).apply { set(Calendar.DAY_OF_MONTH, day) }
-                            val key = dayKey(cellCal.timeInMillis)
-                            val dayMatches = matchesByDay[key].orEmpty()
-                            DayCell(
-                                day = day,
-                                isToday = cellCal.isSameDay(today),
-                                matches = dayMatches,
-                                selected = key == selectedDayKey,
-                                onClick = { if (dayMatches.isNotEmpty()) selectedDayKey = if (key == selectedDayKey) null else key },
-                            )
+                listOf("Δε", "Τρ", "Τε", "Πε", "Πα", "Σα", "Κυ").forEach { label ->
+                    Text(
+                        label,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            val today = Calendar.getInstance()
+            val firstOfMonth = (monthCursor.clone() as Calendar).apply { set(Calendar.DAY_OF_MONTH, 1) }
+            // Calendar.DAY_OF_WEEK is SUNDAY=1..SATURDAY=7; shifted so MONDAY lands at 0.
+            val leadingBlanks = (firstOfMonth.get(Calendar.DAY_OF_WEEK) + 5) % 7
+            val daysInMonth = firstOfMonth.getActualMaximum(Calendar.DAY_OF_MONTH)
+            // Trailing blanks too, not just leading ones — without them the last week's
+            // row (often fewer than 7 real days) had each of its cells stretch to fill
+            // the whole row width via weight(1f), instead of staying a normal 1/7-width
+            // cell aligned under its actual weekday column.
+            val trailingBlanks = (7 - (leadingBlanks + daysInMonth) % 7) % 7
+            val cells = List(leadingBlanks) { null } + (1..daysInMonth).toList() + List(trailingBlanks) { null }
+
+            cells.chunked(7).forEach { week ->
+                Row(Modifier.fillMaxWidth()) {
+                    week.forEach { day ->
+                        Box(Modifier.weight(1f).padding(2.dp)) {
+                            if (day == null) {
+                                Box(Modifier.fillMaxWidth().height(52.dp))
+                            } else {
+                                val cellCal = (firstOfMonth.clone() as Calendar).apply { set(Calendar.DAY_OF_MONTH, day) }
+                                val key = dayKey(cellCal.timeInMillis)
+                                val dayMatches = matchesByDay[key].orEmpty()
+                                DayCell(
+                                    day = day,
+                                    isToday = cellCal.isSameDay(today),
+                                    matches = dayMatches,
+                                    selected = key == selectedDayKey,
+                                    onClick = { if (dayMatches.isNotEmpty()) selectedDayKey = if (key == selectedDayKey) null else key },
+                                )
+                            }
                         }
                     }
                 }
             }
-        }
 
-        Row(
-            Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            LegendSwatch(filled = false, label = "Γηπεδούχος")
-            LegendSwatch(filled = true, label = "Εκτός έδρας")
+            Row(
+                Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                LegendSwatch(color = MaterialTheme.colorScheme.tertiaryContainer, label = "Γηπεδούχος")
+                LegendSwatch(color = MaterialTheme.colorScheme.secondaryContainer, label = "Εκτός έδρας")
+                LegendSwatch(color = null, label = "Σήμερα")
+            }
         }
 
         val selectedMatches = selectedDayKey?.let { matchesByDay[it] }.orEmpty()
@@ -396,25 +408,37 @@ private fun CalendarView(matches: List<Match>, onOpenMatch: (Match) -> Unit, mod
     }
 }
 
+/** Home and away both mark a match day the same *type* of way — a filled background,
+ *  just a different color — instead of the previous border-for-home/fill-for-away mix,
+ *  which read as two different kinds of thing rather than two values of the same one.
+ *  "Today" is its own, separate signal (an outline) so it stays visible on a day with
+ *  no match, and layers correctly under the "selected" state (a solid fill) rather
+ *  than competing with the home/away color for the same visual channel. */
 @Composable
 private fun DayCell(day: Int, isToday: Boolean, matches: List<Match>, selected: Boolean, onClick: () -> Unit) {
     val hasMatch = matches.isNotEmpty()
     val primary = matches.firstOrNull()
     val isAway = primary?.isHome == false
     val shape = RoundedCornerShape(8.dp)
+    val fillColor = when {
+        selected -> MaterialTheme.colorScheme.primary
+        isAway -> MaterialTheme.colorScheme.secondaryContainer
+        hasMatch -> MaterialTheme.colorScheme.tertiaryContainer
+        else -> null
+    }
+    val contentColor = when {
+        selected -> MaterialTheme.colorScheme.onPrimary
+        isAway -> MaterialTheme.colorScheme.onSecondaryContainer
+        hasMatch -> MaterialTheme.colorScheme.onTertiaryContainer
+        else -> MaterialTheme.colorScheme.onSurface
+    }
     Column(
         Modifier
             .fillMaxWidth()
             .height(52.dp)
             .clip(shape)
-            .let {
-                when {
-                    selected -> it.background(MaterialTheme.colorScheme.primary)
-                    isAway -> it.background(MaterialTheme.colorScheme.secondaryContainer)
-                    hasMatch -> it.border(1.dp, MaterialTheme.colorScheme.primary, shape)
-                    else -> it
-                }
-            }
+            .let { if (fillColor != null) it.background(fillColor) else it }
+            .let { if (isToday && !selected) it.border(1.5.dp, MaterialTheme.colorScheme.primary, shape) else it }
             .let { if (hasMatch) it.clickable(onClick = onClick) else it }
             .padding(2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -423,11 +447,7 @@ private fun DayCell(day: Int, isToday: Boolean, matches: List<Match>, selected: 
             day.toString(),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
-            color = when {
-                selected -> MaterialTheme.colorScheme.onPrimary
-                isAway -> MaterialTheme.colorScheme.onSecondaryContainer
-                else -> MaterialTheme.colorScheme.onSurface
-            },
+            color = contentColor,
         )
         if (primary != null) {
             AsyncImage(
@@ -438,23 +458,25 @@ private fun DayCell(day: Int, isToday: Boolean, matches: List<Match>, selected: 
             Icon(
                 sportIcon(primary.sport),
                 contentDescription = null,
-                tint = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = contentColor,
                 modifier = Modifier.size(10.dp),
             )
         }
     }
 }
 
+/** [color] null draws the "today" swatch — an outline only, matching how [DayCell]
+ *  marks today when it isn't also selected. */
 @Composable
-private fun LegendSwatch(filled: Boolean, label: String) {
+private fun LegendSwatch(color: androidx.compose.ui.graphics.Color?, label: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             Modifier
                 .size(14.dp)
                 .clip(RoundedCornerShape(4.dp))
                 .let {
-                    if (filled) it.background(MaterialTheme.colorScheme.secondaryContainer)
-                    else it.border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
+                    if (color != null) it.background(color)
+                    else it.border(1.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
                 },
         )
         Text(
