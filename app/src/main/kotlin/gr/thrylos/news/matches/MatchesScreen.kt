@@ -100,18 +100,18 @@ fun MatchesScreen(
                 title = { Text("Πρόγραμμα αγώνων") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Πίσω") } },
                 actions = {
-                    IconButton(onClick = { viewMode = if (viewMode == MatchesViewMode.LIST) MatchesViewMode.CALENDAR else MatchesViewMode.LIST }) {
-                        Icon(
-                            if (viewMode == MatchesViewMode.LIST) Icons.Filled.CalendarMonth else Icons.Filled.ViewAgenda,
-                            contentDescription = if (viewMode == MatchesViewMode.LIST) "Προβολή ημερολογίου" else "Προβολή λίστας",
-                        )
-                    }
                     if (state is MatchesUiState.Loading) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp).padding(end = 12.dp), strokeWidth = 2.dp)
                     } else {
                         IconButton(onClick = { viewModel.refresh(force = true) }) {
                             Icon(Icons.Filled.Refresh, contentDescription = "Ανανέωση προγράμματος")
                         }
+                    }
+                    IconButton(onClick = { viewMode = if (viewMode == MatchesViewMode.LIST) MatchesViewMode.CALENDAR else MatchesViewMode.LIST }) {
+                        Icon(
+                            if (viewMode == MatchesViewMode.LIST) Icons.Filled.CalendarMonth else Icons.Filled.ViewAgenda,
+                            contentDescription = if (viewMode == MatchesViewMode.LIST) "Προβολή ημερολογίου" else "Προβολή λίστας",
+                        )
                     }
                 },
             )
