@@ -228,7 +228,7 @@ private fun TeamPickerSheet(teamIds: List<String>, onSelect: (String?) -> Unit) 
  *  matches are only ever fetched for ids from that same registry). */
 private fun teamLabel(teamId: String): String = OLYMPIACOS_TEAMS.firstOrNull { it.id == teamId }?.label ?: teamId
 
-/** "Όλα / Εντός / Εκτός" — a single control with three joined segments, matching the
+/** "Όλοι / Εντός / Εκτός" — a single control with three joined segments, matching the
  *  Όλα/Νέα toggle's style on the feed screen. */
 @Composable
 private fun HomeAwayToggle(selected: HomeAwayFilter, onSelect: (HomeAwayFilter) -> Unit) {
@@ -236,7 +236,7 @@ private fun HomeAwayToggle(selected: HomeAwayFilter, onSelect: (HomeAwayFilter) 
     Row(
         Modifier.height(32.dp).clip(shape).border(1.dp, MaterialTheme.colorScheme.outline, shape),
     ) {
-        HomeAwaySegment("Όλα", selected == HomeAwayFilter.ALL) { onSelect(HomeAwayFilter.ALL) }
+        HomeAwaySegment("Όλοι", selected == HomeAwayFilter.ALL) { onSelect(HomeAwayFilter.ALL) }
         HomeAwaySegment("Εντός", selected == HomeAwayFilter.HOME) { onSelect(HomeAwayFilter.HOME) }
         HomeAwaySegment("Εκτός", selected == HomeAwayFilter.AWAY) { onSelect(HomeAwayFilter.AWAY) }
     }
