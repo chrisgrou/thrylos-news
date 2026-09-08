@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -34,7 +36,6 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -236,8 +237,8 @@ private fun ConditionBadge(condition: FilterCondition) {
         verticalAlignment = Alignment.CenterVertically,
         // Fixed height instead of IntrinsicSize.Min: the label/value Text children
         // already share identical typography and padding, so their natural heights
-        // always match — a fixed constant sizes the VerticalDivider just as
-        // correctly without forcing Compose to measure this row twice (once for
+        // always match — a fixed constant sizes the separator just as correctly
+        // without forcing Compose to measure this row twice (once for
         // the intrinsic pass, once for the real layout), which showed up as
         // scroll jank with many condition badges on screen during a fling.
         modifier = Modifier
@@ -246,7 +247,7 @@ private fun ConditionBadge(condition: FilterCondition) {
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.small),
     ) {
         Text(
-            uppercaseNoAccents(labelFor(condition.field)),
+            FIELD_BADGE_LABELS.getValue(condition.field),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = palette.onStrong,
@@ -254,12 +255,18 @@ private fun ConditionBadge(condition: FilterCondition) {
                 .background(palette.strong)
                 .padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
         )
-        VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        // A plain 1dp Box rather than VerticalDivider: one fewer Material composable
+        // per badge, and there are several badges per row in a scrolling list.
+        Box(Modifier.width(1.dp).fillMaxHeight().background(MaterialTheme.colorScheme.outlineVariant))
+        val valueStyle = MaterialTheme.typography.labelSmall
         Text(
             displayValue,
-            style = MaterialTheme.typography.labelSmall.copy(
-                textDecoration = if (strike) TextDecoration.LineThrough else TextDecoration.None,
-            ),
+            // Remembered rather than copied inline: TextStyle.copy() allocates a whole
+            // style (plus its span and paragraph styles) every composition of every
+            // badge, and the answer only depends on one boolean.
+            style = remember(valueStyle, strike) {
+                if (strike) valueStyle.copy(textDecoration = TextDecoration.LineThrough) else valueStyle
+            },
             color = palette.onContainer,
             modifier = Modifier
                 .background(palette.container)
@@ -275,11 +282,4 @@ private fun sectionTitleFor(action: FilterAction) = when (action) {
     FilterAction.HIGHLIGHT -> "Επισήμανση"
 }
 
-private fun labelFor(field: FilterField) = when (field) {
-    FilterField.TITLE -> "Τίτλος"
-    FilterField.BODY -> "Κείμενο"
-    FilterField.AUTHOR -> "Συντάκτης"
-    FilterField.URL -> "URL"
-    FilterField.SOURCE -> "Πηγή"
-    FilterField.ANYWHERE -> "Οπουδήποτε"
-}
+private fun labelFor(field: FilterField) = labelForField(field)

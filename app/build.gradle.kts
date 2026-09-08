@@ -65,6 +65,18 @@ android {
     }
 }
 
+// Skippability depends on this: see compose-stability.conf for why the model classes
+// have to be declared stable by hand. Metrics are off unless asked for
+// (-PcomposeMetrics=true), since they slow the build down and write reports nobody
+// reads on a normal run.
+composeCompiler {
+    stabilityConfigurationFile.set(rootProject.file("compose-stability.conf"))
+    if (project.findProperty("composeMetrics") == "true") {
+        metricsDestination.set(layout.buildDirectory.dir("compose-metrics"))
+        reportsDestination.set(layout.buildDirectory.dir("compose-reports"))
+    }
+}
+
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:sources"))

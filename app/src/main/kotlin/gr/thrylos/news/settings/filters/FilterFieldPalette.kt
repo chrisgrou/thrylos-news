@@ -30,3 +30,19 @@ private val GREEK_ACCENTS = mapOf(
  *  written in all caps (e.g. "τίτλος" → "ΤΙΤΛΟΣ", not "ΤΊΤΛΟΣ"). */
 internal fun uppercaseNoAccents(text: String): String =
     text.map { GREEK_ACCENTS[it] ?: it }.joinToString("").uppercase()
+
+/** Every badge label there can ever be, built once. There are six fields, and the
+ *  labels never change — rebuilding one character-by-character for every badge on
+ *  every composition was pure waste in a scrolling list. */
+internal val FIELD_BADGE_LABELS: Map<FilterField, String> =
+    FilterField.entries.associateWith { uppercaseNoAccents(labelForField(it)) }
+
+/** Shared by the badge labels above and by both screens' visible field names. */
+internal fun labelForField(field: FilterField) = when (field) {
+    FilterField.TITLE -> "Τίτλος"
+    FilterField.BODY -> "Κείμενο"
+    FilterField.AUTHOR -> "Συντάκτης"
+    FilterField.URL -> "URL"
+    FilterField.SOURCE -> "Πηγή"
+    FilterField.ANYWHERE -> "Οπουδήποτε"
+}

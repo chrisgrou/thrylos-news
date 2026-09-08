@@ -309,7 +309,7 @@ private fun FieldPill(selected: FilterField, palette: FieldPalette, onSelect: (F
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             Text(
-                uppercaseNoAccents(labelFor(selected)),
+                FIELD_BADGE_LABELS.getValue(selected),
                 style = MaterialTheme.typography.labelMedium,
                 color = palette.onStrong,
             )
@@ -427,14 +427,7 @@ private fun toDraft(condition: FilterCondition, sources: List<String>): Conditio
     return ConditionDraft(field = condition.field, match = condition.match, value = condition.value)
 }
 
-private fun labelFor(field: FilterField) = when (field) {
-    FilterField.TITLE -> "Τίτλος"
-    FilterField.BODY -> "Κείμενο"
-    FilterField.AUTHOR -> "Συντάκτης"
-    FilterField.URL -> "URL"
-    FilterField.SOURCE -> "Πηγή"
-    FilterField.ANYWHERE -> "Οπουδήποτε"
-}
+private fun labelFor(field: FilterField) = labelForField(field)
 
 private fun labelFor(match: FilterMatch) = when (match) {
     FilterMatch.CONTAINS -> "περιέχει"
