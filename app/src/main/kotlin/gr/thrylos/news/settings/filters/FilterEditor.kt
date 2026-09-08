@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,7 +17,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -25,6 +29,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FormatListBulleted
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
@@ -35,12 +40,15 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -50,7 +58,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import gr.thrylos.news.feed.formatRelativeTime
 import gr.thrylos.news.feed.stripSourceSuffix
 import gr.thrylos.news.model.FilterAction
 import gr.thrylos.news.model.FilterCombinator
@@ -60,6 +70,10 @@ import gr.thrylos.news.model.FilterMatch
 import gr.thrylos.news.model.FilterRule
 import java.util.UUID
 import java.util.regex.Pattern
+
+/** Placeholder id for a rule that hasn't been saved yet — only ever used to build a
+ *  draft for the live match preview; the real id is minted on save. */
+private const val NEW_RULE_ID = "draft"
 
 private data class ConditionDraft(
     var field: FilterField = FilterField.TITLE,
@@ -77,6 +91,10 @@ fun FilterEditorScreen(
     initial: FilterRule?,
     onSave: (FilterRule) -> Unit,
     onDelete: (FilterRule) -> Unit = {},
+    /** What the draft below currently matches — null until the first pass finishes. */
+    preview: RuleMatchPreview? = null,
+    /** Reports the live draft (null when this screen leaves) so [preview] can follow it. */
+    onDraftChange: (FilterRule?) -> Unit = {},
 ) {
     val conditions = remember {
         mutableStateListOf(
@@ -85,6 +103,26 @@ fun FilterEditorScreen(
     }
     var combinator by remember { mutableStateOf(initial?.combinator ?: FilterCombinator.AND) }
     var action by remember { mutableStateOf(initial?.action ?: FilterAction.HIDE) }
+    var showMatches by remember { mutableStateOf(false) }
+
+    fun draftRule(): FilterRule? {
+        val valid = conditions.mapNotNull { toCondition(it) }
+        if (valid.isEmpty()) return null
+        return FilterRule(
+            id = initial?.id ?: NEW_RULE_ID,
+            conditions = valid,
+            combinator = combinator,
+            action = action,
+            scopeSourceId = initial?.scopeSourceId,
+            enabled = initial?.enabled ?: true,
+        )
+    }
+
+    // Re-runs whenever any part of the draft changes; the debounce lives in the
+    // ViewModel so a burst of keystrokes costs one pass, not one per character.
+    val draftSnapshot = conditions.toList()
+    LaunchedEffect(draftSnapshot, combinator, action) { onDraftChange(draftRule()) }
+    DisposableEffect(Unit) { onDispose { onDraftChange(null) } }
 
     Scaffold(
         topBar = {
@@ -92,6 +130,7 @@ fun FilterEditorScreen(
                 title = { Text(if (initial != null) "Επεξεργασία κανόνα" else "Νέος κανόνας") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Πίσω") } },
                 actions = {
+                    MatchesButton(count = preview?.count, onClick = { showMatches = true })
                     if (initial != null) {
                         IconButton(onClick = { onDelete(initial) }) {
                             Icon(Icons.Filled.Delete, contentDescription = "Διαγραφή κανόνα")
@@ -114,7 +153,19 @@ fun FilterEditorScreen(
                 explanationFor(action),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
+                modifier = Modifier.padding(top = 8.dp),
+            )
+
+            // Answers "what does this actually catch?" while the rule is being written,
+            // not only after it's saved and you're back on the list.
+            Text(
+                preview?.let { "→ Ταιριάζει με ${it.count} άρθρα · πάτα για να τα δεις" } ?: "→ Υπολογισμός…",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = preview != null) { showMatches = true }
+                    .padding(top = 10.dp, bottom = 16.dp),
             )
 
             conditions.forEachIndexed { index, draft ->
@@ -191,23 +242,96 @@ fun FilterEditorScreen(
 
             Button(
                 onClick = {
-                    val validConditions = conditions.mapNotNull { toCondition(it) }
-                    if (validConditions.isNotEmpty()) {
-                        onSave(
-                            FilterRule(
-                                id = initial?.id ?: UUID.randomUUID().toString(),
-                                conditions = validConditions,
-                                combinator = combinator,
-                                action = action,
-                                scopeSourceId = initial?.scopeSourceId,
-                                enabled = initial?.enabled ?: true,
-                            ),
-                        )
-                    }
+                    val rule = draftRule() ?: return@Button
+                    onSave(if (initial != null) rule else rule.copy(id = UUID.randomUUID().toString()))
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(if (initial != null) "Αποθήκευση" else "Προσθήκη κανόνα")
+            }
+        }
+    }
+
+    if (showMatches) {
+        ModalBottomSheet(onDismissRequest = { showMatches = false }) {
+            MatchedArticlesSheet(preview)
+        }
+    }
+}
+
+/** List icon carrying the match count as a badge, sitting next to the delete action.
+ *  Drawn by hand rather than with BadgedBox to keep the badge readable at three
+ *  digits and to match the dot the feed's own app bar already uses. */
+@Composable
+private fun MatchesButton(count: Int?, onClick: () -> Unit) {
+    Box {
+        IconButton(onClick = onClick, enabled = count != null) {
+            Icon(Icons.Filled.FormatListBulleted, contentDescription = "Άρθρα που ταιριάζουν")
+        }
+        if (count != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 2.dp, end = 2.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(MaterialTheme.colorScheme.primary)
+                    .padding(horizontal = 5.dp, vertical = 1.dp),
+            ) {
+                Text(
+                    if (count > 999) "999+" else count.toString(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                )
+            }
+        }
+    }
+}
+
+/** Read-only: enough of each article to judge whether the rule is catching the right
+ *  things (headline, source, when) without turning the rule editor into a second feed. */
+@Composable
+private fun MatchedArticlesSheet(preview: RuleMatchPreview?) {
+    if (preview == null) {
+        Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+            Text("Υπολογισμός…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        return
+    }
+    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+        Text("Ταιριάζουν ${preview.count} άρθρα", style = MaterialTheme.typography.titleMedium)
+        if (preview.count > preview.articles.size) {
+            Text(
+                "Εμφανίζονται τα ${preview.articles.size} πιο πρόσφατα.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+        if (preview.articles.isEmpty()) {
+            Text(
+                "Κανένα αποθηκευμένο άρθρο δεν ταιριάζει με αυτόν τον κανόνα.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 16.dp, bottom = 32.dp),
+            )
+            return@Column
+        }
+        LazyColumn(
+            Modifier.fillMaxWidth().padding(top = 12.dp),
+            contentPadding = PaddingValues(bottom = 32.dp),
+        ) {
+            items(preview.articles, key = { it.id }) { article ->
+                Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                    Text(article.title, style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        stripSourceSuffix(article.sourceName).uppercase() + " · " +
+                            formatRelativeTime(article.publishedAt ?: article.fetchedAt),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
+                HorizontalDivider()
             }
         }
     }

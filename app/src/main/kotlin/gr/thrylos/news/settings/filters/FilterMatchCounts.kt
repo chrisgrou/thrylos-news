@@ -1,6 +1,7 @@
 package gr.thrylos.news.settings.filters
 
 import gr.thrylos.news.data.repo.ArticleRepository
+import gr.thrylos.news.model.Article
 import gr.thrylos.news.model.FilterRule
 import gr.thrylos.news.sources.filter.FilterEngine
 import kotlinx.coroutines.sync.Mutex
@@ -43,15 +44,27 @@ class FilterMatchCounts @Inject constructor(
         val corpus = articleRepository.corpusSignature()
         snapshot?.let { if (it.rules == rules && it.corpus == corpus) return@withLock it.counts }
 
-        // Only load bodies when a rule actually inspects them — with no BODY/
-        // "Οπουδήποτε" rule the summaries carry everything the remaining fields need.
-        val articles = if (FilterEngine.rulesNeedBody(rules)) {
-            articleRepository.getAllWithContentOnce()
-        } else {
-            articleRepository.getAllSummariesOnce()
-        }
+        val articles = loadCorpus(FilterEngine.rulesNeedBody(rules))
         val counts = FilterEngine.countMatchesBatch(rules, articles)
         snapshot = Snapshot(rules, corpus, counts)
         counts
     }
+
+    /** The articles one rule matches right now, newest first — what the rule editor
+     *  shows so a rule can be judged by what it actually catches rather than by a
+     *  number alone. Deliberately not cached: it answers for a rule still being typed,
+     *  and holding a whole corpus (bodies included, for a text rule) alive between
+     *  visits is exactly the memory cost the list screens were freed of. */
+    suspend fun articlesMatching(rule: FilterRule): List<Article> {
+        val articles = loadCorpus(FilterEngine.rulesNeedBody(listOf(rule)))
+        // Bypasses the enabled check that FilterEngine.matches applies: the editor
+        // should show what the rule catches even while it's switched off.
+        val probe = rule.copy(enabled = true)
+        return articles.filter { FilterEngine.matches(probe, it) }
+    }
+
+    /** Only reads bodies when something actually inspects them — without a BODY/
+     *  "Οπουδήποτε" condition the summaries carry every field the rest can match on. */
+    private suspend fun loadCorpus(needsBody: Boolean): List<Article> =
+        if (needsBody) articleRepository.getAllWithContentOnce() else articleRepository.getAllSummariesOnce()
 }

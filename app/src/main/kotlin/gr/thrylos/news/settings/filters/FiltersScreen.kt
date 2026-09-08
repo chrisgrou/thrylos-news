@@ -78,12 +78,15 @@ fun FiltersScreen(
     var selectedTab by remember { mutableStateOf(0) }
 
     if (showEditor) {
+        val preview by viewModel.editorPreview.collectAsStateWithLifecycle()
         FilterEditorScreen(
             onBack = { showEditor = false },
             sources = sourceNames,
             initial = editingRule,
             onSave = { rule -> viewModel.save(rule); showEditor = false },
             onDelete = { rule -> viewModel.delete(rule); showEditor = false },
+            preview = preview,
+            onDraftChange = viewModel::previewRule,
         )
         return
     }
