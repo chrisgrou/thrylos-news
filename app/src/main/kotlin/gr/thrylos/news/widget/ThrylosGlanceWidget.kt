@@ -66,7 +66,10 @@ class ThrylosGlanceWidget : GlanceAppWidget() {
 
         val widgetPrefs = appPreferences.widgetPrefs.first()
         val filters = filterRepository.observeAll().first()
-        val articles = articleRepository.observeAll().first()
+        // Bodies included: a BODY/"Οπουδήποτε" rule can decide what the widget
+        // shows. One-shot per widget refresh, not a subscription, so it costs a single
+        // read rather than one per database write.
+        val articles = articleRepository.observeAllWithContent().first()
             .filter { FilterEngine.isVisible(it, filters) }
             .filter { !widgetPrefs.showOnlyImportant || FilterEngine.isImportant(it, filters) }
             .sortedByDescending { it.publishedAt ?: it.fetchedAt }

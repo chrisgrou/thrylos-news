@@ -80,8 +80,12 @@ fun ContentBlockView(
             modifier = Modifier.padding(bottom = 8.dp),
         )
 
+        // linkify() scans the paragraph with a regex and builds an AnnotatedString.
+        // Unremembered, that re-ran for every visible paragraph on every recomposition
+        // — including each frame's worth while scrolling a long article — so it's keyed
+        // to the text it depends on instead.
         is ContentBlock.Paragraph -> Text(
-            text = linkify(block.text),
+            text = remember(block.text) { linkify(block.text) },
             textAlign = align,
             style = TextStyle(
                 fontFamily = fontFamily,
@@ -110,7 +114,7 @@ fun ContentBlockView(
             ) {
                 Column {
                     Text(
-                        text = linkify("“${block.text}”"),
+                        text = remember(block.text) { linkify("“${block.text}”") },
                         style = TextStyle(
                             fontFamily = fontFamily,
                             fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,

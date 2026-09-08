@@ -116,7 +116,7 @@ class FeedViewModel @Inject constructor(
     ) { prefs, threshold -> Triple(prefs.highlightNewSinceRefresh, threshold, prefs.feedPageSize) }
 
     private val dedupedFeed: StateFlow<DedupedFeed> = combine(
-        articleRepository.observeAll(),
+        articleRepository.observeAllSummaries(),
         filterRepository.observeAll(),
         sourcesFlow,
         selectedSourceName,
@@ -134,16 +134,32 @@ class FeedViewModel @Inject constructor(
         if (filters !== filterResultCacheFilters) filterResultCache = emptyMap()
         filterResultCacheFilters = filters
         val needsBody = FilterEngine.rulesNeedBody(filters)
+
+        // These articles carry no body (see ArticleSummary) — so when, and only when,
+        // a rule actually looks at body text, load it for the articles whose verdict
+        // isn't already cached. With no such rule (the common case) no article body is
+        // ever read here at all; with one, each article's is read once, ever, rather
+        // than on every emission.
+        val uncachedIds = if (!needsBody) emptyList() else articles.mapNotNull { article ->
+            article.id.takeIf { "${article.id}:${article.fetchedAt}" !in filterResultCache }
+        }
+        val bodyById = articleRepository.bodyTextByIds(uncachedIds)
+
         val importantById = HashMap<String, Boolean>(articles.size)
         val newCache = HashMap<String, FilterResult>(articles.size)
         val visible = articles.filter { article ->
-            if (selectedIds != null && article.sourceId !in selectedIds) return@filter false
+            // Evaluated (and cached) for every article, including ones the current
+            // source chip hides: a rule's verdict doesn't depend on which chip is
+            // selected, and dropping those from the cache would mean re-deciding —
+            // and, for a BODY rule, re-loading the body of — every article of every
+            // other source each time the selection changes.
             val cacheKey = "${article.id}:${article.fetchedAt}"
             val result = filterResultCache[cacheKey] ?: run {
-                val body = if (needsBody) FilterEngine.bodyText(article) else null
+                val body = if (needsBody) bodyById[article.id].orEmpty() else null
                 FilterResult(FilterEngine.isVisible(article, filters, body), FilterEngine.isImportant(article, filters, body))
             }
             newCache[cacheKey] = result
+            if (selectedIds != null && article.sourceId !in selectedIds) return@filter false
             if (!result.visible) return@filter false
             importantById[article.id] = result.important
             true

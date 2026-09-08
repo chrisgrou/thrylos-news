@@ -12,7 +12,11 @@ import java.text.Normalizer
 
 object FilterEngine {
 
-    fun bodyText(article: Article): String = article.content.joinToString(" ") { block ->
+    fun bodyText(article: Article): String = bodyTextOf(article.content)
+
+    /** Same joining, straight from blocks — for a caller that decoded a stored content
+     *  JSON on its own and never built an [Article] around it. */
+    fun bodyTextOf(blocks: List<ContentBlock>): String = blocks.joinToString(" ") { block ->
         when (block) {
             is ContentBlock.Paragraph -> block.text
             is ContentBlock.Heading -> block.text

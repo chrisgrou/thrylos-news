@@ -6,28 +6,53 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
+import gr.thrylos.news.data.db.entity.ArticleContent
 import gr.thrylos.news.data.db.entity.ArticleEntity
+import gr.thrylos.news.data.db.entity.ArticleSummary
 import kotlinx.coroutines.flow.Flow
+
+/** Column list backing every [ArticleSummary] projection — everything but the
+ *  article body. Spelled out rather than `SELECT *` on purpose: that's the whole
+ *  point of these queries (see [ArticleSummary]). */
+private const val SUMMARY_COLUMNS =
+    "id, sourceId, sourceName, url, title, author, publishedAt, fetchedAt, " +
+        "leadImageUrl, usedFallbackExtraction, isRead, isBookmarked, dedupGroupId"
 
 @Dao
 interface ArticleDao {
 
-    @Query("SELECT * FROM articles ORDER BY COALESCE(publishedAt, fetchedAt) DESC")
-    fun observeAll(): Flow<List<ArticleEntity>>
+    @Query("SELECT $SUMMARY_COLUMNS FROM articles ORDER BY COALESCE(publishedAt, fetchedAt) DESC")
+    fun observeAllSummaries(): Flow<List<ArticleSummary>>
 
-    @Query("SELECT * FROM articles WHERE isBookmarked = 1 ORDER BY COALESCE(publishedAt, fetchedAt) DESC")
-    fun observeBookmarked(): Flow<List<ArticleEntity>>
-
-    @Query("SELECT * FROM articles WHERE sourceId = :sourceId ORDER BY COALESCE(publishedAt, fetchedAt) DESC")
-    fun observeBySource(sourceId: String): Flow<List<ArticleEntity>>
+    @Query("SELECT $SUMMARY_COLUMNS FROM articles WHERE isBookmarked = 1 ORDER BY COALESCE(publishedAt, fetchedAt) DESC")
+    fun observeBookmarkedSummaries(): Flow<List<ArticleSummary>>
 
     /** Sportal-style grouped sources share a sourceName across several sourceIds, so
      *  a "source home" view queries by name to include every member's articles. */
-    @Query("SELECT * FROM articles WHERE sourceName = :sourceName ORDER BY COALESCE(publishedAt, fetchedAt) DESC")
-    fun observeBySourceName(sourceName: String): Flow<List<ArticleEntity>>
+    @Query("SELECT $SUMMARY_COLUMNS FROM articles WHERE sourceName = :sourceName ORDER BY COALESCE(publishedAt, fetchedAt) DESC")
+    fun observeBySourceNameSummaries(sourceName: String): Flow<List<ArticleSummary>>
 
-    @Query("SELECT * FROM articles WHERE author = :author ORDER BY COALESCE(publishedAt, fetchedAt) DESC")
-    fun observeByAuthor(author: String): Flow<List<ArticleEntity>>
+    @Query("SELECT $SUMMARY_COLUMNS FROM articles WHERE author = :author ORDER BY COALESCE(publishedAt, fetchedAt) DESC")
+    fun observeByAuthorSummaries(author: String): Flow<List<ArticleSummary>>
+
+    @Query("SELECT $SUMMARY_COLUMNS FROM articles ORDER BY COALESCE(publishedAt, fetchedAt) DESC")
+    suspend fun getAllSummariesOnce(): List<ArticleSummary>
+
+    /** Body text for a bounded, known set of articles — the only way a list screen
+     *  should ever reach an article body (see [ArticleSummary]). Callers must chunk:
+     *  SQLite caps a statement at 999 bound variables. */
+    @Query("SELECT id, contentJson FROM articles WHERE id IN (:ids)")
+    suspend fun contentFor(ids: List<String>): List<ArticleContent>
+
+    /** Whole rows, bodies and all. Reserved for callers that must match filter rules
+     *  against every stored article's text; a list screen wants a summary query. */
+    @Query("SELECT * FROM articles ORDER BY COALESCE(publishedAt, fetchedAt) DESC")
+    fun observeAll(): Flow<List<ArticleEntity>>
+
+    /** Bodies included — a backup export carries the full article, so it can be
+     *  restored and read offline. */
+    @Query("SELECT * FROM articles WHERE isBookmarked = 1 ORDER BY COALESCE(publishedAt, fetchedAt) DESC")
+    suspend fun getBookmarkedOnce(): List<ArticleEntity>
 
     @Query("SELECT * FROM articles WHERE id = :id")
     suspend fun getById(id: String): ArticleEntity?
@@ -70,8 +95,11 @@ interface ArticleDao {
         updates.forEach { (id, groupId) -> setDedupGroup(id, groupId) }
     }
 
-    @Query("SELECT * FROM articles")
-    suspend fun getAllOnce(): List<ArticleEntity>
+    /** Bodies are needed here (the caller looks for suspiciously short ones), but only
+     *  this source's — the re-extraction sweep runs once per source per sync, and
+     *  reading every stored article's body once per source was pure waste. */
+    @Query("SELECT * FROM articles WHERE sourceId = :sourceId ORDER BY fetchedAt DESC")
+    suspend fun getBySourceOnce(sourceId: String): List<ArticleEntity>
 
     @Query(
         "DELETE FROM articles WHERE isBookmarked = 0 AND COALESCE(publishedAt, fetchedAt) < :cutoffMillis",

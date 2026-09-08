@@ -29,7 +29,10 @@ class FiltersViewModel @Inject constructor(
 
     val rows: StateFlow<List<FilterRow>> = combine(
         filterRepository.observeAll(),
-        articleRepository.observeAll(),
+        // Bodies included — the "→ κρύβει N άρθρα" counts evaluate every rule
+        // against every article, body rules among them. Scoped to this screen being
+        // open, unlike the feed's subscription.
+        articleRepository.observeAllWithContent(),
     ) { rules, articles ->
         val counts = FilterEngine.countMatchesBatch(rules, articles)
         rules.map { FilterRow(it, counts[it.id] ?: 0) }

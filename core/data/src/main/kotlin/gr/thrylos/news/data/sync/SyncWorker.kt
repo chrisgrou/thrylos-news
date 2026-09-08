@@ -141,9 +141,11 @@ class SyncWorker @AssistedInject constructor(
      *  time (an article that's genuinely just short, or a source whose selectors are
      *  broken, isn't retried forever — only up to [MAX_REEXTRACT_PER_SOURCE] per run). */
     private suspend fun reextractEmptyArticles(plugin: SourcePlugin): List<Article> {
-        val broken = articleRepository.getAllOnce()
-            .filter { it.sourceId == plugin.id && FilterEngine.bodyText(it).trim().length < MIN_BODY_CHARS }
-            .sortedByDescending { it.fetchedAt }
+        // Scoped to this source, and already ordered by the query: this runs once per
+        // source per sync, so reading (and JSON-decoding) every stored article's body
+        // here meant doing that work once per source, over the whole table, every sync.
+        val broken = articleRepository.getBySourceOnce(plugin.id)
+            .filter { FilterEngine.bodyText(it).trim().length < MIN_BODY_CHARS }
             .take(MAX_REEXTRACT_PER_SOURCE)
         if (broken.isEmpty()) return emptyList()
 
@@ -157,7 +159,10 @@ class SyncWorker @AssistedInject constructor(
     }
 
     private suspend fun recomputeDedupGroups() {
-        val recent = articleRepository.getAllOnce().filter {
+        // Dedup groups articles by title similarity and timestamp only — no body — so
+        // this deliberately reads summaries rather than pulling every stored article's
+        // full content JSON into memory once per sync.
+        val recent = articleRepository.getAllSummariesOnce().filter {
             val time = it.publishedAt ?: it.fetchedAt
             System.currentTimeMillis() - time <= DEDUP_WINDOW_MS
         }

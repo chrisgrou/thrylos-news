@@ -66,7 +66,7 @@ class BackupManager @Inject constructor(
         val filters = filterDao.observeAll().first().map {
             BackupFilter(it.id, it.conditionsJson, it.combinator, it.action, it.scopeSourceId, it.enabled)
         }
-        val bookmarks = articleDao.observeBookmarked().first().map(gr.thrylos.news.data.repo.ArticleMapper::toDomain)
+        val bookmarks = articleDao.getBookmarkedOnce().map(gr.thrylos.news.data.repo.ArticleMapper::toDomain)
 
         val bundle = BackupBundle(
             exportedAt = System.currentTimeMillis(),

@@ -2,6 +2,7 @@ package gr.thrylos.news.data.repo
 
 import gr.thrylos.news.data.db.dao.ArticleDao
 import gr.thrylos.news.model.Article
+import gr.thrylos.news.sources.filter.FilterEngine
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -11,15 +12,38 @@ import javax.inject.Singleton
 class ArticleRepository @Inject constructor(
     private val dao: ArticleDao,
 ) {
-    fun observeAll(): Flow<List<Article>> = dao.observeAll().map { it.map(ArticleMapper::toDomain) }
+    /** Body-free — see [gr.thrylos.news.data.db.entity.ArticleSummary]. Every list
+     *  screen wants one of these, not [observeAllWithContent]. */
+    fun observeAllSummaries(): Flow<List<Article>> = dao.observeAllSummaries().map { it.map(ArticleMapper::toDomain) }
 
-    fun observeBookmarked(): Flow<List<Article>> = dao.observeBookmarked().map { it.map(ArticleMapper::toDomain) }
+    fun observeBookmarked(): Flow<List<Article>> = dao.observeBookmarkedSummaries().map { it.map(ArticleMapper::toDomain) }
 
-    fun observeBySource(sourceId: String): Flow<List<Article>> = dao.observeBySource(sourceId).map { it.map(ArticleMapper::toDomain) }
+    fun observeBySourceName(sourceName: String): Flow<List<Article>> =
+        dao.observeBySourceNameSummaries(sourceName).map { it.map(ArticleMapper::toDomain) }
 
-    fun observeBySourceName(sourceName: String): Flow<List<Article>> = dao.observeBySourceName(sourceName).map { it.map(ArticleMapper::toDomain) }
+    fun observeByAuthor(author: String): Flow<List<Article>> = dao.observeByAuthorSummaries(author).map { it.map(ArticleMapper::toDomain) }
 
-    fun observeByAuthor(author: String): Flow<List<Article>> = dao.observeByAuthor(author).map { it.map(ArticleMapper::toDomain) }
+    suspend fun getAllSummariesOnce(): List<Article> = dao.getAllSummariesOnce().map(ArticleMapper::toDomain)
+
+    /** Loads whole article bodies — only for the handful of ids asked for, and only
+     *  from a caller that genuinely needs body text (a BODY/"Οπουδήποτε" filter rule).
+     *  Chunked to stay under SQLite's 999-bound-variable limit. */
+    suspend fun bodyTextByIds(ids: List<String>): Map<String, String> {
+        if (ids.isEmpty()) return emptyMap()
+        val result = HashMap<String, String>(ids.size)
+        ids.chunked(400).forEach { chunk ->
+            dao.contentFor(chunk).forEach { row ->
+                result[row.id] = FilterEngine.bodyTextOf(ArticleMapper.decodeBlocks(row.contentJson))
+            }
+        }
+        return result
+    }
+
+    /** Full rows, bodies included. Only for the two callers that must evaluate rules
+     *  against every stored article's text at once (the Φίλτρα screen's match counts,
+     *  and the widget's one-shot refresh); anything list-shaped wants
+     *  [observeAllSummaries] instead. */
+    fun observeAllWithContent(): Flow<List<Article>> = dao.observeAll().map { it.map(ArticleMapper::toDomain) }
 
     suspend fun getById(id: String): Article? = dao.getById(id)?.let(ArticleMapper::toDomain)
 
@@ -45,7 +69,7 @@ class ArticleRepository @Inject constructor(
         if (updates.isNotEmpty()) dao.setDedupGroups(updates)
     }
 
-    suspend fun getAllOnce(): List<Article> = dao.getAllOnce().map(ArticleMapper::toDomain)
+    suspend fun getBySourceOnce(sourceId: String): List<Article> = dao.getBySourceOnce(sourceId).map(ArticleMapper::toDomain)
 
     suspend fun runOfflineCleanup(retentionDays: Int, maxArticles: Int) {
         val cutoff = System.currentTimeMillis() - retentionDays * 24 * 60 * 60 * 1000L

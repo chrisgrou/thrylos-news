@@ -1,6 +1,7 @@
 package gr.thrylos.news.data.repo
 
 import gr.thrylos.news.data.db.entity.ArticleEntity
+import gr.thrylos.news.data.db.entity.ArticleSummary
 import gr.thrylos.news.model.Article
 import gr.thrylos.news.model.ContentBlock
 import kotlinx.serialization.builtins.ListSerializer
@@ -75,6 +76,39 @@ object ArticleMapper {
         isBookmarked = article.isBookmarked,
         dedupGroupId = article.dedupGroupId,
     )
+
+    /**
+     * The body-free counterpart of [toDomain], for list screens.
+     *
+     * [Article.content] is deliberately empty here — the body was never read from the
+     * database (see [ArticleSummary]). Nothing that renders body text may be fed from
+     * this: the reader and the media viewer both load their article by id, which
+     * selects the full row. The one list-side consumer that does need body text —
+     * a BODY/"Οπουδήποτε" filter rule — gets it explicitly, as the `bodyTextOverride`
+     * argument that [gr.thrylos.news.sources.filter.FilterEngine] takes for exactly
+     * this reason, rather than by reaching through `content`.
+     */
+    fun toDomain(summary: ArticleSummary): Article = Article(
+        id = summary.id,
+        sourceId = summary.sourceId,
+        sourceName = summary.sourceName,
+        url = summary.url,
+        title = summary.title,
+        author = summary.author,
+        publishedAt = summary.publishedAt,
+        fetchedAt = summary.fetchedAt,
+        leadImageUrl = summary.leadImageUrl,
+        content = emptyList(),
+        usedFallbackExtraction = summary.usedFallbackExtraction,
+        isRead = summary.isRead,
+        isBookmarked = summary.isBookmarked,
+        dedupGroupId = summary.dedupGroupId,
+    )
+
+    /** Decodes a stored content JSON on its own, without building an [Article] around
+     *  it — for a caller that only wants the blocks of a few known articles. */
+    fun decodeBlocks(contentJson: String): List<ContentBlock> =
+        runCatching { json.decodeFromString(blockListSerializer, contentJson) }.getOrDefault(emptyList())
 
     fun toDomain(entity: ArticleEntity): Article = Article(
         id = entity.id,
