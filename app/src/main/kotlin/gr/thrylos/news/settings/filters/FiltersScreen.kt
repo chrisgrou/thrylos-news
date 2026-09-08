@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -69,7 +70,8 @@ fun FiltersScreen(
     onBack: () -> Unit,
     viewModel: FiltersViewModel = hiltViewModel(),
 ) {
-    val rows by viewModel.rows.collectAsStateWithLifecycle()
+    val loadedRows by viewModel.rows.collectAsStateWithLifecycle()
+    val rows = loadedRows.orEmpty()
     val sourceNames by viewModel.sourceNames.collectAsStateWithLifecycle()
     var showEditor by remember { mutableStateOf(false) }
     var editingRule by remember { mutableStateOf<FilterRule?>(null) }
@@ -124,7 +126,9 @@ fun FiltersScreen(
 
             val tabRows = rows.filter { it.rule.action == tabOrder[clampedTab] }
 
-            if (tabRows.isEmpty()) {
+            if (loadedRows == null) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            } else if (tabRows.isEmpty()) {
                 Column(Modifier.fillMaxSize().padding(24.dp)) {
                     Text("Δεν υπάρχουν κανόνες σε αυτή την κατηγορία ακόμα.")
                 }
@@ -166,7 +170,10 @@ fun FiltersScreen(
                                         Column(Modifier.weight(1f).padding(end = 12.dp)) {
                                             RuleDescription(row.rule)
                                             Text(
-                                                "→ Ταιριάζει με ${row.hiddenCount} άρθρα" + (row.rule.scopeSourceId?.let { " · μόνο στην πηγή $it" } ?: ""),
+                                                // The rule is drawn as soon as it's known; the
+                                                // match count arrives a moment later.
+                                                (row.matchCount?.let { "→ Ταιριάζει με $it άρθρα" } ?: "→ Υπολογισμός…") +
+                                                    (row.rule.scopeSourceId?.let { " · μόνο στην πηγή $it" } ?: ""),
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 modifier = Modifier.padding(top = 4.dp),

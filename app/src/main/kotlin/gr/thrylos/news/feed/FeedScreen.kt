@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -169,7 +170,14 @@ fun FeedScreen(
                     onSetPage = viewModel::setPage,
                 )
 
-                if (state.isEmpty) {
+                if (!state.loaded) {
+                    // Not "no articles" — not read from the database yet. Rendering the
+                    // normal (empty) list here is what made every cold start look like
+                    // the feed had lost everything.
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else if (state.isEmpty) {
                     // PullToRefreshBox only detects the pull gesture through nested
                     // scroll deltas dispatched by a scrollable child — a plain static
                     // Box never dispatches any, so the pull silently does nothing here

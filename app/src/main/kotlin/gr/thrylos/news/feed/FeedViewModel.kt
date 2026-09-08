@@ -12,9 +12,9 @@ import gr.thrylos.news.data.sync.SyncScheduler
 import gr.thrylos.news.model.Article
 import gr.thrylos.news.model.FilterRule
 import gr.thrylos.news.model.MatchStatus
+import gr.thrylos.news.model.SyncPrefs
 import gr.thrylos.news.sources.filter.FilterEngine
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -50,6 +50,11 @@ data class FeedUiState(
     val isEmpty: Boolean = false,
     val page: Int = 0,
     val pageCount: Int = 1,
+    /** False until the stored articles have actually been read once. Distinguishes
+     *  "nothing here" from "not known yet" — without it, the initial state was
+     *  indistinguishable from a genuinely empty feed and rendered as a blank list on
+     *  every cold start. */
+    val loaded: Boolean = false,
 )
 
 /** Everything that depends on articles/filters/sources/selected-source but NOT on the
@@ -59,6 +64,7 @@ private data class DedupedFeed(
     val items: List<FeedItem>,
     val sources: List<SourceChip>,
     val selectedSourceName: String?,
+    val loaded: Boolean = true,
 )
 
 private data class ComputedFeed(
@@ -66,6 +72,7 @@ private data class ComputedFeed(
     val sources: List<SourceChip>,
     val selectedSourceName: String?,
     val unreadOnly: Boolean,
+    val loaded: Boolean,
 )
 
 private data class FilterResult(val visible: Boolean, val important: Boolean)
@@ -109,11 +116,26 @@ class FeedViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** (highlight enabled, boundary timestamp — null until [NewArticlesBoundary] initializes,
-     *  configured articles-per-page). */
-    private val highlightConfig: Flow<Triple<Boolean, Long?, Int>> = combine(
+     *  configured articles-per-page).
+     *
+     *  Deliberately a StateFlow with a defaults-based initial value rather than a plain
+     *  combine: [uiState] combines this with the articles, and a combine emits nothing
+     *  until *every* input has. Both of these come from DataStore, whose first emission
+     *  waits on reading the preferences file — and, at startup, on
+     *  [NewArticlesBoundary.initializeOnce]'s read-modify-write of that same file
+     *  finishing first. So the already-cached articles sat there fully loaded while the
+     *  feed rendered an empty list, waiting on a preference. Nothing here decides
+     *  *which* articles exist — only how many go on a page and whether new ones get a
+     *  divider — so it starts from the defaults and corrects itself a moment later. */
+    private val highlightConfig: StateFlow<Triple<Boolean, Long?, Int>> = combine(
         appPreferences.syncPrefs,
         newArticlesBoundary.threshold,
     ) { prefs, threshold -> Triple(prefs.highlightNewSinceRefresh, threshold, prefs.feedPageSize) }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            SyncPrefs().let { Triple(it.highlightNewSinceRefresh, null, it.feedPageSize) },
+        )
 
     private val dedupedFeed: StateFlow<DedupedFeed> = combine(
         articleRepository.observeAllSummaries(),
@@ -196,7 +218,7 @@ class FeedViewModel @Inject constructor(
         // collector uses, which for viewModelScope is the main thread, so without this
         // it runs (and can jank scrolling/navigation animations) on the UI thread.
         .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DedupedFeed(emptyList(), emptyList(), null))
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DedupedFeed(emptyList(), emptyList(), null, loaded = false))
 
     /** Separate stage so toggling Όλα/Νέα is a cheap O(n) re-filter of the already
      *  deduped/sorted list instead of re-running FilterEngine + dedup from scratch —
@@ -207,10 +229,11 @@ class FeedViewModel @Inject constructor(
             sources = deduped.sources,
             selectedSourceName = deduped.selectedSourceName,
             unreadOnly = onlyUnread,
+            loaded = deduped.loaded,
         )
     }
         .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ComputedFeed(emptyList(), emptyList(), null, false))
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ComputedFeed(emptyList(), emptyList(), null, false, loaded = false))
 
     /** Caps how many cards render at once — a long feed makes scrolling sluggish, so
      *  results are paged (configurable page size, see [gr.thrylos.news.model.SyncPrefs.feedPageSize]). */
@@ -227,9 +250,10 @@ class FeedViewModel @Inject constructor(
             sources = computed.sources,
             selectedSourceName = computed.selectedSourceName,
             unreadOnly = computed.unreadOnly,
-            isEmpty = items.isEmpty(),
+            isEmpty = computed.loaded && items.isEmpty(),
             page = clampedPage,
             pageCount = pageCount,
+            loaded = computed.loaded,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), FeedUiState())
 

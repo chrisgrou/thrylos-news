@@ -3,47 +3,52 @@ package gr.thrylos.news.settings.filters
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import gr.thrylos.news.data.repo.ArticleRepository
 import gr.thrylos.news.data.repo.FilterRepository
 import gr.thrylos.news.data.repo.SourceRepository
 import gr.thrylos.news.model.FilterRule
-import gr.thrylos.news.sources.filter.FilterEngine
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-data class FilterRow(val rule: FilterRule, val hiddenCount: Int)
+/** [matchCount] is null while the count is still being worked out — the rule itself is
+ *  known and shown immediately, the number catches up. */
+data class FilterRow(val rule: FilterRule, val matchCount: Int?)
 
 @HiltViewModel
 class FiltersViewModel @Inject constructor(
     private val filterRepository: FilterRepository,
-    articleRepository: ArticleRepository,
+    private val matchCounts: FilterMatchCounts,
     sourceRepository: SourceRepository,
 ) : ViewModel() {
 
-    val rows: StateFlow<List<FilterRow>> = combine(
-        filterRepository.observeAll(),
-        // Bodies included — the "→ κρύβει N άρθρα" counts evaluate every rule
-        // against every article, body rules among them. Scoped to this screen being
-        // open, unlike the feed's subscription.
-        articleRepository.observeAllWithContent(),
-    ) { rules, articles ->
-        val counts = FilterEngine.countMatchesBatch(rules, articles)
-        rules.map { FilterRow(it, counts[it.id] ?: 0) }
+    private val counts = MutableStateFlow<Map<String, Int>?>(null)
+
+    init {
+        // Counting runs alongside the screen rather than in front of it. Deliberately
+        // driven by the rules alone: an article arriving mid-visit doesn't redraw these
+        // numbers, but re-opening the screen picks up the change — the alternative,
+        // recomputing on every write to the articles table, is what made this screen
+        // stall in the first place.
+        viewModelScope.launch {
+            filterRepository.observeAll().collectLatest { rules ->
+                counts.value = withContext(Dispatchers.Default) { matchCounts.countsFor(rules) }
+            }
+        }
     }
-        // countMatches re-evaluates every rule against every stored article (and, for a
-        // BODY/ANYWHERE rule, rejoins that article's content blocks into one string each
-        // time) — on the main thread this is exactly the kind of blocking work that made
-        // the Feed screen jank before it got the same fix; here it showed up as a visible
-        // pause when opening Ρυθμίσεις → Φίλτρα.
-        .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** null until the rules themselves have been read — distinct from "there are no
+     *  rules", which the screen renders as an explanatory message. */
+    val rows: StateFlow<List<FilterRow>?> = combine(filterRepository.observeAll(), counts) { rules, byId ->
+        rules.map { FilterRow(it, byId?.get(it.id)) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val sourceNames: StateFlow<List<String>> = sourceRepository.observeAll()
         .map { sources -> sources.map { it.name }.distinct().sorted() }

@@ -18,8 +18,10 @@ import gr.thrylos.news.model.RefreshInterval
 import gr.thrylos.news.model.SyncPrefs
 import gr.thrylos.news.model.TextAlign
 import gr.thrylos.news.model.WidgetPrefs
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -87,6 +89,13 @@ class AppPreferences @Inject constructor(
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
+    // Every flow below decodes JSON out of the preferences file. DataStore emits in
+    // the collector's context, and nearly every collector here is a
+    // stateIn(viewModelScope, ...) — i.e. Dispatchers.Main.immediate — so each decode
+    // ran on the UI thread, and re-ran there on every write to *any* preference (a
+    // sync stamping its outcome re-emits all of them). The matches cache in
+    // particular is a whole fixture list. Hence flowOn(Default) on each one.
+
     private val readerKey = stringPreferencesKey("reader_prefs")
     private val syncKey = stringPreferencesKey("sync_prefs")
     private val notificationKey = stringPreferencesKey("notification_prefs")
@@ -101,31 +110,31 @@ class AppPreferences @Inject constructor(
     val readerPrefs: Flow<ReaderPrefs> = context.dataStore.data.map { prefs ->
         val dto = prefs[readerKey]?.let { runCatching { json.decodeFromString<ReaderPrefsDto>(it) }.getOrNull() } ?: ReaderPrefsDto()
         dto.toDomain()
-    }
+    }.flowOn(Dispatchers.Default)
 
     val syncPrefs: Flow<SyncPrefs> = context.dataStore.data.map { prefs ->
         val dto = prefs[syncKey]?.let { runCatching { json.decodeFromString<SyncPrefsDto>(it) }.getOrNull() } ?: SyncPrefsDto()
         dto.toDomain()
-    }
+    }.flowOn(Dispatchers.Default)
 
     val notificationPrefs: Flow<NotificationPrefs> = context.dataStore.data.map { prefs ->
         val dto = prefs[notificationKey]?.let { runCatching { json.decodeFromString<NotificationPrefsDto>(it) }.getOrNull() } ?: NotificationPrefsDto()
         dto.toDomain()
-    }
+    }.flowOn(Dispatchers.Default)
 
     val widgetPrefs: Flow<WidgetPrefs> = context.dataStore.data.map { prefs ->
         val dto = prefs[widgetKey]?.let { runCatching { json.decodeFromString<WidgetPrefsDto>(it) }.getOrNull() } ?: WidgetPrefsDto()
         dto.toDomain()
-    }
+    }.flowOn(Dispatchers.Default)
 
     val matchesPrefs: Flow<MatchesPrefs> = context.dataStore.data.map { prefs ->
         val dto = prefs[matchesKey]?.let { runCatching { json.decodeFromString<MatchesPrefsDto>(it) }.getOrNull() } ?: MatchesPrefsDto()
         dto.toDomain()
-    }
+    }.flowOn(Dispatchers.Default)
 
     val appThemeMode: Flow<AppThemeMode> = context.dataStore.data.map { prefs ->
         prefs[appThemeKey]?.let { runCatching { AppThemeMode.valueOf(it) }.getOrNull() } ?: AppThemeMode.SYSTEM
-    }
+    }.flowOn(Dispatchers.Default)
 
     suspend fun setAppThemeMode(mode: AppThemeMode) {
         context.dataStore.edit { prefs -> prefs[appThemeKey] = mode.name }
@@ -218,7 +227,7 @@ class AppPreferences @Inject constructor(
         val raw = prefs[matchesCacheKey] ?: return@map emptyList()
         val dto = runCatching { json.decodeFromString<MatchesCacheDto>(raw) }.getOrNull() ?: return@map emptyList()
         dto.matches
-    }
+    }.flowOn(Dispatchers.Default)
 
     suspend fun cacheMatches(matches: List<Match>) {
         context.dataStore.edit { prefs ->

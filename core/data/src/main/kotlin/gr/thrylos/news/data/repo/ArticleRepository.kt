@@ -25,6 +25,14 @@ class ArticleRepository @Inject constructor(
 
     suspend fun getAllSummariesOnce(): List<Article> = dao.getAllSummariesOnce().map(ArticleMapper::toDomain)
 
+    suspend fun getAllWithContentOnce(): List<Article> = dao.getAllWithContentOnce().map(ArticleMapper::toDomain)
+
+    /** Changes whenever an article is added, removed or re-extracted — the three things
+     *  that can change what a filter rule matches. Lets a caller skip re-running an
+     *  expensive whole-corpus pass when nothing relevant has moved. Read/bookmark flags
+     *  deliberately don't affect it: no rule looks at those. */
+    suspend fun corpusSignature(): Pair<Int, Long> = dao.articleCount() to dao.latestFetchedAt()
+
     /** Loads whole article bodies — only for the handful of ids asked for, and only
      *  from a caller that genuinely needs body text (a BODY/"Οπουδήποτε" filter rule).
      *  Chunked to stay under SQLite's 999-bound-variable limit. */
