@@ -68,28 +68,12 @@ private val FIELD_ORDER = listOf(
 @Composable
 fun FiltersScreen(
     onBack: () -> Unit,
+    onOpenEditor: (ruleId: String?) -> Unit,
     viewModel: FiltersViewModel = hiltViewModel(),
 ) {
-    val loadedRows by viewModel.rows.collectAsStateWithLifecycle()
-    val rows = loadedRows.orEmpty()
-    val sourceNames by viewModel.sourceNames.collectAsStateWithLifecycle()
-    var showEditor by remember { mutableStateOf(false) }
-    var editingRule by remember { mutableStateOf<FilterRule?>(null) }
+    val loadedRules by viewModel.rules.collectAsStateWithLifecycle()
+    val rules = loadedRules.orEmpty()
     var selectedTab by remember { mutableStateOf(0) }
-
-    if (showEditor) {
-        val preview by viewModel.editorPreview.collectAsStateWithLifecycle()
-        FilterEditorScreen(
-            onBack = { showEditor = false },
-            sources = sourceNames,
-            initial = editingRule,
-            onSave = { rule -> viewModel.save(rule); showEditor = false },
-            onDelete = { rule -> viewModel.delete(rule); showEditor = false },
-            preview = preview,
-            onDraftChange = viewModel::previewRule,
-        )
-        return
-    }
 
     Scaffold(
         topBar = {
@@ -99,7 +83,7 @@ fun FiltersScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { editingRule = null; showEditor = true }) { Icon(Icons.Filled.Add, contentDescription = "Νέος κανόνας") }
+            FloatingActionButton(onClick = { onOpenEditor(null) }) { Icon(Icons.Filled.Add, contentDescription = "Νέος κανόνας") }
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
@@ -107,7 +91,7 @@ fun FiltersScreen(
             // declaration order); HIGHLIGHT has no editor entry anymore but still gets a
             // tab if any legacy rule of that type exists.
             val tabOrder = listOf(FilterAction.HIDE, FilterAction.SHOW_ONLY, FilterAction.IMPORTANT) +
-                (if (rows.any { it.rule.action == FilterAction.HIGHLIGHT }) listOf(FilterAction.HIGHLIGHT) else emptyList())
+                (if (rules.any { it.action == FilterAction.HIGHLIGHT }) listOf(FilterAction.HIGHLIGHT) else emptyList())
             val clampedTab = selectedTab.coerceIn(0, tabOrder.lastIndex)
 
             TabRow(selectedTabIndex = clampedTab) {
@@ -127,11 +111,11 @@ fun FiltersScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
             )
 
-            val tabRows = rows.filter { it.rule.action == tabOrder[clampedTab] }
+            val tabRules = rules.filter { it.action == tabOrder[clampedTab] }
 
-            if (loadedRows == null) {
+            if (loadedRules == null) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            } else if (tabRows.isEmpty()) {
+            } else if (tabRules.isEmpty()) {
                 Column(Modifier.fillMaxSize().padding(24.dp)) {
                     Text("Δεν υπάρχουν κανόνες σε αυτή την κατηγορία ακόμα.")
                 }
@@ -140,11 +124,11 @@ fun FiltersScreen(
                 // field picker in the editor lists them — so all title-based rules sit
                 // together, then author, and so on, instead of one flat mixed list.
                 val fieldGroups = FIELD_ORDER
-                    .map { field -> field to tabRows.filter { it.rule.conditions.firstOrNull()?.field == field } }
-                    .filter { (_, groupRows) -> groupRows.isNotEmpty() }
+                    .map { field -> field to tabRules.filter { it.conditions.firstOrNull()?.field == field } }
+                    .filter { (_, groupRules) -> groupRules.isNotEmpty() }
 
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp)) {
-                    fieldGroups.forEach { (field, groupRows) ->
+                    fieldGroups.forEach { (field, groupRules) ->
                         item(key = "header-$field", contentType = "header") {
                             Text(
                                 labelFor(field),
@@ -153,11 +137,11 @@ fun FiltersScreen(
                                 modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 8.dp),
                             )
                         }
-                        items(groupRows, key = { it.rule.id }, contentType = { "rule" }) { row ->
-                            val isBundled = row.rule.id.startsWith(FilterRepository.BUNDLED_ID_PREFIX)
+                        items(groupRules, key = { it.id }, contentType = { "rule" }) { rule ->
+                            val isBundled = rule.id.startsWith(FilterRepository.BUNDLED_ID_PREFIX)
                             Box(Modifier.fillMaxWidth()) {
                                 Card(
-                                    onClick = { editingRule = row.rule; showEditor = true },
+                                    onClick = { onOpenEditor(rule.id) },
                                     modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                                     // Zero elevation: a non-zero default forces Compose to composite
                                     // this card on an offscreen layer beneath its shadow on every
@@ -171,20 +155,20 @@ fun FiltersScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                                            RuleDescription(row.rule)
-                                            Text(
-                                                // The rule is drawn as soon as it's known; the
-                                                // match count arrives a moment later.
-                                                (row.matchCount?.let { "→ Ταιριάζει με $it άρθρα" } ?: "→ Υπολογισμός…") +
-                                                    (row.rule.scopeSourceId?.let { " · μόνο στην πηγή $it" } ?: ""),
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.padding(top = 4.dp),
-                                            )
+                                            RuleDescription(rule)
+                                            val scope = rule.scopeSourceId
+                                            if (scope != null) {
+                                                Text(
+                                                    "μόνο στην πηγή $scope",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.padding(top = 4.dp),
+                                                )
+                                            }
                                         }
                                         Switch(
-                                            checked = row.rule.enabled,
-                                            onCheckedChange = { checked -> viewModel.setEnabled(row.rule, checked) },
+                                            checked = rule.enabled,
+                                            onCheckedChange = { checked -> viewModel.setEnabled(rule, checked) },
                                         )
                                     }
                                 }

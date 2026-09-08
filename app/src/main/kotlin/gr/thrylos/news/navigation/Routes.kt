@@ -13,6 +13,10 @@ object Routes {
     const val SETTINGS_SOURCES = "settings/sources"
     const val SETTINGS_SOURCE_EDITOR = "settings/sources/editor?sourceId={sourceId}&kind={kind}"
     const val SETTINGS_FILTERS = "settings/filters"
+    const val SETTINGS_FILTER_EDITOR = "settings/filters/editor?ruleId={ruleId}"
+    /** Lists what the rule open in the editor matches; reads it from
+     *  [gr.thrylos.news.settings.filters.RuleMatchPreview], so it carries no argument. */
+    const val SETTINGS_FILTER_MATCHES = "settings/filters/matches"
     const val SETTINGS_SYNC = "settings/sync"
     const val SETTINGS_BACKUP = "settings/backup"
     const val SETTINGS_UPDATE_HISTORY = "settings/update-history"
@@ -23,6 +27,10 @@ object Routes {
     fun mediaViewer(articleId: String, index: Int) = "media/$articleId/$index"
     fun sourceProfile(sourceName: String) = "profile/source/${Uri.encode(sourceName)}"
     fun authorProfile(author: String) = "profile/author/${Uri.encode(author)}"
+    /** [ruleId] null adds a new rule rather than editing an existing one. */
+    fun filterEditor(ruleId: String? = null) =
+        if (ruleId == null) "settings/filters/editor" else "settings/filters/editor?ruleId=${Uri.encode(ruleId)}"
+
     fun sourceEditor(sourceId: String? = null, kind: String? = null): String {
         val params = listOfNotNull(
             sourceId?.let { "sourceId=$it" },

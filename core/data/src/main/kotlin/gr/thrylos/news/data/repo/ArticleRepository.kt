@@ -27,12 +27,6 @@ class ArticleRepository @Inject constructor(
 
     suspend fun getAllWithContentOnce(): List<Article> = dao.getAllWithContentOnce().map(ArticleMapper::toDomain)
 
-    /** Changes whenever an article is added, removed or re-extracted — the three things
-     *  that can change what a filter rule matches. Lets a caller skip re-running an
-     *  expensive whole-corpus pass when nothing relevant has moved. Read/bookmark flags
-     *  deliberately don't affect it: no rule looks at those. */
-    suspend fun corpusSignature(): Pair<Int, Long> = dao.articleCount() to dao.latestFetchedAt()
-
     /** Loads whole article bodies — only for the handful of ids asked for, and only
      *  from a caller that genuinely needs body text (a BODY/"Οπουδήποτε" filter rule).
      *  Chunked to stay under SQLite's 999-bound-variable limit. */
@@ -47,9 +41,9 @@ class ArticleRepository @Inject constructor(
         return result
     }
 
-    /** Full rows, bodies included. Only for the two callers that must evaluate rules
-     *  against every stored article's text at once (the Φίλτρα screen's match counts,
-     *  and the widget's one-shot refresh); anything list-shaped wants
+    /** Full rows, bodies included, and re-read on every write to the table. The one
+     *  caller left is the widget's refresh, which must apply filter rules — body rules
+     *  among them — to every stored article; anything list-shaped wants
      *  [observeAllSummaries] instead. */
     fun observeAllWithContent(): Flow<List<Article>> = dao.observeAll().map { it.map(ArticleMapper::toDomain) }
 

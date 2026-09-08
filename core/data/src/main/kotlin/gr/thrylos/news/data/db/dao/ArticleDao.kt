@@ -44,15 +44,6 @@ interface ArticleDao {
     @Query("SELECT * FROM articles ORDER BY COALESCE(publishedAt, fetchedAt) DESC")
     suspend fun getAllWithContentOnce(): List<ArticleEntity>
 
-    /** Cheap "has the article corpus changed?" probe: a count and the newest fetch
-     *  timestamp. Both are aggregates over one column, so they cost nothing next to
-     *  reading the rows themselves. */
-    @Query("SELECT COUNT(*) FROM articles")
-    suspend fun articleCount(): Int
-
-    @Query("SELECT COALESCE(MAX(fetchedAt), 0) FROM articles")
-    suspend fun latestFetchedAt(): Long
-
     /** Body text for a bounded, known set of articles — the only way a list screen
      *  should ever reach an article body (see [ArticleSummary]). Callers must chunk:
      *  SQLite caps a statement at 999 bound variables. */

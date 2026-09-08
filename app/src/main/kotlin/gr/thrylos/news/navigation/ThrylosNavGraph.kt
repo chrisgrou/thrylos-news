@@ -19,6 +19,8 @@ import gr.thrylos.news.reader.ReaderScreen
 import gr.thrylos.news.reader.media.MediaViewerScreen
 import gr.thrylos.news.settings.SettingsScreen
 import gr.thrylos.news.settings.backup.BackupScreen
+import gr.thrylos.news.settings.filters.FilterEditorScreen
+import gr.thrylos.news.settings.filters.FilterMatchesScreen
 import gr.thrylos.news.settings.filters.FiltersScreen
 import gr.thrylos.news.settings.sources.SourceEditorScreen
 import gr.thrylos.news.settings.sources.SourcesScreen
@@ -138,7 +140,30 @@ fun ThrylosNavGraph(
             SourceEditorScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.SETTINGS_FILTERS) {
-            FiltersScreen(onBack = { navController.popBackStack() })
+            FiltersScreen(
+                onBack = { navController.popBackStack() },
+                onOpenEditor = { ruleId -> navController.navigate(Routes.filterEditor(ruleId)) },
+            )
+        }
+        // Its own destination rather than a boolean inside FiltersScreen: as an inline
+        // branch, a swipe back popped the whole Φίλτρα destination and landed on the
+        // Settings root instead of returning to the rule list.
+        composable(
+            Routes.SETTINGS_FILTER_EDITOR,
+            arguments = listOf(
+                navArgument("ruleId") { type = NavType.StringType; nullable = true; defaultValue = null },
+            ),
+        ) {
+            FilterEditorScreen(
+                onBack = { navController.popBackStack() },
+                onOpenMatches = { navController.navigate(Routes.SETTINGS_FILTER_MATCHES) },
+            )
+        }
+        composable(Routes.SETTINGS_FILTER_MATCHES) {
+            FilterMatchesScreen(
+                onBack = { navController.popBackStack() },
+                onOpenArticle = { navController.navigate(Routes.reader(it)) },
+            )
         }
         composable(Routes.SETTINGS_SYNC) {
             SyncSettingsScreen(onBack = { navController.popBackStack() })
