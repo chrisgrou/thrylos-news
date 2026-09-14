@@ -42,9 +42,18 @@ fun ThrylosNavGraph(
             // landing on top of that restored stack isn't enough to guarantee the tapped
             // article is what's actually visible, so reset the stack outright instead of
             // just pushing on top of whatever might already be there.
+            //
+            // Deliberately no launchSingleTop here: NavController checks it against
+            // whatever destination is on top of the back stack *before* popUpTo is
+            // applied, so with the app already open on some other article, the reader
+            // destination was already on top — singleTop matched it and reused that
+            // existing back stack entry instead of pushing a new one, silently keeping
+            // its old articleId argument (and the ReaderViewModel/SavedStateHandle built
+            // from it). That's what made tapping a notification for a different article
+            // bring the app forward without ever switching off the one already open.
+            // popUpTo(FEED) alone already guarantees a single, fresh reader entry.
             navController.navigate(Routes.reader(pendingArticleId)) {
                 popUpTo(Routes.FEED)
-                launchSingleTop = true
             }
             onPendingArticleConsumed()
         }
