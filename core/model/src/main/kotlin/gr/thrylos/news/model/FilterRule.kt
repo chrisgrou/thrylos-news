@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 enum class FilterField { TITLE, BODY, AUTHOR, URL, SOURCE, ANYWHERE }
 
 @Serializable
-enum class FilterMatch { CONTAINS, REGEX, EXACT, NOT_CONTAINS }
+enum class FilterMatch { CONTAINS, REGEX, EXACT, NOT_CONTAINS, NOT_REGEX }
 
 @Serializable
 enum class FilterAction {

@@ -239,15 +239,16 @@ private fun ConditionBadge(condition: FilterCondition) {
     val palette = fieldPalette(condition.field)
     val displayValue = when {
         condition.field == FilterField.SOURCE && condition.match == FilterMatch.EXACT -> stripSourceSuffix(condition.value)
-        // A multi-value SOURCE or CONTAINS condition is stored as one REGEX-alternation
-        // pattern (see FilterEditor.kt's toCondition/decodeAlternationTerms) — decode it
-        // back into its plain terms here too, rather than showing the raw regex.
-        condition.match == FilterMatch.REGEX -> decodeAlternationTerms(condition.value)
+        // A multi-value SOURCE/CONTAINS/NOT_CONTAINS condition is stored as one
+        // REGEX(-alternation) pattern (see FilterEditor.kt's toCondition/
+        // decodeAlternationTerms) — decode it back into its plain terms here too,
+        // rather than showing the raw regex.
+        condition.match == FilterMatch.REGEX || condition.match == FilterMatch.NOT_REGEX -> decodeAlternationTerms(condition.value)
             ?.joinToString(" / ") { if (condition.field == FilterField.SOURCE) stripSourceSuffix(it) else it }
             ?: condition.value
         else -> condition.value
     }
-    val strike = condition.match == FilterMatch.NOT_CONTAINS
+    val strike = condition.match == FilterMatch.NOT_CONTAINS || condition.match == FilterMatch.NOT_REGEX
     Row(
         verticalAlignment = Alignment.CenterVertically,
         // Fixed height instead of IntrinsicSize.Min: the label/value Text children

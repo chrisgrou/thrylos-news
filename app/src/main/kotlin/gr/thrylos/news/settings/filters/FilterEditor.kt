@@ -252,9 +252,11 @@ private fun FilterEditorContent(
                                 onMatchChange = { conditions[index] = draft.copy(match = it) },
                                 onValueChange = { conditions[index] = draft.copy(value = it) },
                             )
-                            // Only for CONTAINS: an "Ή" list of terms, e.g. τίτλος περιέχει
-                            // "Νικολακόπουλος" Ή "Ζέρβας" as one condition instead of two rules.
-                            if (draft.match == FilterMatch.CONTAINS) {
+                            // An "Ή" list of terms — for CONTAINS, e.g. τίτλος περιέχει
+                            // "Νικολακόπουλος" Ή "Ζέρβας"; for NOT_CONTAINS, "τίτλος δεν
+                            // περιέχει Χ Ή Ψ" (κρύψε ό,τι δεν έχει ΚΑΝΕΝΑ από τα δύο) — either
+                            // way, one condition instead of a separate rule per term.
+                            if (draft.match == FilterMatch.CONTAINS || draft.match == FilterMatch.NOT_CONTAINS) {
                                 if (draft.extraValues.isNotEmpty()) {
                                     FlowRow(
                                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -443,12 +445,17 @@ private fun toCondition(draft: ConditionDraft): FilterCondition? {
             else -> FilterCondition(FilterField.SOURCE, FilterMatch.REGEX, sourceAlternationRegex(draft.selectedSources))
         }
     }
-    // CONTAINS with extra chips folds into one REGEX-alternation condition (same trick
-    // as SOURCE's multi-select above) rather than needing a separate rule per term.
+    // CONTAINS/NOT_CONTAINS with extra chips fold into one REGEX/NOT_REGEX-alternation
+    // condition (same trick as SOURCE's multi-select above) rather than needing a
+    // separate rule per term. NOT_REGEX negates the whole alternation match (De Morgan:
+    // "doesn't contain Χ or Ψ" = "contains neither Χ nor Ψ"), not just NOT_CONTAINS
+    // repeated per term — which is exactly the "hide everything except titles with Χ or
+    // Ψ" behavior a multi-value "δεν περιέχει" is meant to express.
     val terms = (draft.extraValues + draft.value).map { it.trim() }.filter { it.isNotEmpty() }.distinct()
     return when {
         terms.isEmpty() -> null
         draft.match == FilterMatch.CONTAINS && terms.size > 1 -> FilterCondition(draft.field, FilterMatch.REGEX, termsAlternationRegex(terms))
+        draft.match == FilterMatch.NOT_CONTAINS && terms.size > 1 -> FilterCondition(draft.field, FilterMatch.NOT_REGEX, termsAlternationRegex(terms))
         else -> FilterCondition(draft.field, draft.match, terms.first())
     }
 }
@@ -491,10 +498,11 @@ private fun toDraft(condition: FilterCondition, sources: List<String>): Conditio
         }
         return ConditionDraft(field = FilterField.SOURCE, match = condition.match, value = condition.value, selectedSources = selected)
     }
-    if (condition.match == FilterMatch.REGEX) {
+    if (condition.match == FilterMatch.REGEX || condition.match == FilterMatch.NOT_REGEX) {
         val terms = decodeAlternationTerms(condition.value)
         if (terms != null && terms.size > 1) {
-            return ConditionDraft(field = condition.field, match = FilterMatch.CONTAINS, value = "", extraValues = terms)
+            val match = if (condition.match == FilterMatch.REGEX) FilterMatch.CONTAINS else FilterMatch.NOT_CONTAINS
+            return ConditionDraft(field = condition.field, match = match, value = "", extraValues = terms)
         }
     }
     return ConditionDraft(field = condition.field, match = condition.match, value = condition.value)
@@ -506,6 +514,7 @@ private fun labelFor(match: FilterMatch) = when (match) {
     FilterMatch.CONTAINS -> "περιέχει"
     FilterMatch.NOT_CONTAINS -> "δεν περιέχει"
     FilterMatch.REGEX -> "regex"
+    FilterMatch.NOT_REGEX -> "δεν ταιριάζει regex"
     FilterMatch.EXACT -> "ακριβώς"
 }
 

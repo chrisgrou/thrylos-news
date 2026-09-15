@@ -117,6 +117,15 @@ object FilterEngine {
                 // (?U) makes \w/\d/\s Unicode-aware so patterns work against Greek text too.
                 Regex("(?U)" + normalizedValue, options).containsMatchIn(normalizedHaystack)
             }.getOrDefault(false)
+            // The negated counterpart — e.g. "hide everything from this source except
+            // titles matching one of these terms", built from a multi-value "δεν
+            // περιέχει" condition in the editor (see FilterEditor.kt's toCondition).
+            // Falls back to true (no match found) on an invalid pattern, mirroring
+            // REGEX's own "no match" fallback of false.
+            FilterMatch.NOT_REGEX -> runCatching {
+                val options = if (condition.caseSensitive) emptySet() else setOf(RegexOption.IGNORE_CASE)
+                !Regex("(?U)" + normalizedValue, options).containsMatchIn(normalizedHaystack)
+            }.getOrDefault(true)
         }
     }
 

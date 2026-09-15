@@ -84,6 +84,27 @@ class FilterEngineTest {
     }
 
     @Test
+    fun `not-regex hides everything from a source except titles matching one of the alternatives`() {
+        // Mirrors what the "δεν περιέχει" multi-value chips build in FilterEditor.kt:
+        // hide all articles from a source unless the title has at least one of the terms.
+        val rule = FilterRule(
+            id = "r5e",
+            conditions = listOf(
+                FilterCondition(FilterField.SOURCE, FilterMatch.EXACT, "Gazzetta"),
+                FilterCondition(FilterField.TITLE, FilterMatch.NOT_REGEX, "\\Qστοίχημα\\E|\\Qbwin\\E"),
+            ),
+            combinator = FilterCombinator.AND,
+            action = FilterAction.HIDE,
+        )
+        // Title contains "στοίχημα" -> NOT_REGEX condition is false -> rule doesn't match -> stays visible.
+        assertFalse(FilterEngine.isHidden(article, listOf(rule)))
+
+        // Title contains neither alternative -> NOT_REGEX condition is true -> hidden.
+        val otherTitle = article.copy(title = "Ολυμπιακός: ανακοίνωση για τον αγώνα")
+        assertTrue(FilterEngine.isHidden(otherTitle, listOf(rule)))
+    }
+
+    @Test
     fun `countMatches counts across a list`() {
         val rule = FilterRule("r6", FilterField.SOURCE, FilterMatch.CONTAINS, "gazzetta")
         assertEqualsInt(1, FilterEngine.countMatches(rule, listOf(article)))
