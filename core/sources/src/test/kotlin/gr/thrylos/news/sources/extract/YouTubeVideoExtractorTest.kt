@@ -70,6 +70,20 @@ class YouTubeVideoExtractorTest {
     }
 
     @Test
+    fun `extracts the video id from a Shorts URL just as well as a watch URL`() {
+        val stub = ArticleStub(
+            sourceId = plugin.id,
+            url = "https://www.youtube.com/shorts/vqOlaO3I0VU",
+            title = "Ένα Short",
+        )
+
+        val article = YouTubeVideoExtractor.extract(plugin, stub)
+
+        val video = article.content.filterIsInstance<ContentBlock.Video>().single()
+        assertEquals("https://www.youtube.com/embed/vqOlaO3I0VU", video.url)
+    }
+
+    @Test
     fun `fails clearly when the URL carries no recognizable video id`() {
         val stub = ArticleStub(sourceId = plugin.id, url = "https://www.youtube.com/watch", title = "Broken")
 

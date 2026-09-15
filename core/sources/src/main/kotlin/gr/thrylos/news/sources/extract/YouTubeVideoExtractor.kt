@@ -22,7 +22,11 @@ import gr.thrylos.news.sources.util.Ids
  */
 object YouTubeVideoExtractor {
 
-    private val VIDEO_ID_REGEX = Regex("""[?&]v=([\w-]{11})""")
+    /** Matches either a normal watch URL's `v=` query param or a Shorts URL's
+     *  `/shorts/` path segment — a channel's feed mixes both freely, and a Short is
+     *  just a regular video (same id space, same embed URL) shown through a
+     *  different front-end path, not a different kind of video. */
+    private val VIDEO_ID_REGEX = Regex("""(?:[?&]v=|/shorts/)([\w-]{11})""")
 
     fun extract(plugin: SourcePlugin, stub: ArticleStub): Article {
         val canonicalUrl = UrlNormalizer.canonicalize(stub.url, plugin.urlRules)

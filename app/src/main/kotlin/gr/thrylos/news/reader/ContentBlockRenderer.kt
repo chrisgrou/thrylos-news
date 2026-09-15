@@ -277,13 +277,16 @@ private fun InlineVideoPlayer(url: String, pageUrl: String, modifier: Modifier =
 }
 
 private val YOUTUBE_EMBED_ID = Regex("""/embed/([\w-]{11})""")
-private val YOUTUBE_WATCH_ID = Regex("""[?&]v=([\w-]{11})""")
+// Matches either a normal watch URL's v= query param or a Shorts URL's /shorts/
+// path segment — a channel-sourced article's own URL (see YouTubeVideoExtractor)
+// can be either, a Short being just a regular video shown through a different path.
+private val YOUTUBE_WATCH_ID = Regex("""(?:[?&]v=|/shorts/)([\w-]{11})""")
 
-/** Non-null only when [pageUrl] is itself the YouTube watch page for the exact video
- *  [url] embeds — see [InlineVideoPlayer]'s doc for why that case needs different
- *  handling than a video embedded in a third-party article. */
+/** Non-null only when [pageUrl] is itself the YouTube watch (or Shorts) page for the
+ *  exact video [url] embeds — see [InlineVideoPlayer]'s doc for why that case needs
+ *  different handling than a video embedded in a third-party article. */
 private fun selfWatchUrl(url: String, pageUrl: String): String? {
-    if (!pageUrl.contains("youtube.com/watch", ignoreCase = true)) return null
+    if (!pageUrl.contains("youtube.com/watch", ignoreCase = true) && !pageUrl.contains("youtube.com/shorts/", ignoreCase = true)) return null
     val embedId = YOUTUBE_EMBED_ID.find(url)?.groupValues?.get(1) ?: return null
     val watchId = YOUTUBE_WATCH_ID.find(pageUrl)?.groupValues?.get(1) ?: return null
     return pageUrl.takeIf { embedId == watchId }
