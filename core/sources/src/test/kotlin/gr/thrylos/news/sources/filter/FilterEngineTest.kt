@@ -79,7 +79,11 @@ class FilterEngineTest {
 
     @Test
     fun `regex rule matches`() {
-        val rule = FilterRule("r5", FilterField.TITLE, FilterMatch.REGEX, "στοίχημ\\w+")
+        // No \w/\d/\s here on purpose: the engine no longer sets the (?U) inline flag
+        // that used to make those Unicode-aware (see FilterEngine.matchValue) — it was
+        // found to throw on at least one real Android build, silently breaking every
+        // REGEX/NOT_REGEX condition. `.` already matches Greek letters with no flag.
+        val rule = FilterRule("r5", FilterField.TITLE, FilterMatch.REGEX, "στοίχημ.+")
         assertTrue(FilterEngine.matches(rule, article))
     }
 

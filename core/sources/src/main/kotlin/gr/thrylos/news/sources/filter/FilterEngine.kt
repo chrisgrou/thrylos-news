@@ -112,10 +112,18 @@ object FilterEngine {
             FilterMatch.EXACT -> {
                 if (condition.caseSensitive) normalizedHaystack == normalizedValue else normalizedHaystack.equals(normalizedValue, ignoreCase = true)
             }
+            // No (?U) inline flag: it only matters for \w/\d/\s matching Unicode letters
+            // in a hand-written regex, which neither of the patterns this app generates
+            // itself (SOURCE's and CONTAINS/NOT_CONTAINS's own `Pattern.quote`-based
+            // alternation — see FilterEditor.kt) ever uses. On-device testing found it
+            // reliably threw a PatternSyntaxException on at least one real Android build,
+            // which — caught by runCatching below — silently made every REGEX condition
+            // never match, and, worse, every NOT_REGEX condition match *everything*
+            // (its failure fallback is the opposite one, since "no match found" negated
+            // is true) regardless of the pattern's actual content.
             FilterMatch.REGEX -> runCatching {
                 val options = if (condition.caseSensitive) emptySet() else setOf(RegexOption.IGNORE_CASE)
-                // (?U) makes \w/\d/\s Unicode-aware so patterns work against Greek text too.
-                Regex("(?U)" + normalizedValue, options).containsMatchIn(normalizedHaystack)
+                Regex(normalizedValue, options).containsMatchIn(normalizedHaystack)
             }.getOrDefault(false)
             // The negated counterpart — e.g. "hide everything from this source except
             // titles matching one of these terms", built from a multi-value "δεν
@@ -124,7 +132,7 @@ object FilterEngine {
             // REGEX's own "no match" fallback of false.
             FilterMatch.NOT_REGEX -> runCatching {
                 val options = if (condition.caseSensitive) emptySet() else setOf(RegexOption.IGNORE_CASE)
-                !Regex("(?U)" + normalizedValue, options).containsMatchIn(normalizedHaystack)
+                !Regex(normalizedValue, options).containsMatchIn(normalizedHaystack)
             }.getOrDefault(true)
         }
     }
