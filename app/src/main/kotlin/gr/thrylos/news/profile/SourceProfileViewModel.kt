@@ -8,6 +8,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import gr.thrylos.news.data.repo.ArticleRepository
 import gr.thrylos.news.data.repo.SourceRepository
 import gr.thrylos.news.data.repo.SourceWithPlugin
+import gr.thrylos.news.data.sync.SyncScheduler
 import gr.thrylos.news.feed.ArticleListCursor
 import gr.thrylos.news.model.Article
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,6 +29,7 @@ class SourceProfileViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val articleRepository: ArticleRepository,
     private val sourceRepository: SourceRepository,
+    private val syncScheduler: SyncScheduler,
     private val cursor: ArticleListCursor,
 ) : ViewModel() {
 
@@ -46,8 +48,18 @@ class SourceProfileViewModel @Inject constructor(
         .map { list -> list.filter { it.name == sourceName } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val isSyncing: StateFlow<Boolean> = syncScheduler.observeSourceSyncing()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     fun setCursorContext(ids: List<String>) {
         cursor.setContext(ids)
+    }
+
+    /** Refreshes only this source's plugin(s) — not every other enabled source too,
+     *  the way the feed's own "Ανανέωση" does. */
+    fun refresh() {
+        val ids = members.value.map { it.id }.toSet()
+        if (ids.isNotEmpty()) syncScheduler.syncSource(ids)
     }
 
     fun deleteSource() {

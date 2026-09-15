@@ -16,8 +16,10 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -55,6 +57,7 @@ fun SourceProfileScreen(
     val articles by viewModel.articles.collectAsStateWithLifecycle()
     val authors by viewModel.authors.collectAsStateWithLifecycle()
     val members by viewModel.members.collectAsStateWithLifecycle()
+    val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
     var selectedAuthor by remember { mutableStateOf<String?>(null) }
     var authorMenuExpanded by remember { mutableStateOf(false) }
     var editMenuExpanded by remember { mutableStateOf(false) }
@@ -69,6 +72,13 @@ fun SourceProfileScreen(
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Πίσω") } },
                 actions = {
                     if (members.isNotEmpty()) {
+                        IconButton(onClick = viewModel::refresh, enabled = !isSyncing) {
+                            if (isSyncing) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Filled.Refresh, contentDescription = "Ανανέωση")
+                            }
+                        }
                         IconButton(onClick = { if (members.size == 1) onEditSource(members.first().id) else editMenuExpanded = true }) {
                             Icon(Icons.Filled.Edit, contentDescription = "Επεξεργασία")
                         }

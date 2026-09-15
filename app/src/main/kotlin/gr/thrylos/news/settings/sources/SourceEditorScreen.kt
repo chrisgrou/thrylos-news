@@ -24,10 +24,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -35,6 +38,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import gr.thrylos.news.sources.filter.FilterEngine
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,6 +80,25 @@ fun SourceEditorScreen(
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false),
             )
 
+            // Only for a kind="youtube" plugin — a structured control bolted onto an
+            // otherwise free-text editor, for the one setting common enough to deserve
+            // a toggle rather than hand-editing JSON. Reads/writes discovery.excludeShorts
+            // straight out of the live text (best-effort — hidden if that text doesn't
+            // currently parse) rather than tracking separate state, so it never drifts
+            // from what the field actually holds, including someone editing it by hand.
+            if (remember(json) { isYouTubePlugin(json) }) {
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Εμφάνιση Shorts", modifier = Modifier.weight(1f))
+                    Switch(
+                        checked = remember(json) { showShortsFrom(json) },
+                        onCheckedChange = { viewModel.updateJson(withShowShorts(json, it)) },
+                    )
+                }
+            }
+
             if (errors.isNotEmpty()) {
                 Card(
                     Modifier.fillMaxWidth().padding(top = 10.dp),
@@ -94,6 +123,29 @@ fun SourceEditorScreen(
             TestResultCard(testState)
         }
     }
+}
+
+private fun isYouTubePlugin(json: String): Boolean =
+    runCatching { Json.parseToJsonElement(json).jsonObject["kind"]?.jsonPrimitive?.contentOrNull }.getOrNull() == "youtube"
+
+private fun showShortsFrom(json: String): Boolean =
+    !(runCatching { Json.parseToJsonElement(json).jsonObject["discovery"]?.jsonObject?.get("excludeShorts")?.jsonPrimitive?.booleanOrNull }
+        .getOrNull() ?: false)
+
+private val PRETTY_PLUGIN_JSON = Json { prettyPrint = true; prettyPrintIndent = "  " }
+
+/** Flips discovery.excludeShorts in place and re-serializes — reformats the whole
+ *  document (this is a structured edit, not a text patch), but only ever runs when
+ *  the text already parses as valid JSON (the toggle is hidden otherwise), so that's
+ *  always a no-op on content, just formatting. Falls back to leaving [json] untouched
+ *  if the shape is ever not what's expected — the toggle shouldn't be able to corrupt
+ *  a document it can't fully understand. */
+private fun withShowShorts(json: String, showShorts: Boolean): String {
+    val root = runCatching { Json.parseToJsonElement(json).jsonObject }.getOrNull() ?: return json
+    val discovery = (root["discovery"] as? JsonObject) ?: return json
+    val newDiscovery = JsonObject(discovery + ("excludeShorts" to JsonPrimitive(!showShorts)))
+    val newRoot = JsonObject(root + ("discovery" to newDiscovery))
+    return PRETTY_PLUGIN_JSON.encodeToString(JsonObject.serializer(), newRoot)
 }
 
 @Composable

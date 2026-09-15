@@ -45,6 +45,10 @@ private const val MAX_REEXTRACT_PER_SOURCE = 5
  *  broken. A genuine, fully-extracted article is essentially always longer than this. */
 private const val MIN_BODY_CHARS = 400
 
+/** WorkManager input key for [SyncWorker.doWork] — a set of source ids to sync,
+ *  instead of every enabled source. See [gr.thrylos.news.data.sync.SyncScheduler.syncSource]. */
+const val KEY_SOURCE_IDS = "sourceIds"
+
 @HiltWorker
 class SyncWorker @AssistedInject constructor(
     @Assisted context: Context,
@@ -69,7 +73,12 @@ class SyncWorker @AssistedInject constructor(
             return@withContext Result.success()
         }
 
+        // A source's own manual refresh (SyncScheduler.syncSource) scopes this to just
+        // that source's plugin(s) instead of every enabled one — absent for the
+        // regular scheduled/pull-to-refresh sync, which still covers everything.
+        val sourceIdFilter = inputData.getStringArray(KEY_SOURCE_IDS)?.toSet()
         val plugins = sourceRepository.getEnabledPlugins()
+            .let { all -> if (sourceIdFilter != null) all.filter { it.id in sourceIdFilter } else all }
         val filters = filterRepository.getEnabled()
         val semaphore = Semaphore(MAX_CONCURRENT_SOURCES)
 

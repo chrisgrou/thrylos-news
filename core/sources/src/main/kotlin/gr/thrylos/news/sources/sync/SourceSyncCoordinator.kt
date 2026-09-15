@@ -27,6 +27,7 @@ class SourceSyncCoordinator(
         val stubs = discovery.discover(plugin, http)
         return stubs
             .map { it.copy(url = UrlNormalizer.resolve(plugin.discovery.url, it.url)) }
+            .filterNot { plugin.discovery.excludeShorts && "/shorts/" in it.url }
             .filter { UrlNormalizer.isAllowed(it.url, plugin.urlRules) }
             .distinctBy { UrlNormalizer.canonicalize(it.url, plugin.urlRules) }
             .filterNot { UrlNormalizer.canonicalize(it.url, plugin.urlRules) in knownCanonicalUrls }

@@ -12,7 +12,8 @@ object Routes {
     const val SETTINGS = "settings"
     const val SETTINGS_SOURCES = "settings/sources"
     const val SETTINGS_SOURCES_ADD_YOUTUBE = "settings/sources/add-youtube"
-    const val SETTINGS_SOURCE_EDITOR = "settings/sources/editor?sourceId={sourceId}&kind={kind}&ytName={ytName}&ytChannelId={ytChannelId}"
+    const val SETTINGS_SOURCE_EDITOR =
+        "settings/sources/editor?sourceId={sourceId}&kind={kind}&ytName={ytName}&ytChannelId={ytChannelId}&ytExcludeShorts={ytExcludeShorts}"
     const val SETTINGS_FILTERS = "settings/filters"
     const val SETTINGS_FILTER_EDITOR = "settings/filters/editor?ruleId={ruleId}"
     /** Lists what the rule open in the editor matches; reads it from
@@ -40,12 +41,16 @@ object Routes {
          *  so the source editor doesn't need to know how that resolution happened. */
         ytName: String? = null,
         ytChannelId: String? = null,
+        /** Also youtube-only — the "Εμφάνιση Shorts" toggle's value, carried through
+         *  so the pre-filled template reflects what was chosen on the resolve screen. */
+        ytExcludeShorts: Boolean? = null,
     ): String {
         val params = listOfNotNull(
             sourceId?.let { "sourceId=$it" },
             kind?.let { "kind=$it" },
             ytName?.let { "ytName=${Uri.encode(it)}" },
             ytChannelId?.let { "ytChannelId=${Uri.encode(it)}" },
+            ytExcludeShorts?.let { "ytExcludeShorts=$it" },
         )
         return if (params.isEmpty()) "settings/sources/editor" else "settings/sources/editor?${params.joinToString("&")}"
     }

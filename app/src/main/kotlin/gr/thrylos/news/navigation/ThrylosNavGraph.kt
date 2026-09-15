@@ -149,17 +149,19 @@ fun ThrylosNavGraph(
         composable(Routes.SETTINGS_SOURCES_ADD_YOUTUBE) {
             AddYouTubeChannelScreen(
                 onBack = { navController.popBackStack() },
-                onResolved = { name, channelId ->
+                onResolved = { name, channelId, showShorts ->
                     // Pops this resolve step off the stack too, not just itself: from
                     // the editor, back should return straight to the sources list
                     // (where "Νέα πηγή" was tapped), the same as every other kind —
                     // not back through a resolve screen there's nothing left to do on.
-                    navController.navigate(Routes.sourceEditor(kind = "youtube", ytName = name, ytChannelId = channelId)) {
+                    navController.navigate(
+                        Routes.sourceEditor(kind = "youtube", ytName = name, ytChannelId = channelId, ytExcludeShorts = !showShorts),
+                    ) {
                         popUpTo(Routes.SETTINGS_SOURCES)
                     }
                 },
-                onManual = {
-                    navController.navigate(Routes.sourceEditor(kind = "youtube")) {
+                onManual = { showShorts ->
+                    navController.navigate(Routes.sourceEditor(kind = "youtube", ytExcludeShorts = !showShorts)) {
                         popUpTo(Routes.SETTINGS_SOURCES)
                     }
                 },
@@ -172,6 +174,7 @@ fun ThrylosNavGraph(
                 navArgument("kind") { type = NavType.StringType; nullable = true; defaultValue = null },
                 navArgument("ytName") { type = NavType.StringType; nullable = true; defaultValue = null },
                 navArgument("ytChannelId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("ytExcludeShorts") { type = NavType.StringType; nullable = true; defaultValue = null },
             ),
         ) {
             SourceEditorScreen(onBack = { navController.popBackStack() })

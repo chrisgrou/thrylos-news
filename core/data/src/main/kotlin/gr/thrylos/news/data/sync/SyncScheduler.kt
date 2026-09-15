@@ -14,6 +14,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import androidx.work.workDataOf
 import gr.thrylos.news.model.RefreshInterval
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -23,6 +24,7 @@ import javax.inject.Singleton
 
 private const val PERIODIC_WORK_NAME = "gr.thrylos.news.periodic_sync"
 private const val MANUAL_WORK_NAME = "gr.thrylos.news.manual_sync"
+private const val SOURCE_WORK_NAME = "gr.thrylos.news.manual_source_sync"
 private const val ALARM_REQUEST_CODE = 4201
 
 /** WorkManager's PeriodicWorkRequest enforces a 15-minute minimum interval. */
@@ -74,6 +76,25 @@ class SyncScheduler @Inject constructor(
     /** True while the manual sync triggered by [syncNow] is enqueued or running. */
     fun observeSyncing(): Flow<Boolean> =
         WorkManager.getInstance(context).getWorkInfosForUniqueWorkFlow(MANUAL_WORK_NAME)
+            .map { infos -> infos.any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.RUNNING } }
+
+    /** Manual refresh scoped to one source (or a group of plugins sharing a display
+     *  name) — a source's own profile screen, rather than "Ανανέωση" pulling in every
+     *  other enabled source too. Same REPLACE-not-KEEP reasoning as [syncNow]: an
+     *  explicit tap should always start a fresh run. */
+    fun syncSource(sourceIds: Set<String>) {
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            SOURCE_WORK_NAME,
+            ExistingWorkPolicy.REPLACE,
+            OneTimeWorkRequestBuilder<SyncWorker>()
+                .setInputData(workDataOf(KEY_SOURCE_IDS to sourceIds.toTypedArray()))
+                .build(),
+        )
+    }
+
+    /** True while the refresh triggered by [syncSource] is enqueued or running. */
+    fun observeSourceSyncing(): Flow<Boolean> =
+        WorkManager.getInstance(context).getWorkInfosForUniqueWorkFlow(SOURCE_WORK_NAME)
             .map { infos -> infos.any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.RUNNING } }
 
     private fun alarmPendingIntent(): PendingIntent {

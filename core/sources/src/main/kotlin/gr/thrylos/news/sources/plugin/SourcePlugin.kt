@@ -40,6 +40,11 @@ data class Discovery(
     val type: DiscoveryType,
     val url: String,
     val maxItems: Int = 40,
+    /** Only meaningful for [SourceKind.YOUTUBE]: a channel's video feed mixes in
+     *  Shorts alongside regular uploads, shaped as `/shorts/ID` URLs rather than
+     *  `watch?v=ID` — this drops them from discovery entirely rather than syncing
+     *  them as articles. Ignored for every other [SourceKind]. */
+    val excludeShorts: Boolean = false,
 )
 
 @Serializable

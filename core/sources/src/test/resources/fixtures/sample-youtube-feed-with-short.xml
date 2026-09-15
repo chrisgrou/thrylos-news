@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns:media="http://search.yahoo.com/mrss/" xmlns="http://www.w3.org/2005/Atom">
+  <title>Demo Channel</title>
+  <link rel="alternate" href="https://www.youtube.com/channel/UCdemo"/>
+  <entry>
+    <id>yt:video:regular12345</id>
+    <yt:videoId>regular12345</yt:videoId>
+    <title>Κανονικό video</title>
+    <link rel="alternate" href="https://www.youtube.com/watch?v=regular12345"/>
+    <published>2026-01-05T18:30:00+00:00</published>
+    <media:group>
+      <media:thumbnail url="https://i.ytimg.com/vi/regular12345/hqdefault.jpg"/>
+      <media:description>Ένα κανονικό video.</media:description>
+    </media:group>
+  </entry>
+  <entry>
+    <id>yt:video:short6789012</id>
+    <yt:videoId>short6789012</yt:videoId>
+    <title>Ένα Short</title>
+    <link rel="alternate" href="https://www.youtube.com/shorts/short6789012"/>
+    <published>2026-01-06T09:00:00+00:00</published>
+    <media:group>
+      <media:thumbnail url="https://i.ytimg.com/vi/short6789012/hqdefault.jpg"/>
+      <media:description>Ένα Short.</media:description>
+    </media:group>
+  </entry>
+</feed>

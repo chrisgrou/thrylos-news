@@ -79,8 +79,10 @@ fun newFacebookPluginTemplate(): String = """
  *  a channel id is always plain ASCII, unlike a name (Greek, emoji, punctuation all
  *  fair game), and the plugin id schema only allows lowercase latin/digits/hyphens.
  *  [name] and [id] are still editable in the JSON field before saving, same as any
- *  other source. */
-fun newYouTubePluginTemplate(name: String, channelId: String): String {
+ *  other source. [excludeShorts] comes from the toggle on the resolve screen — spelled
+ *  out here rather than left to the schema default so it's visible (and still
+ *  editable) in the generated JSON either way. */
+fun newYouTubePluginTemplate(name: String, channelId: String, excludeShorts: Boolean): String {
     val id = "youtube-" + channelId.lowercase().replace('_', '-')
     val jsonName = JsonPrimitive(name).toString()
     return """
@@ -94,7 +96,8 @@ fun newYouTubePluginTemplate(name: String, channelId: String): String {
   "discovery": {
     "type": "rss",
     "url": "https://www.youtube.com/feeds/videos.xml?channel_id=$channelId",
-    "maxItems": 30
+    "maxItems": 30,
+    "excludeShorts": $excludeShorts
   },
   "article": {
     "title": "unused for kind=youtube — video titles come from the channel feed"
@@ -107,7 +110,7 @@ fun newYouTubePluginTemplate(name: String, channelId: String): String {
  *  channel id has to be found and pasted in by hand (channel → "Σχετικά" →
  *  "Κοινοποίηση καναλιού" → "Αντιγραφή αναγνωριστικού καναλιού"). The escape hatch
  *  from [AddYouTubeChannelScreen] when resolving fails. */
-fun newYouTubePluginTemplateManual(): String = """
+fun newYouTubePluginTemplateManual(excludeShorts: Boolean): String = """
 {
   "schemaVersion": 1,
   "id": "my-youtube-channel",
@@ -118,7 +121,8 @@ fun newYouTubePluginTemplateManual(): String = """
   "discovery": {
     "type": "rss",
     "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC...",
-    "maxItems": 30
+    "maxItems": 30,
+    "excludeShorts": $excludeShorts
   },
   "article": {
     "title": "unused for kind=youtube — video titles come from the channel feed"

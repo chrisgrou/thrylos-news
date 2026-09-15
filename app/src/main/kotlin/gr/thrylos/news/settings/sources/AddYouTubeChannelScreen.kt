@@ -18,6 +18,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -26,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -39,12 +41,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 @Composable
 fun AddYouTubeChannelScreen(
     onBack: () -> Unit,
-    onResolved: (name: String, channelId: String) -> Unit,
-    onManual: () -> Unit,
+    onResolved: (name: String, channelId: String, showShorts: Boolean) -> Unit,
+    onManual: (showShorts: Boolean) -> Unit,
     viewModel: AddYouTubeChannelViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var input by remember { mutableStateOf("") }
+    var showShorts by remember { mutableStateOf(true) }
 
     Scaffold(
         topBar = {
@@ -67,6 +70,14 @@ fun AddYouTubeChannelScreen(
                 modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
             )
 
+            Row(
+                Modifier.fillMaxWidth().padding(top = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Εμφάνιση Shorts", modifier = Modifier.weight(1f))
+                Switch(checked = showShorts, onCheckedChange = { showShorts = it })
+            }
+
             Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Button(
                     onClick = { viewModel.resolve(input) },
@@ -77,9 +88,9 @@ fun AddYouTubeChannelScreen(
                 }
             }
 
-            ResolveResultCard(state = state, onAdd = onResolved)
+            ResolveResultCard(state = state, onAdd = { name, channelId -> onResolved(name, channelId, showShorts) })
 
-            TextButton(onClick = onManual, modifier = Modifier.padding(top = 20.dp)) {
+            TextButton(onClick = { onManual(showShorts) }, modifier = Modifier.padding(top = 20.dp)) {
                 Text("Χειροκίνητα (JSON) — αν δεν βρίσκεται αυτόματα")
             }
         }

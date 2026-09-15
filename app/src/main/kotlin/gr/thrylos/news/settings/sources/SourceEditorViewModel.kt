@@ -72,7 +72,12 @@ class SourceEditorViewModel @Inject constructor(
             kind == "youtube" -> {
                 val name = savedStateHandle.get<String>("ytName")
                 val channelId = savedStateHandle.get<String>("ytChannelId")
-                if (name != null && channelId != null) newYouTubePluginTemplate(name, channelId) else newYouTubePluginTemplateManual()
+                val excludeShorts = savedStateHandle.get<String>("ytExcludeShorts")?.toBooleanStrictOrNull() ?: false
+                if (name != null && channelId != null) {
+                    newYouTubePluginTemplate(name, channelId, excludeShorts)
+                } else {
+                    newYouTubePluginTemplateManual(excludeShorts)
+                }
             }
             else -> newPluginTemplate()
         }
