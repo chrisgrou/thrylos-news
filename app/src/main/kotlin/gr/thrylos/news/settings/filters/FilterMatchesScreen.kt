@@ -3,6 +3,7 @@ package gr.thrylos.news.settings.filters
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -33,6 +34,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import gr.thrylos.news.feed.stripSourceSuffix
+import gr.thrylos.news.sources.filter.FilterEngine
 
 /** The articles a rule catches, laid out exactly like a source's or an author's own
  *  article list — same rows, and tapping one opens it in the reader. */
@@ -44,6 +46,7 @@ fun FilterMatchesScreen(
     viewModel: FilterMatchesViewModel = hiltViewModel(),
 ) {
     val articles by viewModel.articles.collectAsStateWithLifecycle()
+    val rule by viewModel.rule.collectAsStateWithLifecycle() // TEMPORARY — see FilterEngine.debugConditionResults.
 
     Scaffold(
         topBar = {
@@ -83,7 +86,21 @@ fun FilterMatchesScreen(
                             }
                         },
                         headlineContent = { Text(article.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-                        supportingContent = { Text(stripSourceSuffix(article.sourceName)) },
+                        supportingContent = {
+                            Column {
+                                Text(stripSourceSuffix(article.sourceName))
+                                // TEMPORARY diagnostic — see FilterEngine.debugConditionResults.
+                                val r = rule
+                                if (r != null) {
+                                    val results = FilterEngine.debugConditionResults(r, article)
+                                    Text(
+                                        "DEBUG: " + r.conditions.zip(results).joinToString("  ") { (c, ok) -> "${c.field}=${ok}" },
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                }
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth().clickable {
                             viewModel.setCursorContext(list.map { it.id })
                             onOpenArticle(article.id)

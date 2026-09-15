@@ -155,6 +155,12 @@ object FilterEngine {
     fun isHighlighted(article: Article, rules: List<FilterRule>): Boolean =
         rules.any { it.action == FilterAction.HIGHLIGHT && matches(it, article) }
 
+    // TEMPORARY diagnostic — remove once the "δεν περιέχει" multi-value bug report is
+    // resolved. Exposes each condition's own boolean result for one article, so the
+    // rule-matches list can show *why* an article matched instead of just that it did.
+    fun debugConditionResults(rule: FilterRule, article: Article, bodyTextOverride: String? = null): List<Boolean> =
+        rule.conditions.map { matchesCondition(it, article, bodyTextOverride) }
+
     /** How many of [articles] this single rule would currently hide — used for the "→ κρύβει N άρθρα" preview in Settings. */
     fun countMatches(rule: FilterRule, articles: List<Article>): Int =
         articles.count { matches(rule, it) }

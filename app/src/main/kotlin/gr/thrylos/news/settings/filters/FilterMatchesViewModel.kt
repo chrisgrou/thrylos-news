@@ -23,6 +23,11 @@ class FilterMatchesViewModel @Inject constructor(
         .map { it?.articles }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    // TEMPORARY — see FilterEngine.debugConditionResults.
+    val rule: StateFlow<gr.thrylos.news.model.FilterRule?> = preview.matches
+        .map { it?.rule }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     /** Same as every other article list: opening one makes the rest swipeable in the
      *  reader instead of stranding it on a single article. */
     fun setCursorContext(ids: List<String>) {
