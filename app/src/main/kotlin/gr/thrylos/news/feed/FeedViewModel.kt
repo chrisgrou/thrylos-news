@@ -14,6 +14,7 @@ import gr.thrylos.news.model.FilterRule
 import gr.thrylos.news.model.MatchStatus
 import gr.thrylos.news.model.SyncPrefs
 import gr.thrylos.news.sources.filter.FilterEngine
+import gr.thrylos.news.sources.plugin.SourceKind
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -31,8 +32,11 @@ fun stripSourceSuffix(name: String): String = name.substringBefore(" — ").trim
 /** Displayed source "chip". Two plugins sharing the same [name] (e.g. Sportal's
  *  separate football/basketball scrapers) collapse into a single chip whose
  *  selection filters by any of [memberSourceIds] — so the feed shows them as
- *  one unified source even though they're distinct plugins under the hood. */
-data class SourceChip(val name: String, val memberSourceIds: Set<String>)
+ *  one unified source even though they're distinct plugins under the hood. [kind]
+ *  is whichever member's is found first — collapsed sources are always the same
+ *  kind as each other in practice (a site plugin never shares a display name with
+ *  a YouTube one). */
+data class SourceChip(val name: String, val memberSourceIds: Set<String>, val kind: SourceKind)
 
 data class FeedItem(
     val article: Article,
@@ -144,7 +148,9 @@ class FeedViewModel @Inject constructor(
         selectedSourceName,
         optimisticReadIds,
     ) { articles, filters, sources, sourceName, optimisticIds ->
-        val chips = sources.groupBy { it.name }.map { (name, group) -> SourceChip(name, group.map { it.id }.toSet()) }
+        val chips = sources.groupBy { it.name }.map { (name, group) ->
+            SourceChip(name, group.map { it.id }.toSet(), group.firstNotNullOfOrNull { it.plugin?.kind } ?: SourceKind.SITE)
+        }
         val selectedIds = chips.firstOrNull { it.name == sourceName }?.memberSourceIds
 
         // A BODY/ANYWHERE filter rule needs an article's full joined body text, which —

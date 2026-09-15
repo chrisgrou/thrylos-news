@@ -9,6 +9,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import gr.thrylos.news.data.repo.FilterRepository
 import gr.thrylos.news.data.repo.SourceRepository
 import gr.thrylos.news.model.FilterRule
+import gr.thrylos.news.sources.plugin.SourceKind
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,6 +26,11 @@ import javax.inject.Inject
 /** Long enough that typing a word doesn't re-scan the corpus per keystroke, short
  *  enough that the badge feels like it answers to what you just typed. */
 private const val PREVIEW_DEBOUNCE_MS = 350L
+
+/** A Πηγή condition's picker option — [kind] drives its icon, so a YouTube channel
+ *  or Facebook page reads as one at a glance in the list rather than looking like
+ *  a plain site. */
+data class SourceOption(val name: String, val kind: SourceKind)
 
 @HiltViewModel
 class FilterEditorViewModel @Inject constructor(
@@ -45,8 +51,12 @@ class FilterEditorViewModel @Inject constructor(
     private val _ready = MutableStateFlow(ruleId == null)
     val ready: StateFlow<Boolean> = _ready.asStateFlow()
 
-    val sourceNames: StateFlow<List<String>> = sourceRepository.observeAll()
-        .map { sources -> sources.map { it.name }.distinct().sorted() }
+    val sourceOptions: StateFlow<List<SourceOption>> = sourceRepository.observeAll()
+        .map { sources ->
+            sources.groupBy { it.name }
+                .map { (name, group) -> SourceOption(name, group.firstNotNullOfOrNull { it.plugin?.kind } ?: SourceKind.SITE) }
+                .sortedBy { it.name }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** How many articles the draft currently matches — null until the first pass ends. */

@@ -64,6 +64,7 @@ import gr.thrylos.news.model.FilterCondition
 import gr.thrylos.news.model.FilterField
 import gr.thrylos.news.model.FilterMatch
 import gr.thrylos.news.model.FilterRule
+import gr.thrylos.news.settings.sources.SourceKindIcon
 import java.util.UUID
 import java.util.regex.Pattern
 
@@ -88,7 +89,7 @@ fun FilterEditorScreen(
 ) {
     val ready by viewModel.ready.collectAsStateWithLifecycle()
     val initial by viewModel.initialRule.collectAsStateWithLifecycle()
-    val sources by viewModel.sourceNames.collectAsStateWithLifecycle()
+    val sources by viewModel.sourceOptions.collectAsStateWithLifecycle()
     val matchCount by viewModel.matchCount.collectAsStateWithLifecycle()
 
     // The drafts below are seeded from the stored rule exactly once, so nothing is
@@ -115,7 +116,7 @@ fun FilterEditorScreen(
 private fun FilterEditorContent(
     onBack: () -> Unit,
     onOpenMatches: () -> Unit,
-    sources: List<String>,
+    sources: List<SourceOption>,
     initial: FilterRule?,
     matchCount: Int?,
     onSave: (FilterRule) -> Unit,
@@ -124,7 +125,7 @@ private fun FilterEditorContent(
 ) {
     val conditions = remember {
         mutableStateListOf(
-            *(initial?.conditions?.map { toDraft(it, sources) }?.toTypedArray() ?: arrayOf(ConditionDraft())),
+            *(initial?.conditions?.map { toDraft(it, sources.map { option -> option.name }) }?.toTypedArray() ?: arrayOf(ConditionDraft())),
         )
     }
     var combinator by remember { mutableStateOf(initial?.combinator ?: FilterCombinator.AND) }
@@ -218,7 +219,8 @@ private fun FilterEditorContent(
                                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 ) {
-                                    sources.forEach { name ->
+                                    sources.forEach { option ->
+                                        val name = option.name
                                         val checked = name in draft.selectedSources
                                         FilterChip(
                                             selected = checked,
@@ -227,6 +229,7 @@ private fun FilterEditorContent(
                                                 conditions[index] = draft.copy(selectedSources = next)
                                             },
                                             label = { Text(stripSourceSuffix(name)) },
+                                            leadingIcon = { SourceKindIcon(option.kind) },
                                         )
                                     }
                                 }

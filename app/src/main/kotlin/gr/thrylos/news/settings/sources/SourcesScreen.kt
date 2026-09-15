@@ -87,8 +87,12 @@ fun SourcesScreen(
     }
 }
 
+/** Shared beyond this screen — the same icon marks a source everywhere one might be
+ *  picked from a list (the feed's source picker, a filter rule's Πηγή condition),
+ *  not just here, so a YouTube channel or Facebook page reads as one at a glance
+ *  instead of looking like a plain site. */
 @Composable
-private fun SourceKindIcon(kind: SourceKind) {
+fun SourceKindIcon(kind: SourceKind) {
     when (kind) {
         SourceKind.SITE -> Icon(Icons.Filled.Public, contentDescription = "Site")
         SourceKind.FACEBOOK -> Icon(Icons.Filled.ThumbUp, contentDescription = "Facebook")

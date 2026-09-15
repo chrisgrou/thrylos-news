@@ -1,6 +1,7 @@
 package gr.thrylos.news.feed
 
 import gr.thrylos.news.R
+import gr.thrylos.news.settings.sources.SourceKindIcon
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -261,10 +262,16 @@ private fun FeedFilterBar(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            val selectedKind = state.sources.firstOrNull { it.name == state.selectedSourceName }?.kind
             FilterChip(
                 selected = state.selectedSourceName != null,
                 onClick = onOpenSourcePicker,
                 label = { Text(state.selectedSourceName?.let(::stripSourceSuffix) ?: "Όλες οι πηγές") },
+                leadingIcon = if (selectedKind != null) {
+                    { SourceKindIcon(selectedKind) }
+                } else {
+                    null
+                },
                 trailingIcon = { Icon(Icons.Filled.ExpandMore, contentDescription = null) },
                 shape = FilterBarShape,
                 modifier = Modifier.height(FilterBarHeight),
@@ -380,6 +387,7 @@ private fun SourcePickerSheet(state: FeedUiState, onSelect: (String?) -> Unit, o
         )
         state.sources.forEach { source ->
             ListItem(
+                leadingContent = { SourceKindIcon(source.kind) },
                 headlineContent = { Text(stripSourceSuffix(source.name)) },
                 trailingContent = {
                     IconButton(onClick = { onOpenProfile(source.name) }) {
