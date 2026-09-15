@@ -75,4 +75,53 @@ class YouTubeChannelResolverTest {
 
         org.junit.jupiter.api.Assertions.assertTrue(error.message!!.contains("Δεν βρέθηκε κανάλι"))
     }
+
+    @Test
+    fun `sends the CONSENT cookie so an EU request skips the interstitial`() {
+        server.enqueue(MockResponse().setBody(channelPageHtml("UCGiTb1kleEoNRKPPhwBUDCg", "RedNews")))
+
+        resolver.resolve(server.url("/@REDSPORTS7").toString())
+
+        val recorded = server.takeRequest()
+        org.junit.jupiter.api.Assertions.assertTrue(recorded.getHeader("Cookie")?.contains("CONSENT=YES") == true)
+    }
+
+    @Test
+    fun `fails with a specific message when YouTube serves the consent wall instead of the channel`() {
+        server.enqueue(
+            MockResponse().setBody(
+                "<html><head><title>Before you continue to YouTube</title></head><body></body></html>",
+            ),
+        )
+
+        val error = assertThrows(IllegalStateException::class.java) {
+            resolver.resolve(server.url("/@REDSPORTS7").toString())
+        }
+
+        org.junit.jupiter.api.Assertions.assertTrue(error.message!!.contains("απορρήτου"))
+    }
+
+    @Test
+    fun `falls back to ytInitialData's channelMetadataRenderer when the tags aren't in the response`() {
+        // No canonical link, no og:title — only what a real channel page's embedded
+        // ytInitialData blob always carries. Includes a decoy channelId elsewhere on
+        // the page (e.g. a "featured channels" shelf) to prove the resolver reads the
+        // one specific, unambiguous field rather than the first UC... it finds.
+        val html = """
+            <!DOCTYPE html><html><head><title>bwinΣΠΟΡ FM 94.6 - YouTube</title></head>
+            <body>
+            <script>var ytInitialData = {"contents":{"twoColumnBrowseResultsRenderer":{"tabs":[]}},
+            "metadata":{"channelMetadataRenderer":{"title":"bwinΣΠΟΡ FM 94.6",
+            "description":"Contains \"quotes\" and {braces} in the description on purpose.",
+            "externalId":"UCsporfm9460000000001"}},
+            "header":{"c4TabbedHeaderRenderer":{"channelId":"UCdecoyDoNotUse00000001"}}};</script>
+            </body></html>
+        """.trimIndent()
+        server.enqueue(MockResponse().setBody(html))
+
+        val info = resolver.resolve(server.url("/@sporfm946").toString())
+
+        assertEquals("UCsporfm9460000000001", info.channelId)
+        assertEquals("bwinΣΠΟΡ FM 94.6", info.name)
+    }
 }
