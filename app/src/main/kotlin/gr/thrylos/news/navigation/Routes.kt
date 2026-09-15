@@ -15,7 +15,7 @@ object Routes {
     const val SETTINGS_SOURCE_EDITOR =
         "settings/sources/editor?sourceId={sourceId}&kind={kind}&ytName={ytName}&ytChannelId={ytChannelId}&ytExcludeShorts={ytExcludeShorts}"
     const val SETTINGS_FILTERS = "settings/filters"
-    const val SETTINGS_FILTER_EDITOR = "settings/filters/editor?ruleId={ruleId}"
+    const val SETTINGS_FILTER_EDITOR = "settings/filters/editor?ruleId={ruleId}&defaultAction={defaultAction}"
     /** Lists what the rule open in the editor matches; reads it from
      *  [gr.thrylos.news.settings.filters.RuleMatchPreview], so it carries no argument. */
     const val SETTINGS_FILTER_MATCHES = "settings/filters/matches"
@@ -29,9 +29,17 @@ object Routes {
     fun mediaViewer(articleId: String, index: Int) = "media/$articleId/$index"
     fun sourceProfile(sourceName: String) = "profile/source/${Uri.encode(sourceName)}"
     fun authorProfile(author: String) = "profile/author/${Uri.encode(author)}"
-    /** [ruleId] null adds a new rule rather than editing an existing one. */
-    fun filterEditor(ruleId: String? = null) =
-        if (ruleId == null) "settings/filters/editor" else "settings/filters/editor?ruleId=${Uri.encode(ruleId)}"
+    /** [ruleId] null adds a new rule rather than editing an existing one — in that
+     *  case [defaultAction] (a [gr.thrylos.news.model.FilterAction] name) preselects
+     *  the new rule's action to match whichever tab "Νέος κανόνας" was tapped from,
+     *  instead of always defaulting to "Απόκρυψη". Ignored when editing. */
+    fun filterEditor(ruleId: String? = null, defaultAction: String? = null): String {
+        val params = listOfNotNull(
+            ruleId?.let { "ruleId=${Uri.encode(it)}" },
+            defaultAction?.let { "defaultAction=$it" },
+        )
+        return if (params.isEmpty()) "settings/filters/editor" else "settings/filters/editor?${params.joinToString("&")}"
+    }
 
     fun sourceEditor(
         sourceId: String? = null,

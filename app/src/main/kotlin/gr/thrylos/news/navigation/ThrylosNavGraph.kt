@@ -182,7 +182,9 @@ fun ThrylosNavGraph(
         composable(Routes.SETTINGS_FILTERS) {
             FiltersScreen(
                 onBack = { navController.popBackStack() },
-                onOpenEditor = { ruleId -> navController.navigate(Routes.filterEditor(ruleId)) },
+                onOpenEditor = { ruleId, defaultAction ->
+                    navController.navigate(Routes.filterEditor(ruleId, defaultAction?.name))
+                },
             )
         }
         // Its own destination rather than a boolean inside FiltersScreen: as an inline
@@ -192,6 +194,7 @@ fun ThrylosNavGraph(
             Routes.SETTINGS_FILTER_EDITOR,
             arguments = listOf(
                 navArgument("ruleId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("defaultAction") { type = NavType.StringType; nullable = true; defaultValue = null },
             ),
         ) {
             FilterEditorScreen(

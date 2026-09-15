@@ -41,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
@@ -78,6 +79,12 @@ private data class ConditionDraft(
     var value: String = "",
     /** Only used when field == SOURCE: which of the known source names are checked. */
     var selectedSources: Set<String> = emptySet(),
+    /** Only meaningful together with match == CONTAINS on a non-SOURCE field: extra
+     *  terms added as chips, so one condition can match "τίτλος περιέχει Α Ή Β Ή Γ"
+     *  instead of needing a whole separate rule per term (mirrors what SOURCE already
+     *  does for picking several sources) — [toCondition] folds these plus [value]
+     *  into a single REGEX alternation condition when there's more than one term. */
+    var extraValues: List<String> = emptyList(),
 )
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -104,6 +111,7 @@ fun FilterEditorScreen(
         onOpenMatches = onOpenMatches,
         sources = sources,
         initial = initial,
+        defaultAction = viewModel.defaultAction,
         matchCount = matchCount,
         onSave = { rule -> viewModel.save(rule); onBack() },
         onDelete = { rule -> viewModel.delete(rule); onBack() },
@@ -118,6 +126,7 @@ private fun FilterEditorContent(
     onOpenMatches: () -> Unit,
     sources: List<SourceOption>,
     initial: FilterRule?,
+    defaultAction: FilterAction?,
     matchCount: Int?,
     onSave: (FilterRule) -> Unit,
     onDelete: (FilterRule) -> Unit,
@@ -129,7 +138,7 @@ private fun FilterEditorContent(
         )
     }
     var combinator by remember { mutableStateOf(initial?.combinator ?: FilterCombinator.AND) }
-    var action by remember { mutableStateOf(initial?.action ?: FilterAction.HIDE) }
+    var action by remember { mutableStateOf(initial?.action ?: defaultAction ?: FilterAction.HIDE) }
 
     fun draftRule(): FilterRule? {
         val valid = conditions.mapNotNull { toCondition(it) }
@@ -243,6 +252,37 @@ private fun FilterEditorContent(
                                 onMatchChange = { conditions[index] = draft.copy(match = it) },
                                 onValueChange = { conditions[index] = draft.copy(value = it) },
                             )
+                            // Only for CONTAINS: an "Ή" list of terms, e.g. τίτλος περιέχει
+                            // "Νικολακόπουλος" Ή "Ζέρβας" as one condition instead of two rules.
+                            if (draft.match == FilterMatch.CONTAINS) {
+                                if (draft.extraValues.isNotEmpty()) {
+                                    FlowRow(
+                                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    ) {
+                                        draft.extraValues.forEach { term ->
+                                            FilterChip(
+                                                selected = true,
+                                                onClick = { conditions[index] = draft.copy(extraValues = draft.extraValues - term) },
+                                                label = { Text(term) },
+                                                trailingIcon = {
+                                                    Icon(Icons.Filled.Close, contentDescription = "Αφαίρεση", modifier = Modifier.size(16.dp))
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+                                TextButton(
+                                    onClick = {
+                                        val term = draft.value.trim()
+                                        if (term.isNotEmpty()) conditions[index] = draft.copy(value = "", extraValues = draft.extraValues + term)
+                                    },
+                                    enabled = draft.value.isNotBlank(),
+                                ) {
+                                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Text("Προσθήκη τιμής (Ή)", modifier = Modifier.padding(start = 4.dp))
+                                }
+                            }
                         }
                     }
                 }
@@ -403,11 +443,35 @@ private fun toCondition(draft: ConditionDraft): FilterCondition? {
             else -> FilterCondition(FilterField.SOURCE, FilterMatch.REGEX, sourceAlternationRegex(draft.selectedSources))
         }
     }
-    return if (draft.value.isNotBlank()) FilterCondition(draft.field, draft.match, draft.value) else null
+    // CONTAINS with extra chips folds into one REGEX-alternation condition (same trick
+    // as SOURCE's multi-select above) rather than needing a separate rule per term.
+    val terms = (draft.extraValues + draft.value).map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+    return when {
+        terms.isEmpty() -> null
+        draft.match == FilterMatch.CONTAINS && terms.size > 1 -> FilterCondition(draft.field, FilterMatch.REGEX, termsAlternationRegex(terms))
+        else -> FilterCondition(draft.field, draft.match, terms.first())
+    }
 }
 
 private fun sourceAlternationRegex(names: Set<String>) =
     "^(" + names.joinToString("|") { Pattern.quote(it) } + ")$"
+
+/** Unanchored, unlike [sourceAlternationRegex]: this matches "the title contains any
+ *  of these terms", not "the whole string is exactly one of them". */
+private fun termsAlternationRegex(terms: List<String>) = terms.joinToString("|") { Pattern.quote(it) }
+
+/** The inverse of [termsAlternationRegex] — recognizes a REGEX condition this editor
+ *  generated (every alternative is a `Pattern.quote`d literal) so it round-trips back
+ *  into chips instead of falling back to a single free-text regex field. Returns null
+ *  for anything else, including a regex the user wrote by hand. */
+internal fun decodeAlternationTerms(pattern: String): List<String>? {
+    val terms = mutableListOf<String>()
+    for (part in pattern.split("|")) {
+        if (!part.startsWith("\\Q") || !part.endsWith("\\E")) return null
+        terms += part.removePrefix("\\Q").removeSuffix("\\E")
+    }
+    return terms
+}
 
 /** Reconstructs the editor's draft state from a saved condition — a SOURCE condition
  *  is either a single EXACT name or our own generated alternation regex; anything
@@ -426,6 +490,12 @@ private fun toDraft(condition: FilterCondition, sources: List<String>): Conditio
             else -> emptySet()
         }
         return ConditionDraft(field = FilterField.SOURCE, match = condition.match, value = condition.value, selectedSources = selected)
+    }
+    if (condition.match == FilterMatch.REGEX) {
+        val terms = decodeAlternationTerms(condition.value)
+        if (terms != null && terms.size > 1) {
+            return ConditionDraft(field = condition.field, match = FilterMatch.CONTAINS, value = "", extraValues = terms)
+        }
     }
     return ConditionDraft(field = condition.field, match = condition.match, value = condition.value)
 }

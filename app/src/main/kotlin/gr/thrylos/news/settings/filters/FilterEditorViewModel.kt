@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import gr.thrylos.news.data.repo.FilterRepository
 import gr.thrylos.news.data.repo.SourceRepository
+import gr.thrylos.news.model.FilterAction
 import gr.thrylos.news.model.FilterRule
 import gr.thrylos.news.sources.plugin.SourceKind
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +43,12 @@ class FilterEditorViewModel @Inject constructor(
 
     /** null when adding a rule rather than editing an existing one. */
     private val ruleId: String? = savedStateHandle.get<String>("ruleId")
+
+    /** Only meaningful when [ruleId] is null (adding a new rule) — which tab
+     *  "Νέος κανόνας" was tapped from, e.g. "SHOW_ONLY" when opened from Εμφάνιση,
+     *  so the new rule's action starts there instead of always at Απόκρυψη. */
+    val defaultAction: FilterAction? = savedStateHandle.get<String>("defaultAction")
+        ?.let { name -> runCatching { FilterAction.valueOf(name) }.getOrNull() }
 
     private val _initialRule = MutableStateFlow<FilterRule?>(null)
     val initialRule: StateFlow<FilterRule?> = _initialRule.asStateFlow()

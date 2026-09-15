@@ -40,6 +40,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,12 +70,26 @@ private val FIELD_ORDER = listOf(
 @Composable
 fun FiltersScreen(
     onBack: () -> Unit,
-    onOpenEditor: (ruleId: String?) -> Unit,
+    onOpenEditor: (ruleId: String?, defaultAction: FilterAction?) -> Unit,
     viewModel: FiltersViewModel = hiltViewModel(),
 ) {
     val loadedRules by viewModel.rules.collectAsStateWithLifecycle()
     val rules = loadedRules.orEmpty()
-    var selectedTab by remember { mutableStateOf(0) }
+    // Saveable (not plain remember): Navigation Compose fully disposes this
+    // composable's state while the rule editor is pushed on top of it, so a plain
+    // remember would always reset back to tab 0 ("Απόκρυψη") on the way back —
+    // rememberSaveable survives that round trip via the back stack entry's own
+    // saved-state registry.
+    var selectedTab by rememberSaveable { mutableStateOf(0) }
+
+    // Fixed category order (matching how the user asked for them, not the enum's
+    // declaration order); HIGHLIGHT has no editor entry anymore but still gets a
+    // tab if any legacy rule of that type exists. Computed here (not inside the
+    // Scaffold content lambda) so the FAB can also read the currently selected tab.
+    val tabOrder = listOf(FilterAction.HIDE, FilterAction.SHOW_ONLY, FilterAction.IMPORTANT) +
+        (if (rules.any { it.action == FilterAction.HIGHLIGHT }) listOf(FilterAction.HIGHLIGHT) else emptyList())
+    val clampedTab = selectedTab.coerceIn(0, tabOrder.lastIndex)
+    val currentTabAction = tabOrder[clampedTab]
 
     Scaffold(
         topBar = {
@@ -84,17 +99,12 @@ fun FiltersScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { onOpenEditor(null) }) { Icon(Icons.Filled.Add, contentDescription = "Νέος κανόνας") }
+            // New rules default to whichever tab "Νέος κανόνας" was tapped from
+            // (§ onOpenEditor), instead of always landing on "Απόκρυψη".
+            FloatingActionButton(onClick = { onOpenEditor(null, currentTabAction) }) { Icon(Icons.Filled.Add, contentDescription = "Νέος κανόνας") }
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            // Fixed category order (matching how the user asked for them, not the enum's
-            // declaration order); HIGHLIGHT has no editor entry anymore but still gets a
-            // tab if any legacy rule of that type exists.
-            val tabOrder = listOf(FilterAction.HIDE, FilterAction.SHOW_ONLY, FilterAction.IMPORTANT) +
-                (if (rules.any { it.action == FilterAction.HIGHLIGHT }) listOf(FilterAction.HIGHLIGHT) else emptyList())
-            val clampedTab = selectedTab.coerceIn(0, tabOrder.lastIndex)
-
             TabRow(selectedTabIndex = clampedTab) {
                 tabOrder.forEachIndexed { index, action ->
                     Tab(
@@ -142,7 +152,7 @@ fun FiltersScreen(
                             val isBundled = rule.id.startsWith(FilterRepository.BUNDLED_ID_PREFIX)
                             Box(Modifier.fillMaxWidth()) {
                                 Card(
-                                    onClick = { onOpenEditor(rule.id) },
+                                    onClick = { onOpenEditor(rule.id, null) },
                                     modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                                     // Zero elevation: a non-zero default forces Compose to composite
                                     // this card on an offscreen layer beneath its shadow on every
@@ -227,10 +237,15 @@ private fun RuleDescription(rule: FilterRule) {
 @Composable
 private fun ConditionBadge(condition: FilterCondition) {
     val palette = fieldPalette(condition.field)
-    val displayValue = if (condition.field == FilterField.SOURCE && condition.match == FilterMatch.EXACT) {
-        stripSourceSuffix(condition.value)
-    } else {
-        condition.value
+    val displayValue = when {
+        condition.field == FilterField.SOURCE && condition.match == FilterMatch.EXACT -> stripSourceSuffix(condition.value)
+        // A multi-value SOURCE or CONTAINS condition is stored as one REGEX-alternation
+        // pattern (see FilterEditor.kt's toCondition/decodeAlternationTerms) — decode it
+        // back into its plain terms here too, rather than showing the raw regex.
+        condition.match == FilterMatch.REGEX -> decodeAlternationTerms(condition.value)
+            ?.joinToString(" / ") { if (condition.field == FilterField.SOURCE) stripSourceSuffix(it) else it }
+            ?: condition.value
+        else -> condition.value
     }
     val strike = condition.match == FilterMatch.NOT_CONTAINS
     Row(
