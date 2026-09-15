@@ -88,9 +88,13 @@ class YouTubeChannelResolverTest {
 
     @Test
     fun `fails with a specific message when YouTube serves the consent wall instead of the channel`() {
+        // Detected by the confirm form's fixed action URL, not by the wall's own text
+        // — that text renders in whatever language the request asked for (Greek
+        // here), not necessarily English.
         server.enqueue(
             MockResponse().setBody(
-                "<html><head><title>Before you continue to YouTube</title></head><body></body></html>",
+                """<html><head><title>Πριν μεταβείτε στο YouTube</title></head>
+                   <body><form action="https://consent.youtube.com/save"></form></body></html>""",
             ),
         )
 
@@ -99,6 +103,17 @@ class YouTubeChannelResolverTest {
         }
 
         org.junit.jupiter.api.Assertions.assertTrue(error.message!!.contains("απορρήτου"))
+    }
+
+    @Test
+    fun `an unresolved response includes its title and length for diagnosis`() {
+        server.enqueue(MockResponse().setBody("<html><head><title>Κάτι άλλο</title></head><body></body></html>"))
+
+        val error = assertThrows(IllegalStateException::class.java) {
+            resolver.resolve(server.url("/@nobody").toString())
+        }
+
+        org.junit.jupiter.api.Assertions.assertTrue(error.message!!.contains("Κάτι άλλο"))
     }
 
     @Test

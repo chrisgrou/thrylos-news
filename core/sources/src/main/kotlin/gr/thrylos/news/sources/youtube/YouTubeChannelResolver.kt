@@ -50,12 +50,25 @@ class YouTubeChannelResolver(private val http: HttpFetcher = HttpFetcher()) {
         val html = runCatching { http.fetchText(url, YOUTUBE_HTTP_CONFIG) }
             .getOrElse { error("Δεν ήταν δυνατή η σύνδεση στο YouTube (${it.message?.take(120)}).") }
 
-        if (looksLikeConsentWall(html)) {
-            error("Το YouTube ζήτησε επιβεβαίωση απορρήτου αντί να δείξει το κανάλι — δοκίμασε ξανά σε λίγο, ή πρόσθεσε το κανάλι χειροκίνητα.")
-        }
+        resolveFromTags(html, url)?.let { return it }
+        resolveFromInitialData(html)?.let { return it }
 
-        return resolveFromTags(html, url) ?: resolveFromInitialData(html)
-            ?: error("Δεν βρέθηκε κανάλι YouTube σε '$input' — έλεγξε τον σύνδεσμο/handle.")
+        // Neither path found anything — say what actually came back instead of just
+        // "not found", so a real failure is diagnosable from the error text alone
+        // rather than needing the raw response handed over separately. The consent
+        // wall's own text is checked here rather than up front, language-independently
+        // (its confirm form always posts to consent.youtube.com regardless of UI
+        // language) — a first attempt at detecting it checked only for its English
+        // copy, which the wall never actually shows given this fetch's Greek
+        // Accept-Language header.
+        if (looksLikeConsentWall(html)) {
+            error("Το YouTube ζήτησε επιβεβαίωση απορρήτου (GDPR) αντί να δείξει το κανάλι — δοκίμασε ξανά, ή πρόσθεσε το κανάλι χειροκίνητα.")
+        }
+        val title = Jsoup.parse(html, url).title().ifBlank { "(χωρίς τίτλο)" }
+        error(
+            "Δεν βρέθηκε κανάλι YouTube σε '$input'. Η απάντηση του YouTube ήταν «$title» " +
+                "(${html.length} χαρακτήρες) — πιθανώς όχι η σελίδα του καναλιού. Δοκίμασε «Χειροκίνητα (JSON)».",
+        )
     }
 
     private fun resolveFromTags(html: String, url: String): YouTubeChannelInfo? {
@@ -83,10 +96,12 @@ class YouTubeChannelResolver(private val http: HttpFetcher = HttpFetcher()) {
         return YouTubeChannelInfo(channelId, name)
     }
 
-    private fun looksLikeConsentWall(html: String): Boolean {
-        val head = html.take(4000)
-        return head.contains("consent.youtube.com") || head.contains("Before you continue to YouTube")
-    }
+    /** Language-independent on purpose: the wall's own text renders in whatever
+     *  language the request asked for (Greek here, via HttpFetcher's
+     *  Accept-Language), but its confirm form always posts to this fixed URL
+     *  regardless — that's what a first attempt at this check, matching only the
+     *  wall's English copy, missed. */
+    private fun looksLikeConsentWall(html: String): Boolean = html.contains("consent.youtube.com")
 
     /** Normalizes anything a user might paste — a bare handle, `@handle`, a legacy
      *  `/c/`/`/user/` vanity URL, a full channel/video URL, or a raw channel id — to
