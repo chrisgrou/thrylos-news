@@ -237,7 +237,18 @@ private val IFRAME_EMBED_HOSTS = listOf(
  *  given video is verified to embed correctly in is the article's own page, since
  *  that's where it was captured from, so reproducing that origin is the closest thing
  *  to a guarantee available here without knowing the exact origin the video's owner
- *  actually allow-listed. */
+ *  actually allow-listed.
+ *
+ *  A video sourced straight from a YouTube channel (see YouTubeVideoExtractor) is a
+ *  different case entirely — there [pageUrl] isn't some other site's article, it's
+ *  the video's *own* watch page (there's no separate "hosting" page at all).
+ *  Wrapping it in an `<iframe>` under its own origin failed with a real YouTube
+ *  "Error 152", and for good reason: the iframe embed API expects a genuinely
+ *  different parent origin, and stays subject to the video owner's "allow embedding"
+ *  toggle regardless of origin — many channels turn that off on purpose to keep
+ *  viewers on YouTube itself. [selfWatchUrl] catches exactly this case and just
+ *  navigates to that real watch page directly instead of embedding anything, which
+ *  sidesteps both problems at once (not an embed, so neither applies). */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun InlineVideoPlayer(url: String, pageUrl: String, modifier: Modifier = Modifier) {
@@ -249,8 +260,13 @@ private fun InlineVideoPlayer(url: String, pageUrl: String, modifier: Modifier =
                 settings.domStorageEnabled = true
                 settings.mediaPlaybackRequiresUserGesture = false
                 webChromeClient = WebChromeClient()
-                val isIframeEmbed = IFRAME_EMBED_HOSTS.any { url.contains(it, ignoreCase = true) }
-                loadDataWithBaseURL(pageUrl, videoEmbedHtml(url, isIframeEmbed), "text/html", "utf-8", null)
+                val selfWatchUrl = selfWatchUrl(url, pageUrl)
+                if (selfWatchUrl != null) {
+                    loadUrl(selfWatchUrl)
+                } else {
+                    val isIframeEmbed = IFRAME_EMBED_HOSTS.any { url.contains(it, ignoreCase = true) }
+                    loadDataWithBaseURL(pageUrl, videoEmbedHtml(url, isIframeEmbed), "text/html", "utf-8", null)
+                }
             }
         },
         onRelease = { webView ->
@@ -258,6 +274,19 @@ private fun InlineVideoPlayer(url: String, pageUrl: String, modifier: Modifier =
             webView.destroy()
         },
     )
+}
+
+private val YOUTUBE_EMBED_ID = Regex("""/embed/([\w-]{11})""")
+private val YOUTUBE_WATCH_ID = Regex("""[?&]v=([\w-]{11})""")
+
+/** Non-null only when [pageUrl] is itself the YouTube watch page for the exact video
+ *  [url] embeds — see [InlineVideoPlayer]'s doc for why that case needs different
+ *  handling than a video embedded in a third-party article. */
+private fun selfWatchUrl(url: String, pageUrl: String): String? {
+    if (!pageUrl.contains("youtube.com/watch", ignoreCase = true)) return null
+    val embedId = YOUTUBE_EMBED_ID.find(url)?.groupValues?.get(1) ?: return null
+    val watchId = YOUTUBE_WATCH_ID.find(pageUrl)?.groupValues?.get(1) ?: return null
+    return pageUrl.takeIf { embedId == watchId }
 }
 
 private fun videoEmbedHtml(url: String, isIframeEmbed: Boolean): String {
