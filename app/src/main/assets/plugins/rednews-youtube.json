@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "rednews-youtube",
+  "name": "RedNews",
+  "homepage": "https://www.youtube.com/@REDSPORTS7",
+  "enabled": true,
+  "kind": "youtube",
+  "discovery": {
+    "type": "rss",
+    "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCGiTb1kleEoNRKPPhwBUDCg",
+    "maxItems": 30
+  },
+  "article": {
+    "title": "unused for kind=youtube — video titles come from the channel feed"
+  }
+}

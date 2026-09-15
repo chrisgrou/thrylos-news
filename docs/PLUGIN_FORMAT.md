@@ -45,6 +45,42 @@
 }
 ```
 
+## Κανάλι YouTube ως πηγή
+
+`"kind": "youtube"` δηλώνει ότι η πηγή είναι ένα κανάλι YouTube αντί για site.
+Δεν κατεβάζει/σκράπει καμία σελίδα — ένα video δεν έχει άρθρο-σελίδα να
+διαβαστεί (JS εφαρμογή, όχι στατικό HTML), οπότε το "άρθρο" χτίζεται απευθείας
+από τα δεδομένα του ίδιου του feed του καναλιού (τίτλος, thumbnail,
+περιγραφή, ημερομηνία). Γι' αυτό `discovery.type` είναι πάντα `"rss"`,
+δείχνοντας στο Atom feed του καναλιού:
+
+```json
+{
+  "schemaVersion": 1,
+  "id": "rednews-youtube",
+  "name": "RedNews",
+  "homepage": "https://www.youtube.com/@REDSPORTS7",
+  "kind": "youtube",
+  "discovery": {
+    "type": "rss",
+    "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCGiTb1kleEoNRKPPhwBUDCg",
+    "maxItems": 30
+  },
+  "article": { "title": "unused for kind=youtube" }
+}
+```
+
+`discovery.url` χρειάζεται το **channel ID** (ξεκινά με `UC...`), όχι το
+`@handle` — το YouTube δεν προσφέρει RSS feed με βάση το handle. Βρίσκεται
+από το κανάλι → «Σχετικά» → «Κοινοποίηση καναλιού» → «Αντιγραφή
+αναγνωριστικού καναλιού». Το `name` είναι το πραγματικό όνομα του καναλιού
+(π.χ. "RedNews"), ώστε αυτό να φαίνεται ως πηγή στην εφαρμογή — όχι το
+handle. Το `article.content` είναι προαιρετικό (παραλείπεται εντελώς, όπως
+στο παράδειγμα) — μόνο για `kind: "youtube"`, αφού δεν υπάρχει σελίδα να
+διαβαστεί. Το `article.title` παραμένει υποχρεωτικό πεδίο του schema αλλά
+δεν χρησιμοποιείται ποτέ σε αυτή την περίπτωση (οι τίτλοι των video έρχονται
+από το feed) — βάλε οποιαδήποτε τιμή.
+
 ## Πεδία
 
 | Πεδίο | Υποχρεωτικό | Περιγραφή |
