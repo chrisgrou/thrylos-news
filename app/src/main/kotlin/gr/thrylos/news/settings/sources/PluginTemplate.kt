@@ -1,5 +1,7 @@
 package gr.thrylos.news.settings.sources
 
+import kotlinx.serialization.json.JsonPrimitive
+
 /** Starter JSON shown when adding a brand-new source — filled in with placeholders
  * the user replaces with real selectors, then validates with "Δοκιμή". */
 fun newPluginTemplate(): String = """
@@ -67,5 +69,59 @@ fun newFacebookPluginTemplate(): String = """
     "delayMs": 800
   },
   "fallback": "none"
+}
+""".trimIndent()
+
+/** Starter JSON for a YouTube channel, given its real name and channel id — both
+ *  already resolved (see [AddYouTubeChannelScreen]/[gr.thrylos.news.sources.youtube.YouTubeChannelResolver])
+ *  from whatever handle or link the user pasted, so there's nothing left here to
+ *  guess or fill in by hand. [id] is derived from [channelId] rather than [name]:
+ *  a channel id is always plain ASCII, unlike a name (Greek, emoji, punctuation all
+ *  fair game), and the plugin id schema only allows lowercase latin/digits/hyphens.
+ *  [name] and [id] are still editable in the JSON field before saving, same as any
+ *  other source. */
+fun newYouTubePluginTemplate(name: String, channelId: String): String {
+    val id = "youtube-" + channelId.lowercase().replace('_', '-')
+    val jsonName = JsonPrimitive(name).toString()
+    return """
+{
+  "schemaVersion": 1,
+  "id": "$id",
+  "name": $jsonName,
+  "homepage": "https://www.youtube.com/channel/$channelId",
+  "enabled": true,
+  "kind": "youtube",
+  "discovery": {
+    "type": "rss",
+    "url": "https://www.youtube.com/feeds/videos.xml?channel_id=$channelId",
+    "maxItems": 30
+  },
+  "article": {
+    "title": "unused for kind=youtube — video titles come from the channel feed"
+  }
+}
+""".trimIndent()
+}
+
+/** Starter JSON for a YouTube channel when nothing could be auto-resolved — the
+ *  channel id has to be found and pasted in by hand (channel → "Σχετικά" →
+ *  "Κοινοποίηση καναλιού" → "Αντιγραφή αναγνωριστικού καναλιού"). The escape hatch
+ *  from [AddYouTubeChannelScreen] when resolving fails. */
+fun newYouTubePluginTemplateManual(): String = """
+{
+  "schemaVersion": 1,
+  "id": "my-youtube-channel",
+  "name": "Το κανάλι μου",
+  "homepage": "https://www.youtube.com/channel/UC...",
+  "enabled": true,
+  "kind": "youtube",
+  "discovery": {
+    "type": "rss",
+    "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC...",
+    "maxItems": 30
+  },
+  "article": {
+    "title": "unused for kind=youtube — video titles come from the channel feed"
+  }
 }
 """.trimIndent()

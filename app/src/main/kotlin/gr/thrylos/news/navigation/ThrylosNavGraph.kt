@@ -22,6 +22,7 @@ import gr.thrylos.news.settings.backup.BackupScreen
 import gr.thrylos.news.settings.filters.FilterEditorScreen
 import gr.thrylos.news.settings.filters.FilterMatchesScreen
 import gr.thrylos.news.settings.filters.FiltersScreen
+import gr.thrylos.news.settings.sources.AddYouTubeChannelScreen
 import gr.thrylos.news.settings.sources.SourceEditorScreen
 import gr.thrylos.news.settings.sources.SourcesScreen
 import gr.thrylos.news.settings.sync.SyncSettingsScreen
@@ -135,8 +136,33 @@ fun ThrylosNavGraph(
         composable(Routes.SETTINGS_SOURCES) {
             SourcesScreen(
                 onBack = { navController.popBackStack() },
-                onAddSource = { kind -> navController.navigate(Routes.sourceEditor(kind = kind)) },
+                onAddSource = { kind ->
+                    // A YouTube channel goes through a resolve step first — see
+                    // Routes.SETTINGS_SOURCES_ADD_YOUTUBE — rather than straight into
+                    // the JSON editor like every other kind.
+                    if (kind == "youtube") navController.navigate(Routes.SETTINGS_SOURCES_ADD_YOUTUBE)
+                    else navController.navigate(Routes.sourceEditor(kind = kind))
+                },
                 onOpenSourceProfile = { name -> navController.navigate(Routes.sourceProfile(name)) },
+            )
+        }
+        composable(Routes.SETTINGS_SOURCES_ADD_YOUTUBE) {
+            AddYouTubeChannelScreen(
+                onBack = { navController.popBackStack() },
+                onResolved = { name, channelId ->
+                    // Pops this resolve step off the stack too, not just itself: from
+                    // the editor, back should return straight to the sources list
+                    // (where "Νέα πηγή" was tapped), the same as every other kind —
+                    // not back through a resolve screen there's nothing left to do on.
+                    navController.navigate(Routes.sourceEditor(kind = "youtube", ytName = name, ytChannelId = channelId)) {
+                        popUpTo(Routes.SETTINGS_SOURCES)
+                    }
+                },
+                onManual = {
+                    navController.navigate(Routes.sourceEditor(kind = "youtube")) {
+                        popUpTo(Routes.SETTINGS_SOURCES)
+                    }
+                },
             )
         }
         composable(
@@ -144,6 +170,8 @@ fun ThrylosNavGraph(
             arguments = listOf(
                 navArgument("sourceId") { type = NavType.StringType; nullable = true; defaultValue = null },
                 navArgument("kind") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("ytName") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("ytChannelId") { type = NavType.StringType; nullable = true; defaultValue = null },
             ),
         ) {
             SourceEditorScreen(onBack = { navController.popBackStack() })

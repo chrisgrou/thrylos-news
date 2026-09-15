@@ -115,6 +115,12 @@ private fun AddSourceChooserDialog(onDismiss: () -> Unit, onChoose: (kind: Strin
                     supportingContent = { Text("Δημοσιεύσεις από δημόσια σελίδα, χωρίς σύνδεση") },
                     modifier = Modifier.clickable { onChoose("facebook") },
                 )
+                ListItem(
+                    leadingContent = { Icon(Icons.Filled.PlayCircle, contentDescription = null) },
+                    headlineContent = { Text("Κανάλι YouTube") },
+                    supportingContent = { Text("Video ενός καναλιού, σαν άρθρα με thumbnail") },
+                    modifier = Modifier.clickable { onChoose("youtube") },
+                )
             }
         },
         confirmButton = {},

@@ -11,7 +11,8 @@ object Routes {
     const val AUTHOR_PROFILE = "profile/author/{author}"
     const val SETTINGS = "settings"
     const val SETTINGS_SOURCES = "settings/sources"
-    const val SETTINGS_SOURCE_EDITOR = "settings/sources/editor?sourceId={sourceId}&kind={kind}"
+    const val SETTINGS_SOURCES_ADD_YOUTUBE = "settings/sources/add-youtube"
+    const val SETTINGS_SOURCE_EDITOR = "settings/sources/editor?sourceId={sourceId}&kind={kind}&ytName={ytName}&ytChannelId={ytChannelId}"
     const val SETTINGS_FILTERS = "settings/filters"
     const val SETTINGS_FILTER_EDITOR = "settings/filters/editor?ruleId={ruleId}"
     /** Lists what the rule open in the editor matches; reads it from
@@ -31,10 +32,20 @@ object Routes {
     fun filterEditor(ruleId: String? = null) =
         if (ruleId == null) "settings/filters/editor" else "settings/filters/editor?ruleId=${Uri.encode(ruleId)}"
 
-    fun sourceEditor(sourceId: String? = null, kind: String? = null): String {
+    fun sourceEditor(
+        sourceId: String? = null,
+        kind: String? = null,
+        /** Only meaningful with kind="youtube" — pre-fills the template from a
+         *  channel already resolved by [gr.thrylos.news.sources.youtube.YouTubeChannelResolver],
+         *  so the source editor doesn't need to know how that resolution happened. */
+        ytName: String? = null,
+        ytChannelId: String? = null,
+    ): String {
         val params = listOfNotNull(
             sourceId?.let { "sourceId=$it" },
             kind?.let { "kind=$it" },
+            ytName?.let { "ytName=${Uri.encode(it)}" },
+            ytChannelId?.let { "ytChannelId=${Uri.encode(it)}" },
         )
         return if (params.isEmpty()) "settings/sources/editor" else "settings/sources/editor?${params.joinToString("&")}"
     }

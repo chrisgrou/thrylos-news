@@ -34,9 +34,7 @@ class SourceEditorViewModel @Inject constructor(
     val sourceId: String? = savedStateHandle["sourceId"]
     val isNew: Boolean = sourceId.isNullOrBlank()
 
-    private val _jsonText = MutableStateFlow(
-        if (savedStateHandle.get<String>("kind") == "facebook") newFacebookPluginTemplate() else newPluginTemplate(),
-    )
+    private val _jsonText = MutableStateFlow(initialTemplate(savedStateHandle))
     val jsonText: StateFlow<String> = _jsonText.asStateFlow()
 
     private val _saveErrors = MutableStateFlow<List<String>>(emptyList())
@@ -64,6 +62,19 @@ class SourceEditorViewModel @Inject constructor(
                 is PluginParseResult.Success -> onSaved()
                 is PluginParseResult.Failure -> _saveErrors.value = result.errors
             }
+        }
+    }
+
+    private fun initialTemplate(savedStateHandle: SavedStateHandle): String {
+        val kind = savedStateHandle.get<String>("kind")
+        return when {
+            kind == "facebook" -> newFacebookPluginTemplate()
+            kind == "youtube" -> {
+                val name = savedStateHandle.get<String>("ytName")
+                val channelId = savedStateHandle.get<String>("ytChannelId")
+                if (name != null && channelId != null) newYouTubePluginTemplate(name, channelId) else newYouTubePluginTemplateManual()
+            }
+            else -> newPluginTemplate()
         }
     }
 

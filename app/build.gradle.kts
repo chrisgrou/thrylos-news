@@ -102,6 +102,11 @@ dependencies {
 
     implementation("io.coil-kt:coil-compose:2.7.0")
 
+    // Only for JsonPrimitive(...).toString() in PluginTemplate.kt, to escape a
+    // resolved YouTube channel name into a JSON string literal correctly — no
+    // @Serializable codegen needed here, so no serialization compiler plugin.
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 
     implementation("androidx.glance:glance-appwidget:1.1.1")
