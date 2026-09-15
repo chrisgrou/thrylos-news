@@ -4,8 +4,10 @@ import gr.thrylos.news.sources.plugin.HttpConfig
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
@@ -34,9 +36,20 @@ class HttpFetcher(
         .build(),
 ) {
     /** Fetches [url] as text, honoring the plugin's [HttpConfig] (user agent + extra headers). */
-    fun fetchText(url: String, http: HttpConfig = HttpConfig()): String {
-        val requestBuilder = Request.Builder()
-            .url(url)
+    fun fetchText(url: String, http: HttpConfig = HttpConfig()): String =
+        execute(Request.Builder().url(url), url, http)
+
+    /** POSTs [jsonBody] to [url] and returns the response text — only used by the
+     *  YouTube channel resolver's innertube API call so far, but kept here rather
+     *  than as a one-off OkHttp call there so it shares timeouts/cookies/headers
+     *  with every other request this app makes. */
+    fun postJson(url: String, jsonBody: String, http: HttpConfig = HttpConfig()): String {
+        val body = jsonBody.toRequestBody("application/json; charset=utf-8".toMediaType())
+        return execute(Request.Builder().url(url).post(body), url, http)
+    }
+
+    private fun execute(requestBuilder: Request.Builder, url: String, http: HttpConfig): String {
+        requestBuilder
             .header("User-Agent", if (http.userAgent == "default") DEFAULT_USER_AGENT else http.userAgent)
             .header("Accept-Language", "el-GR,el;q=0.9,en;q=0.5")
             .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")

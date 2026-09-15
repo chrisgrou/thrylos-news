@@ -5,7 +5,9 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -14,22 +16,15 @@ class YouTubeChannelResolverTest {
     private lateinit var server: MockWebServer
     private lateinit var resolver: YouTubeChannelResolver
 
-    /** A real channel page's server-rendered HTML carries far more than this, but the
-     *  resolver only ever reads these two tags. */
-    private fun channelPageHtml(channelId: String, name: String) = """
-        <!DOCTYPE html>
-        <html><head>
-        <link rel="canonical" href="https://www.youtube.com/channel/$channelId">
-        <meta property="og:title" content="$name">
-        <title>$name - YouTube</title>
-        </head><body></body></html>
-    """.trimIndent()
-
     @BeforeEach
     fun setUp() {
         server = MockWebServer()
         server.start()
-        resolver = YouTubeChannelResolver(HttpFetcher())
+        resolver = YouTubeChannelResolver(
+            http = HttpFetcher(),
+            resolveEndpoint = server.url("/resolve_url").toString(),
+            feedUrl = { channelId -> server.url("/feeds/videos.xml?channel_id=$channelId").toString() },
+        )
     }
 
     @AfterEach
@@ -37,14 +32,40 @@ class YouTubeChannelResolverTest {
         server.shutdown()
     }
 
-    @Test
-    fun `resolves channel id and real name from the canonical link and og title`() {
-        server.enqueue(MockResponse().setBody(channelPageHtml("UCGiTb1kleEoNRKPPhwBUDCg", "RedNews")))
+    private fun resolveResponse(channelId: String) =
+        """{"endpoint":{"browseEndpoint":{"browseId":"$channelId","params":"xyz"}}}"""
 
-        val info = resolver.resolve(server.url("/@REDSPORTS7").toString())
+    private fun feedXml(channelName: String) = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <feed xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns="http://www.w3.org/2005/Atom">
+          <title>$channelName</title>
+          <entry><title>Some video title, not the channel's</title></entry>
+        </feed>
+    """.trimIndent()
+
+    @Test
+    fun `resolves a handle end to end via the resolve API then the channel feed`() {
+        server.enqueue(MockResponse().setBody(resolveResponse("UCGiTb1kleEoNRKPPhwBUDCg")))
+        server.enqueue(MockResponse().setBody(feedXml("RedNews")))
+
+        val info = resolver.resolve("@REDSPORTS7")
 
         assertEquals("UCGiTb1kleEoNRKPPhwBUDCg", info.channelId)
         assertEquals("RedNews", info.name)
+    }
+
+    @Test
+    fun `skips the resolve API entirely for a bare channel id or a channel URL`() {
+        server.enqueue(MockResponse().setBody(feedXml("Some Channel")))
+
+        val info = resolver.resolve("https://www.youtube.com/channel/UCGiTb1kleEoNRKPPhwBUDCg")
+
+        assertEquals("UCGiTb1kleEoNRKPPhwBUDCg", info.channelId)
+        // Exactly one request — the feed lookup — proves the resolve API was never
+        // called at all, not just that this test happened to still pass.
+        val recorded = server.takeRequest()
+        assertTrue(recorded.path!!.contains("/feeds/videos.xml"))
+        assertEquals(1, server.requestCount)
     }
 
     @Test
@@ -61,82 +82,33 @@ class YouTubeChannelResolverTest {
 
     @Test
     fun `rejects a blank input up front, with no network call`() {
-        val error = assertThrows(IllegalStateException::class.java) { resolver.channelUrl("   ") }
-        org.junit.jupiter.api.Assertions.assertTrue(error.message!!.contains("@handle"))
+        val error = assertThrows(IllegalStateException::class.java) { resolver.resolve("   ") }
+        assertTrue(error.message!!.contains("@handle"))
     }
 
     @Test
-    fun `fails with a clear message when nothing looks like a channel`() {
-        server.enqueue(MockResponse().setBody("<html><head><title>Not YouTube</title></head><body></body></html>"))
+    fun `fails with the raw API response when the resolve API doesn't name a channel`() {
+        server.enqueue(MockResponse().setBody("""{"endpoint":{"urlEndpoint":{"url":"https://example.com"}}}"""))
 
-        val error = assertThrows(IllegalStateException::class.java) {
-            resolver.resolve(server.url("/@nobody").toString())
-        }
+        val error = assertThrows(IllegalStateException::class.java) { resolver.resolve("@nobody") }
 
-        org.junit.jupiter.api.Assertions.assertTrue(error.message!!.contains("Δεν βρέθηκε κανάλι"))
+        assertTrue(error.message!!.contains("Δεν βρέθηκε κανάλι"))
+        assertTrue(error.message!!.contains("urlEndpoint"))
     }
 
     @Test
-    fun `sends the CONSENT cookie so an EU request skips the interstitial`() {
-        server.enqueue(MockResponse().setBody(channelPageHtml("UCGiTb1kleEoNRKPPhwBUDCg", "RedNews")))
-
-        resolver.resolve(server.url("/@REDSPORTS7").toString())
-
-        val recorded = server.takeRequest()
-        org.junit.jupiter.api.Assertions.assertTrue(recorded.getHeader("Cookie")?.contains("CONSENT=YES") == true)
-    }
-
-    @Test
-    fun `fails with a specific message when YouTube serves the consent wall instead of the channel`() {
-        // Detected by the confirm form's fixed action URL, not by the wall's own text
-        // — that text renders in whatever language the request asked for (Greek
-        // here), not necessarily English.
-        server.enqueue(
-            MockResponse().setBody(
-                """<html><head><title>Πριν μεταβείτε στο YouTube</title></head>
-                   <body><form action="https://consent.youtube.com/save"></form></body></html>""",
-            ),
+    fun `extractBrowseId reads the browseId regardless of what else is in the response`() {
+        assertEquals(
+            "UCabc12345678901234567X",
+            extractBrowseId("""{"endpoint":{"browseEndpoint":{"browseId":"UCabc12345678901234567X","canonicalBaseUrl":"/@x"}},"other":"noise"}"""),
         )
-
-        val error = assertThrows(IllegalStateException::class.java) {
-            resolver.resolve(server.url("/@REDSPORTS7").toString())
-        }
-
-        org.junit.jupiter.api.Assertions.assertTrue(error.message!!.contains("απορρήτου"))
+        assertNull(extractBrowseId("""{"endpoint":{}}"""))
+        assertNull(extractBrowseId("not json"))
     }
 
     @Test
-    fun `an unresolved response includes its title and length for diagnosis`() {
-        server.enqueue(MockResponse().setBody("<html><head><title>Κάτι άλλο</title></head><body></body></html>"))
-
-        val error = assertThrows(IllegalStateException::class.java) {
-            resolver.resolve(server.url("/@nobody").toString())
-        }
-
-        org.junit.jupiter.api.Assertions.assertTrue(error.message!!.contains("Κάτι άλλο"))
-    }
-
-    @Test
-    fun `falls back to ytInitialData's channelMetadataRenderer when the tags aren't in the response`() {
-        // No canonical link, no og:title — only what a real channel page's embedded
-        // ytInitialData blob always carries. Includes a decoy channelId elsewhere on
-        // the page (e.g. a "featured channels" shelf) to prove the resolver reads the
-        // one specific, unambiguous field rather than the first UC... it finds.
-        val html = """
-            <!DOCTYPE html><html><head><title>bwinΣΠΟΡ FM 94.6 - YouTube</title></head>
-            <body>
-            <script>var ytInitialData = {"contents":{"twoColumnBrowseResultsRenderer":{"tabs":[]}},
-            "metadata":{"channelMetadataRenderer":{"title":"bwinΣΠΟΡ FM 94.6",
-            "description":"Contains \"quotes\" and {braces} in the description on purpose.",
-            "externalId":"UCsporfm9460000000001"}},
-            "header":{"c4TabbedHeaderRenderer":{"channelId":"UCdecoyDoNotUse00000001"}}};</script>
-            </body></html>
-        """.trimIndent()
-        server.enqueue(MockResponse().setBody(html))
-
-        val info = resolver.resolve(server.url("/@sporfm946").toString())
-
-        assertEquals("UCsporfm9460000000001", info.channelId)
-        assertEquals("bwinΣΠΟΡ FM 94.6", info.name)
+    fun `extractFeedTitle reads the feed's own title, not an entry's`() {
+        assertEquals("RedNews", extractFeedTitle(feedXml("RedNews")))
+        assertNull(extractFeedTitle("<not-xml"))
     }
 }

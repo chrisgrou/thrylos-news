@@ -1,116 +1,93 @@
 package gr.thrylos.news.sources.youtube
 
+import gr.thrylos.news.sources.discovery.secureDocumentBuilder
 import gr.thrylos.news.sources.http.HttpFetcher
-import gr.thrylos.news.sources.plugin.HttpConfig
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.jsoup.Jsoup
+import java.io.ByteArrayInputStream
 
 data class YouTubeChannelInfo(val channelId: String, val name: String)
 
 private val CHANNEL_ID_IN_PATH = Regex("/channel/(UC[\\w-]{22})")
 private val CHANNEL_ID_ONLY = Regex("^UC[\\w-]{22}$")
 
-/** A cookie-less request from an EU IP gets redirected to a "Before you continue to
- *  YouTube" consent interstitial instead of the real page — there's no channel data
- *  on it at all. `CONSENT=YES+<anything>` is the exact cookie clicking "I agree" on
- *  that page would set; sending it up front skips the redirect entirely. Widely used
- *  for this — yt-dlp and various other tools hardcode the same value. */
-private val YOUTUBE_HTTP_CONFIG = HttpConfig(headers = mapOf("Cookie" to "CONSENT=YES+1"))
+/** A public, unchanging key baked into every YouTube web page's own JavaScript — an
+ *  API version tag, not a secret. Long-established open-source tools (NewPipe,
+ *  yt-dlp, Invidious) use the same one for the same reason: it's what the innertube
+ *  API these clients call is versioned/gated by, not an access credential. */
+private const val INNERTUBE_API_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
+private const val DEFAULT_RESOLVE_ENDPOINT = "https://www.youtube.com/youtubei/v1/navigation/resolve_url?key=$INNERTUBE_API_KEY"
 
 /**
  * Resolves any way a user might refer to a YouTube channel — an `@handle`, a legacy
  * `/c/` or `/user/` vanity URL, a full channel/video URL, or the raw channel id
  * itself — down to its channel id and real display name.
  *
- * The channel id is the only thing that actually matters for a
- * [gr.thrylos.news.sources.plugin.SourceKind.YOUTUBE] plugin: its video RSS feed
- * (`youtube.com/feeds/videos.xml?channel_id=...`) accepts nothing else, not the
- * handle a person would normally share. Rather than making the user go dig it out of
- * "Κοινοποίηση καναλιού" themselves, this does a single plain HTTP GET of the
- * channel's own page — nothing here needs JavaScript execution or an API key — and
- * tries two independent ways to read the channel out of the response, in order:
+ * Two earlier versions of this tried reading the channel's own HTML page (the
+ * `<link rel="canonical">`/`<meta property="og:title">` tags search engines read,
+ * then a fallback into the page's embedded `ytInitialData` JSON). Both failed
+ * repeatedly and unpredictably against real, live channels — a plain HTTP GET of a
+ * youtube.com page goes through YouTube's bot-detection and consent machinery on
+ * the way, and can come back as a GDPR consent wall, a generic logged-out homepage
+ * shell, or other variants that were never modeled, each requiring another guess to
+ * even name from the outside.
  *
- * 1. The `<link rel="canonical">`/`<meta property="og:title">` tags YouTube renders
- *    for search engines and link-preview crawlers — cheap, but not present in every
- *    response variant.
- * 2. `metadata.channelMetadataRenderer` inside the page's own embedded `ytInitialData`
- *    JSON — the same data YouTube's client-side rendering reads, and the
- *    unambiguous "this is the channel this page is about" field (the page mentions
- *    plenty of *other* channel ids too, e.g. featured/recommended ones, so this has
- *    to come from a specific structural path rather than the first id-shaped string
- *    found anywhere in the page).
+ * This uses two JSON/XML API calls instead, neither of which renders a page at all:
+ *
+ * 1. `youtubei/v1/navigation/resolve_url` — YouTube's own internal "resolve any URL
+ *    to a browse id" endpoint, used by its web client itself to turn a handle into
+ *    a channel id. A plain JSON POST/response, not a page.
+ * 2. The channel's own video feed (`feeds/videos.xml?channel_id=...`) — already
+ *    relied on elsewhere in this app for actual video discovery, so proven to work
+ *    without hitting any of the above. Its top-level `<title>` (not an entry's) is
+ *    the channel's real display name.
  */
-class YouTubeChannelResolver(private val http: HttpFetcher = HttpFetcher()) {
+class YouTubeChannelResolver(
+    private val http: HttpFetcher = HttpFetcher(),
+    private val resolveEndpoint: String = DEFAULT_RESOLVE_ENDPOINT,
+    private val feedUrl: (channelId: String) -> String = { "https://www.youtube.com/feeds/videos.xml?channel_id=$it" },
+) {
 
     fun resolve(input: String): YouTubeChannelInfo {
+        val trimmed = input.trim()
+        if (trimmed.isBlank()) error("Δώσε έναν σύνδεσμο ή το @handle του καναλιού.")
+
+        val channelId = directChannelId(trimmed) ?: resolveChannelId(trimmed)
+        val name = channelName(channelId)
+            ?: error("Βρέθηκε το κανάλι ($channelId), αλλά όχι το όνομά του — δοκίμασε ξανά ή γράψε το χειροκίνητα.")
+        return YouTubeChannelInfo(channelId, name)
+    }
+
+    /** Cheap, offline cases: a bare channel id, or a URL that already names one —
+     *  no need to call the resolve API at all. */
+    private fun directChannelId(input: String): String? =
+        if (CHANNEL_ID_ONLY.matches(input)) input else CHANNEL_ID_IN_PATH.find(input)?.groupValues?.get(1)
+
+    private fun resolveChannelId(input: String): String {
         val url = channelUrl(input)
-        val html = runCatching { http.fetchText(url, YOUTUBE_HTTP_CONFIG) }
+        val requestBody = """{"context":{"client":{"clientName":"WEB","clientVersion":"2.20210721.00.00"}},"url":${jsonQuote(url)}}"""
+        val response = runCatching { http.postJson(resolveEndpoint, requestBody) }
             .getOrElse { error("Δεν ήταν δυνατή η σύνδεση στο YouTube (${it.message?.take(120)}).") }
-
-        resolveFromTags(html, url)?.let { return it }
-        resolveFromInitialData(html)?.let { return it }
-
-        // Neither path found anything — say what actually came back instead of just
-        // "not found", so a real failure is diagnosable from the error text alone
-        // rather than needing the raw response handed over separately. The consent
-        // wall's own text is checked here rather than up front, language-independently
-        // (its confirm form always posts to consent.youtube.com regardless of UI
-        // language) — a first attempt at detecting it checked only for its English
-        // copy, which the wall never actually shows given this fetch's Greek
-        // Accept-Language header.
-        if (looksLikeConsentWall(html)) {
-            error("Το YouTube ζήτησε επιβεβαίωση απορρήτου (GDPR) αντί να δείξει το κανάλι — δοκίμασε ξανά, ή πρόσθεσε το κανάλι χειροκίνητα.")
-        }
-        val title = Jsoup.parse(html, url).title().ifBlank { "(χωρίς τίτλο)" }
-        error(
-            "Δεν βρέθηκε κανάλι YouTube σε '$input'. Η απάντηση του YouTube ήταν «$title» " +
-                "(${html.length} χαρακτήρες) — πιθανώς όχι η σελίδα του καναλιού. Δοκίμασε «Χειροκίνητα (JSON)».",
-        )
+        return extractBrowseId(response)
+            ?: error("Δεν βρέθηκε κανάλι YouTube σε '$input'. Απάντηση API: ${response.take(200).ifBlank { "(κενή)" }}")
     }
 
-    private fun resolveFromTags(html: String, url: String): YouTubeChannelInfo? {
-        val doc = Jsoup.parse(html, url)
-        val canonical = doc.selectFirst("link[rel=canonical]")?.attr("href").orEmpty()
-        val channelId = CHANNEL_ID_IN_PATH.find(canonical)?.groupValues?.get(1)
-            ?: doc.selectFirst("meta[itemprop=channelId]")?.attr("content")?.ifBlank { null }
-            ?: return null
-        val name = doc.selectFirst("meta[property=og:title]")?.attr("content")?.ifBlank { null }
-            ?: doc.title().removeSuffix(" - YouTube").trim().ifBlank { null }
-            ?: return null
-        return YouTubeChannelInfo(channelId, name)
+    private fun channelName(channelId: String): String? {
+        val xml = runCatching { http.fetchText(feedUrl(channelId)) }.getOrNull() ?: return null
+        return extractFeedTitle(xml)
     }
-
-    private fun resolveFromInitialData(html: String): YouTubeChannelInfo? {
-        val json = extractJsonObjectAfter(html, "var ytInitialData = ")
-            ?: extractJsonObjectAfter(html, "ytInitialData\"] = ")
-            ?: return null
-        val renderer = runCatching { Json.parseToJsonElement(json).jsonObject }.getOrNull()
-            ?.get("metadata")?.jsonObject
-            ?.get("channelMetadataRenderer")?.jsonObject
-            ?: return null
-        val channelId = renderer["externalId"]?.jsonPrimitive?.contentOrNull ?: return null
-        val name = renderer["title"]?.jsonPrimitive?.contentOrNull ?: return null
-        return YouTubeChannelInfo(channelId, name)
-    }
-
-    /** Language-independent on purpose: the wall's own text renders in whatever
-     *  language the request asked for (Greek here, via HttpFetcher's
-     *  Accept-Language), but its confirm form always posts to this fixed URL
-     *  regardless — that's what a first attempt at this check, matching only the
-     *  wall's English copy, missed. */
-    private fun looksLikeConsentWall(html: String): Boolean = html.contains("consent.youtube.com")
 
     /** Normalizes anything a user might paste — a bare handle, `@handle`, a legacy
-     *  `/c/`/`/user/` vanity URL, a full channel/video URL, or a raw channel id — to
-     *  the URL that's actually fetched. Exposed for testing without a live network
-     *  call; not meant to be called directly otherwise. */
+     *  `/c/`/`/user/` vanity URL, a full channel/video URL, or a raw channel id —
+     *  into the URL handed to the resolve API. Exposed for testing; not meant to be
+     *  called directly otherwise. */
     internal fun channelUrl(input: String): String {
         val trimmed = input.trim()
+        if (trimmed.isBlank()) error("Δώσε έναν σύνδεσμο ή το @handle του καναλιού.")
         return when {
-            trimmed.isBlank() -> error("Δώσε έναν σύνδεσμο ή το @handle του καναλιού.")
             CHANNEL_ID_ONLY.matches(trimmed) -> "https://www.youtube.com/channel/$trimmed"
             trimmed.startsWith("http://") || trimmed.startsWith("https://") -> trimmed
             else -> "https://www.youtube.com/${if (trimmed.startsWith("@")) trimmed else "@$trimmed"}"
@@ -118,41 +95,23 @@ class YouTubeChannelResolver(private val http: HttpFetcher = HttpFetcher()) {
     }
 }
 
-/** Finds `marker` and returns the balanced `{...}` JSON object immediately following
- *  it — a plain regex can't do this correctly since the object is deeply nested and
- *  contains braces inside string values. Tracks string/escape state so a `{`/`}`
- *  inside a JSON string (e.g. in a video description) doesn't throw off the depth
- *  count. */
-internal fun extractJsonObjectAfter(html: String, marker: String): String? {
-    val markerIndex = html.indexOf(marker)
-    if (markerIndex == -1) return null
-    var i = markerIndex + marker.length
-    while (i < html.length && html[i] != '{') i++
-    if (i >= html.length) return null
-    val start = i
+private fun jsonQuote(value: String): String = JsonPrimitive(value).toString()
 
-    var depth = 0
-    var inString = false
-    var escaped = false
-    while (i < html.length) {
-        val c = html[i]
-        if (inString) {
-            when {
-                escaped -> escaped = false
-                c == '\\' -> escaped = true
-                c == '"' -> inString = false
-            }
-        } else {
-            when (c) {
-                '"' -> inString = true
-                '{' -> depth++
-                '}' -> {
-                    depth--
-                    if (depth == 0) return html.substring(start, i + 1)
-                }
-            }
-        }
-        i++
-    }
-    return null
+/** Pulls `endpoint.browseEndpoint.browseId` out of a resolve_url response — the
+ *  field that response exists to carry. Exposed (and kept separate from the network
+ *  call) so it's testable against hand-written sample payloads without a live
+ *  network. */
+internal fun extractBrowseId(json: String): String? =
+    runCatching { Json.parseToJsonElement(json).jsonObject }.getOrNull()
+        ?.get("endpoint")?.jsonObject
+        ?.get("browseEndpoint")?.jsonObject
+        ?.get("browseId")?.jsonPrimitive?.contentOrNull
+
+/** The channel feed's own `<title>` — the first one in the document, which by Atom's
+ *  structure (the feed's own metadata always precedes its `<entry>`s) is the feed's,
+ *  never an individual video's. Exposed for testing without a live network. */
+internal fun extractFeedTitle(xml: String): String? {
+    val doc = runCatching { secureDocumentBuilder().parse(ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8))) }
+        .getOrNull() ?: return null
+    return doc.getElementsByTagName("title").item(0)?.textContent?.trim()?.ifBlank { null }
 }
