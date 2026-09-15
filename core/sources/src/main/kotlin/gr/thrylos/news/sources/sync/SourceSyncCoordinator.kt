@@ -4,7 +4,9 @@ import gr.thrylos.news.model.Article
 import gr.thrylos.news.model.ArticleStub
 import gr.thrylos.news.sources.discovery.DiscoveryFactory
 import gr.thrylos.news.sources.extract.ArticleExtractor
+import gr.thrylos.news.sources.extract.YouTubeVideoExtractor
 import gr.thrylos.news.sources.http.HttpFetcher
+import gr.thrylos.news.sources.plugin.SourceKind
 import gr.thrylos.news.sources.plugin.SourcePlugin
 import gr.thrylos.news.sources.url.UrlNormalizer
 
@@ -30,5 +32,9 @@ class SourceSyncCoordinator(
             .filterNot { UrlNormalizer.canonicalize(it.url, plugin.urlRules) in knownCanonicalUrls }
     }
 
-    fun extractArticle(plugin: SourcePlugin, stub: ArticleStub): Article = extractor.extract(plugin, stub)
+    /** A [SourceKind.YOUTUBE] plugin never fetches the video's own page — see
+     *  [YouTubeVideoExtractor]. */
+    fun extractArticle(plugin: SourcePlugin, stub: ArticleStub): Article =
+        if (plugin.kind == SourceKind.YOUTUBE) YouTubeVideoExtractor.extract(plugin, stub)
+        else extractor.extract(plugin, stub)
 }

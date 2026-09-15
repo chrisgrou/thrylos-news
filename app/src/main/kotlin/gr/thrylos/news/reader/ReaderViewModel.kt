@@ -11,6 +11,7 @@ import gr.thrylos.news.feed.ArticleListCursor
 import gr.thrylos.news.model.Article
 import gr.thrylos.news.model.ArticleStub
 import gr.thrylos.news.model.ReaderPrefs
+import gr.thrylos.news.sources.plugin.SourceKind
 import gr.thrylos.news.sources.sync.SourceSyncCoordinator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -72,6 +73,12 @@ class ReaderViewModel @Inject constructor(
                 withContext(Dispatchers.IO) {
                     val existing = articleRepository.observeById(id).first() ?: return@withContext
                     val plugin = sourceRepository.getById(existing.sourceId)?.plugin ?: return@withContext
+                    // Nothing to refetch: a YOUTUBE-kind plugin never fetches the
+                    // video's own page to begin with (see YouTubeVideoExtractor), and
+                    // this 3-arg stub carries neither the thumbnail nor the description
+                    // that only the original RSS entry ever had — re-running it would
+                    // silently strip both from the stored article.
+                    if (plugin.kind == SourceKind.YOUTUBE) return@withContext
                     val stub = ArticleStub(existing.sourceId, existing.url, existing.title)
                     val fresh = coordinator.extractArticle(plugin, stub).copy(
                         isRead = existing.isRead,

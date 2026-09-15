@@ -18,12 +18,21 @@ enum class FallbackMode {
     @SerialName("none") NONE,
 }
 
-/** Purely cosmetic — which icon a source gets in the sources list. Doesn't affect
- *  discovery/extraction at all; a Facebook page is scraped the same html-list way
- *  as any other site, just usually pointed at mbasic.facebook.com. */
+/** Which icon a source gets in the sources list — purely cosmetic for [SITE] and
+ *  [FACEBOOK]; a Facebook page is scraped the same html-list way as any other site,
+ *  just usually pointed at mbasic.facebook.com.
+ *
+ *  [YOUTUBE] is different: it also changes how a discovered item becomes an
+ *  [gr.thrylos.news.model.Article]. A video's watch page is a JS application with no
+ *  stable content to select — there's nothing there for [gr.thrylos.news.sources.extract.ArticleExtractor]
+ *  to scrape — so a YouTube plugin is built around its channel's own Atom feed
+ *  (`youtube.com/feeds/videos.xml?channel_id=...`) instead, which already carries a
+ *  title, thumbnail, description and publish date per video. See
+ *  [gr.thrylos.news.sources.extract.YouTubeVideoExtractor]. */
 enum class SourceKind {
     @SerialName("site") SITE,
     @SerialName("facebook") FACEBOOK,
+    @SerialName("youtube") YOUTUBE,
 }
 
 @Serializable
@@ -49,7 +58,10 @@ data class ArticleSelectors(
     val date: String? = null,
     val dateFormat: String? = null,
     val leadImage: String? = null,
-    val content: String,
+    /** Required for every [SourceKind] except [SourceKind.YOUTUBE], which never
+     *  reaches [gr.thrylos.news.sources.extract.ArticleExtractor] (and so never reads
+     *  this) at all — see [SourceKind]. */
+    val content: String? = null,
     val remove: List<String> = emptyList(),
     val unwrap: List<String> = emptyList(),
 )

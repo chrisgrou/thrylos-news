@@ -49,7 +49,9 @@ object PluginParser {
             errors += "Το discovery.type='html-list' απαιτεί 'listSelectors'."
         }
         if (plugin.article.title.isBlank()) errors += "Λείπει το article.title selector."
-        if (plugin.article.content.isBlank()) errors += "Λείπει το article.content selector."
+        if (plugin.kind != SourceKind.YOUTUBE && plugin.article.content.isNullOrBlank()) {
+            errors += "Λείπει το article.content selector."
+        }
 
         return errors
     }

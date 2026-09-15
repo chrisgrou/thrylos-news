@@ -61,7 +61,8 @@ class ArticleExtractor(private val http: HttpFetcher = HttpFetcher()) {
         // the content container (e.g. a ".meta" div also targeted by a remove rule)
         // would otherwise already be gone by the time it's read.
         val publishedAt = doc.textOf(article.date)?.let { DateParsing.parse(it, article.dateFormat) } ?: stub.publishedAt
-        val contentEl = doc.elementOf(article.content) ?: error("Δεν βρέθηκε το content selector '${article.content}'")
+        val contentSelector = article.content ?: error("Το plugin δεν έχει article.content selector")
+        val contentEl = doc.elementOf(contentSelector) ?: error("Δεν βρέθηκε το content selector '$contentSelector'")
         val blocks = HtmlToBlocks.convert(contentEl, article, stub.url)
 
         return Article(

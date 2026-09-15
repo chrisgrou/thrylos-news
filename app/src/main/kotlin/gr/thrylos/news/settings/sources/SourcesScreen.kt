@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.AlertDialog
@@ -91,6 +92,7 @@ private fun SourceKindIcon(kind: SourceKind) {
     when (kind) {
         SourceKind.SITE -> Icon(Icons.Filled.Public, contentDescription = "Site")
         SourceKind.FACEBOOK -> Icon(Icons.Filled.ThumbUp, contentDescription = "Facebook")
+        SourceKind.YOUTUBE -> Icon(Icons.Filled.PlayCircle, contentDescription = "YouTube")
     }
 }
 

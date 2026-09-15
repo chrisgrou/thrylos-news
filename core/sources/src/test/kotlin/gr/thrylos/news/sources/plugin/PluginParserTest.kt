@@ -54,4 +54,30 @@ class PluginParserTest {
         val result = PluginParser.parse(json)
         assertTrue(result is PluginParseResult.Failure)
     }
+
+    @Test
+    fun `youtube-kind plugin doesn't need an article content selector`() {
+        val json = """
+            {
+              "schemaVersion": 1,
+              "id": "demo-channel",
+              "name": "Demo Channel",
+              "homepage": "https://www.youtube.com/@demo",
+              "kind": "youtube",
+              "discovery": { "type": "rss", "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCdemo" },
+              "article": { "title": "unused" }
+            }
+        """.trimIndent()
+        val result = PluginParser.parse(json)
+        assertTrue(result is PluginParseResult.Success)
+        assertEquals(SourceKind.YOUTUBE, (result as PluginParseResult.Success).plugin.kind)
+    }
+
+    @Test
+    fun `non-youtube plugin still requires an article content selector`() {
+        val json = validJson.replace(", \"content\": \"div.article-body\"", "")
+        val result = PluginParser.parse(json)
+        assertTrue(result is PluginParseResult.Failure)
+        assertTrue((result as PluginParseResult.Failure).errors.any { it.contains("article.content") })
+    }
 }

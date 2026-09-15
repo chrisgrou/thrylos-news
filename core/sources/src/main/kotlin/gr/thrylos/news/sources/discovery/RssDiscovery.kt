@@ -73,6 +73,12 @@ class RssDiscovery : ArticleDiscovery {
         val link = href ?: return null
         val title = entry.child("title") ?: return null
         val published = (entry.child("published") ?: entry.child("updated"))?.let { DateParsing.parse(it) }
-        return ArticleStub(sourceId, link.trim(), title, null, published)
+        // A YouTube channel feed (and other Media RSS-style Atom feeds) nests a
+        // thumbnail and description per entry inside <media:group> rather than as
+        // plain Atom fields — getElementsByTagName searches all descendants, so the
+        // nesting depth doesn't matter here.
+        val image = (entry.getElementsByTagName("media:thumbnail").item(0) as? Element)?.getAttribute("url")?.ifBlank { null }
+        val description = entry.child("media:description")
+        return ArticleStub(sourceId, link.trim(), title, image, published, description)
     }
 }

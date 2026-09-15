@@ -10,4 +10,9 @@ data class ArticleStub(
     val title: String,
     val imageUrl: String? = null,
     val publishedAt: Long? = null,
+    /** Only ever populated by an Atom feed's per-entry `<media:description>` (e.g. a
+     *  YouTube channel feed's `media:group`) — the body text for a
+     *  [gr.thrylos.news.sources.plugin.SourceKind.YOUTUBE] plugin's "article" is built
+     *  straight from this rather than by fetching and scraping a page; null otherwise. */
+    val description: String? = null,
 )

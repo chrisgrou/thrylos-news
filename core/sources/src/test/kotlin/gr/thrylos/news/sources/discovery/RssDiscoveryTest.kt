@@ -60,4 +60,25 @@ class RssDiscoveryTest {
         assertEquals(1, stubs.size)
         assertTrue(stubs[0].title.contains("ανακοίνωση"))
     }
+
+    @Test
+    fun `parses a YouTube channel's Atom feed, including media group thumbnail and description`() {
+        server.enqueue(MockResponse().setBody(Fixtures.read("sample-youtube-feed.xml")))
+        val plugin = SourcePlugin(
+            schemaVersion = 1, id = "demo-channel", name = "Demo Channel", homepage = server.url("/").toString(),
+            kind = gr.thrylos.news.sources.plugin.SourceKind.YOUTUBE,
+            discovery = Discovery(DiscoveryType.RSS, server.url("/rss").toString()),
+            article = ArticleSelectors(title = "unused"),
+        )
+
+        val stubs = RssDiscovery().discover(plugin, HttpFetcher())
+
+        assertEquals(1, stubs.size)
+        val stub = stubs[0]
+        assertEquals("Ολυμπιακός: highlights τελευταίου αγώνα", stub.title)
+        assertEquals("https://www.youtube.com/watch?v=abc12345678", stub.url)
+        assertEquals("https://i.ytimg.com/vi/abc12345678/hqdefault.jpg", stub.imageUrl)
+        assertEquals("Τα καλύτερα στιγμιότυπα από τον αγώνα του Σαββάτου.", stub.description)
+        assertTrue(stub.publishedAt != null)
+    }
 }

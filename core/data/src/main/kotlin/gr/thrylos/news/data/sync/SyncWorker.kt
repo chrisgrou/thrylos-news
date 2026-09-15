@@ -16,6 +16,7 @@ import gr.thrylos.news.model.Article
 import gr.thrylos.news.model.ArticleStub
 import gr.thrylos.news.sources.dedup.Dedup
 import gr.thrylos.news.sources.filter.FilterEngine
+import gr.thrylos.news.sources.plugin.SourceKind
 import gr.thrylos.news.sources.plugin.SourcePlugin
 import gr.thrylos.news.sources.sync.SourceSyncCoordinator
 import kotlinx.coroutines.async
@@ -141,6 +142,15 @@ class SyncWorker @AssistedInject constructor(
      *  time (an article that's genuinely just short, or a source whose selectors are
      *  broken, isn't retried forever — only up to [MAX_REEXTRACT_PER_SOURCE] per run). */
     private suspend fun reextractEmptyArticles(plugin: SourcePlugin): List<Article> {
+        // Doesn't apply to a YOUTUBE-kind plugin, for two independent reasons: its
+        // "article" is built entirely from feed data already final at discovery time
+        // (there's no page fetched mid-publish to retry), and — more importantly — the
+        // 3-arg ArticleStub built below carries neither imageUrl nor description, so
+        // "retrying" one would silently strip its thumbnail. A short (or missing) video
+        // description is completely normal and isn't "broken" the way a truncated news
+        // article is, so it would also dominate MAX_REEXTRACT_PER_SOURCE every run.
+        if (plugin.kind == SourceKind.YOUTUBE) return emptyList()
+
         // Scoped to this source, and already ordered by the query: this runs once per
         // source per sync, so reading (and JSON-decoding) every stored article's body
         // here meant doing that work once per source, over the whole table, every sync.
