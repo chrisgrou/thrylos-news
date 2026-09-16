@@ -37,3 +37,7 @@ data class ArticleSummary(
  *  known, bounded set of ids (a BODY/"Οπουδήποτε" filter rule) rather than for
  *  everything in the table. */
 data class ArticleContent(val id: String, val contentJson: String)
+
+/** The per-article state a re-sync must carry forward rather than reset — see
+ *  [gr.thrylos.news.data.repo.ArticleRepository.upsertAll]. */
+data class ArticleState(val id: String, val isRead: Boolean, val isBookmarked: Boolean, val dedupGroupId: String?)

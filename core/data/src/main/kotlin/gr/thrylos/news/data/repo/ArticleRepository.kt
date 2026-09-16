@@ -1,6 +1,7 @@
 package gr.thrylos.news.data.repo
 
 import gr.thrylos.news.data.db.dao.ArticleDao
+import gr.thrylos.news.data.db.entity.ArticleState
 import gr.thrylos.news.model.Article
 import gr.thrylos.news.sources.filter.FilterEngine
 import kotlinx.coroutines.flow.Flow
@@ -57,9 +58,29 @@ class ArticleRepository @Inject constructor(
      *  to freshly discovered urls, so both sides of the "already known?" check agree. */
     suspend fun existingUrls(sourceId: String): Set<String> = dao.existingUrls(sourceId).toSet()
 
-    suspend fun upsertAll(articles: List<Article>) = dao.upsertAll(articles.map(ArticleMapper::toEntity))
+    /** A "new" article from discovery can turn out to already exist — most often a
+     *  transient mismatch during discovery's own known-url check re-surfacing an
+     *  already-synced article as if it were unseen (see SourceSyncCoordinator.
+     *  discoverNew). Room's REPLACE conflict strategy would otherwise blow away that
+     *  existing row's isRead/isBookmarked/dedupGroupId wholesale — silently marking a
+     *  read article unread and un-collapsing it from its dedup group — every single
+     *  time that happens. Carrying those three fields forward from whatever's already
+     *  stored (when anything is) makes a spurious "rediscovery" harmless either way. */
+    suspend fun upsertAll(articles: List<Article>) {
+        if (articles.isEmpty()) return
+        val existing = dao.existingState(articles.map { it.id }).associateBy { it.id }
+        val merged = articles.map { article -> preserveExistingState(article, existing[article.id]) }
+        dao.upsertAll(merged.map(ArticleMapper::toEntity))
+    }
 
-    suspend fun upsert(article: Article) = dao.upsert(ArticleMapper.toEntity(article))
+    suspend fun upsert(article: Article) {
+        val existing = dao.existingState(listOf(article.id)).firstOrNull()
+        dao.upsert(ArticleMapper.toEntity(preserveExistingState(article, existing)))
+    }
+
+    private fun preserveExistingState(article: Article, existing: ArticleState?): Article =
+        if (existing == null) article
+        else article.copy(isRead = existing.isRead, isBookmarked = existing.isBookmarked, dedupGroupId = existing.dedupGroupId)
 
     suspend fun setRead(id: String, isRead: Boolean) = dao.setRead(id, isRead)
 

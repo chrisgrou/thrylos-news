@@ -8,6 +8,7 @@ import androidx.room.Transaction
 import androidx.room.Update
 import gr.thrylos.news.data.db.entity.ArticleContent
 import gr.thrylos.news.data.db.entity.ArticleEntity
+import gr.thrylos.news.data.db.entity.ArticleState
 import gr.thrylos.news.data.db.entity.ArticleSummary
 import kotlinx.coroutines.flow.Flow
 
@@ -68,6 +69,11 @@ interface ArticleDao {
 
     @Query("SELECT url FROM articles WHERE sourceId = :sourceId")
     suspend fun existingUrls(sourceId: String): List<String>
+
+    /** State a re-sync of an already-known article must never clobber — see
+     *  [gr.thrylos.news.data.repo.ArticleRepository.upsertAll]. */
+    @Query("SELECT id, isRead, isBookmarked, dedupGroupId FROM articles WHERE id IN (:ids)")
+    suspend fun existingState(ids: List<String>): List<ArticleState>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(articles: List<ArticleEntity>)
