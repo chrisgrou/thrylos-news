@@ -51,7 +51,11 @@ class ArticleRepository @Inject constructor(
 
     fun observeById(id: String): Flow<Article?> = dao.observeById(id).map { it?.let(ArticleMapper::toDomain) }
 
-    suspend fun existingCanonicalUrls(sourceId: String): Set<String> = dao.existingUrls(sourceId).toSet()
+    /** The plain, as-stored url of every article for this source — *not* canonicalized;
+     *  see [gr.thrylos.news.sources.sync.SourceSyncCoordinator.discoverNew], which does
+     *  that itself against the same [gr.thrylos.news.sources.plugin.UrlRules] it applies
+     *  to freshly discovered urls, so both sides of the "already known?" check agree. */
+    suspend fun existingUrls(sourceId: String): Set<String> = dao.existingUrls(sourceId).toSet()
 
     suspend fun upsertAll(articles: List<Article>) = dao.upsertAll(articles.map(ArticleMapper::toEntity))
 
@@ -81,7 +85,7 @@ class ArticleRepository @Inject constructor(
 
     suspend fun deleteBySource(sourceId: String) = dao.deleteBySource(sourceId)
 
-    /** Clears everything except bookmarks, and (via [existingCanonicalUrls] then
+    /** Clears everything except bookmarks, and (via [existingUrls] then
      *  finding nothing known) forces every source to be fully re-discovered and
      *  re-extracted on the next sync — useful after a data-quality fix (e.g. a
      *  published-date parsing bug) that only affects newly-synced articles, since

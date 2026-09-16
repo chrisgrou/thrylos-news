@@ -21,16 +21,23 @@ class SourceSyncCoordinator(
     private val extractor: ArticleExtractor = ArticleExtractor(http),
 ) {
 
-    /** Returns discovered stubs that pass urlRules and aren't already known, newest-effort first. */
-    fun discoverNew(plugin: SourcePlugin, knownCanonicalUrls: Set<String>): List<ArticleStub> {
+    /** Returns discovered stubs that pass urlRules and aren't already known, newest-effort
+     *  first. [knownUrls] is whatever's actually stored for this source (its plain, as-
+     *  extracted url column) — canonicalized here rather than trusted to already be, since
+     *  a caller comparing a freshly canonicalized url against a *raw* stored one would
+     *  never find a match even for an article synced moments ago: every discovery would
+     *  then look "new" forever, re-extracting (and so re-upserting, resetting isRead) the
+     *  same articles on every single sync. */
+    fun discoverNew(plugin: SourcePlugin, knownUrls: Set<String>): List<ArticleStub> {
         val discovery = DiscoveryFactory.forType(plugin.discovery.type)
         val stubs = discovery.discover(plugin, http)
+        val knownCanonical = knownUrls.mapTo(HashSet(knownUrls.size)) { UrlNormalizer.canonicalize(it, plugin.urlRules) }
         return stubs
             .map { it.copy(url = UrlNormalizer.resolve(plugin.discovery.url, it.url)) }
             .filterNot { plugin.discovery.excludeShorts && "/shorts/" in it.url }
             .filter { UrlNormalizer.isAllowed(it.url, plugin.urlRules) }
             .distinctBy { UrlNormalizer.canonicalize(it.url, plugin.urlRules) }
-            .filterNot { UrlNormalizer.canonicalize(it.url, plugin.urlRules) in knownCanonicalUrls }
+            .filterNot { UrlNormalizer.canonicalize(it.url, plugin.urlRules) in knownCanonical }
     }
 
     /** A [SourceKind.YOUTUBE] plugin never fetches the video's own page — see

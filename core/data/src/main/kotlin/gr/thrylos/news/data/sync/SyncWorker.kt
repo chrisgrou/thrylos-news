@@ -124,7 +124,7 @@ class SyncWorker @AssistedInject constructor(
     }
 
     private suspend fun syncOneSource(plugin: SourcePlugin, filters: List<gr.thrylos.news.model.FilterRule>): List<Article> {
-        val known = articleRepository.existingCanonicalUrls(plugin.id)
+        val known = articleRepository.existingUrls(plugin.id)
         val stubs = coordinator.discoverNew(plugin, known)
             .filterNot { FilterEngine.isHiddenStub(it.title, plugin.id, plugin.name, it.url, filters) }
             .take(MAX_NEW_PER_SOURCE)

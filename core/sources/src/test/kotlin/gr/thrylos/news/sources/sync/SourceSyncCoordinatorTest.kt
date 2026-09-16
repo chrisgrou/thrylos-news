@@ -60,4 +60,19 @@ class SourceSyncCoordinatorTest {
 
         assertEquals(2, stubs.size)
     }
+
+    @Test
+    fun `a known url that only differs in host casing still counts as known`() {
+        // Regression test: discoverNew canonicalizes its knownUrls argument itself now
+        // (rather than trusting the caller to have already done so) — a caller passing
+        // the plain, as-stored url straight from the database (ArticleRepository.existingUrls)
+        // must still correctly recognize an already-synced article, or every sync
+        // "rediscovers" it as new, re-extracting and resetting its isRead flag forever.
+        server.enqueue(MockResponse().setBody(Fixtures.read("sample-youtube-feed-with-short.xml")))
+
+        val knownRawUrl = "https://WWW.YOUTUBE.COM/watch?v=regular12345"
+        val stubs = coordinator.discoverNew(plugin(excludeShorts = true), setOf(knownRawUrl))
+
+        assertTrue(stubs.isEmpty())
+    }
 }
