@@ -150,7 +150,18 @@ fun SourceProfileScreen(
                             }
                         },
                         headlineContent = { Text(article.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-                        supportingContent = article.author?.let { { Text(it) } },
+                        supportingContent = {
+                            Column {
+                                article.author?.let { Text(it) }
+                                // TEMPORARY diagnostic — investigating RedNews articles
+                                // flashing unread during sync then disappearing.
+                                Text(
+                                    "DEBUG: isRead=${article.isRead} dedupGroupId=${article.dedupGroupId} publishedAt=${article.publishedAt} fetchedAt=${article.fetchedAt}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth().clickable {
                             viewModel.setCursorContext(visibleArticles.map { it.id })
                             onOpenArticle(article.id)
