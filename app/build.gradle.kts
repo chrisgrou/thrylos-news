@@ -46,6 +46,20 @@ android {
             applicationIdSuffix = ".debug"
             signingConfig = signingConfigs.getByName("debug")
         }
+        // What CI actually publishes for in-app updates (see .github/workflows/build.yml).
+        // A debuggable, un-shrunk build runs Compose several times slower than a release
+        // one — lists and the reader were visibly unusable on it. Same applicationId suffix
+        // and signing key as `debug` on purpose: Android then installs it over the existing
+        // app in place, keeping the user's sources, filters and bookmarks. Not obfuscated
+        // (see proguard-optimized.pro), so a crash trace stays readable.
+        create("optimized") {
+            initWith(getByName("release"))
+            isShrinkResources = false
+            applicationIdSuffix = ".debug"
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            proguardFiles("proguard-optimized.pro")
+        }
     }
 
     compileOptions {

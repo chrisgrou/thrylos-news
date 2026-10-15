@@ -46,6 +46,19 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
+      # What in-app updates actually ship: non-debuggable + R8-optimized, signed with the
+      # same committed key and package suffix as the debug build so it installs over it
+      # in place. The debug build is far slower at running Compose (see app/build.gradle.kts).
+      - name: Assemble optimized APK
+        run: ./gradlew assembleOptimized
+
+      - name: Upload optimized APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: thrylos-news-optimized
+          path: app/build/outputs/apk/optimized/*.apk
+          if-no-files-found: error
+
       # Powers in-app update checks (Settings → Έλεγχος για ενημερώσεις): the app
       # polls this fixed "latest" release's tag/assets, so every push to a branch
       # replaces it rather than accumulating a release per commit.
@@ -54,7 +67,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          apk_src=$(ls app/build/outputs/apk/debug/*.apk | head -n1)
+          apk_src=$(ls app/build/outputs/apk/optimized/*.apk | head -n1)
           apk_name="thrylos-news-${GITHUB_RUN_NUMBER}.apk"
           cp "$apk_src" "$apk_name"
 
